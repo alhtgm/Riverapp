@@ -10,6 +10,7 @@ interface AppState {
   error: string | null
 
   fetchAll: () => Promise<void>
+  signOut: () => Promise<void>
 
   // Subject
   addSubject: (name: string, color: string) => Promise<void>
@@ -25,7 +26,6 @@ interface AppState {
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'status' | 'start_date' | 'due_date' | 'memo' | 'subject_id'>>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   deleteTasksFromRecurrence: (recurrenceId: string, fromDate: string) => Promise<void>
-  updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -33,6 +33,10 @@ export const useStore = create<AppState>((set, get) => ({
   tasks: [],
   loading: false,
   error: null,
+
+  signOut: async () => {
+    await supabase.auth.signOut()
+  },
 
   fetchAll: async () => {
     set({ loading: true, error: null })
@@ -137,17 +141,6 @@ export const useStore = create<AppState>((set, get) => ({
     const { data, error } = await supabase
       .from('tasks')
       .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    set(s => ({ tasks: s.tasks.map(t => t.id === id ? data : t) }))
-  },
-
-  updateTaskStatus: async (id, status) => {
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({ status })
       .eq('id', id)
       .select()
       .single()

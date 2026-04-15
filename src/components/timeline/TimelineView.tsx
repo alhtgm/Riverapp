@@ -5,7 +5,6 @@ import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import { useStore } from '../../store/useStore'
-import { supabase } from '../../lib/supabase'
 
 const COL_WIDTH = 44
 const LABEL_WIDTH = 186
@@ -96,7 +95,7 @@ const RiverLogo = ({ size = 18 }: { size?: number }) => (
 )
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, signOut } = useStore()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
@@ -288,7 +287,7 @@ export default function TimelineView() {
 
         {/* Logout */}
         <button
-          onClick={() => supabase.auth.signOut()}
+          onClick={() => signOut()}
           style={{
             background: 'transparent',
             border: '1px solid #E3DDD5',

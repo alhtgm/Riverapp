@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }: Props) {
-  const { updateTaskStatus } = useStore()
+  const { updateTask } = useStore()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -19,11 +19,12 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       document.addEventListener('mousedown', handleClick)
       document.addEventListener('keydown', handleKey)
     }, 0)
     return () => {
+      clearTimeout(timerId)
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
@@ -37,7 +38,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
     : position.y + 12
 
   const handleStatusClick = async (status: TaskStatus) => {
-    await updateTaskStatus(task.id, status)
+    await updateTask(task.id, { status })
     onClose()
   }
 

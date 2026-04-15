@@ -440,21 +440,24 @@ export default function AddTaskModal({ subjects, onClose }: Props) {
                 </div>
               </div>
 
-              {recurringPreview() && (
-                <div style={{
-                  background: '#EEF2FF',
-                  border: '1px solid rgba(59,99,255,0.2)',
-                  borderRadius: 10,
-                  padding: '11px 14px',
-                  fontSize: 13,
-                  color: '#3B63FF',
-                  fontWeight: 500,
-                  letterSpacing: '-0.01em',
-                  lineHeight: 1.5,
-                }}>
-                  {recurringPreview()}
-                </div>
-              )}
+              {(() => {
+                const preview = recurringPreview()
+                return preview ? (
+                  <div style={{
+                    background: '#EEF2FF',
+                    border: '1px solid rgba(59,99,255,0.2)',
+                    borderRadius: 10,
+                    padding: '11px 14px',
+                    fontSize: 13,
+                    color: '#3B63FF',
+                    fontWeight: 500,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.5,
+                  }}>
+                    {preview}
+                  </div>
+                ) : null
+              })()}
             </>
           )}
 
