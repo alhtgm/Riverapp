@@ -6,8 +6,10 @@ import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import { useStore } from '../../store/useStore'
 
-const COL_WIDTH = 44
-const LABEL_WIDTH = 186
+const COL_WIDTH_DESKTOP = 44
+const COL_WIDTH_MOBILE = 36
+const LABEL_WIDTH_DESKTOP = 186
+const LABEL_WIDTH_MOBILE = 96
 const ROW_HEIGHT = 46
 const HEADER_HEIGHT = 56
 const SUBJECT_SEP_HEIGHT = 28
@@ -98,6 +100,7 @@ export default function TimelineView() {
   const { subjects, tasks, fetchAll, deleteSubject, signOut } = useStore()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
@@ -110,6 +113,15 @@ export default function TimelineView() {
   const todayIdx = days.findIndex(d => toDateString(d) === todayStr)
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
+  const LABEL_WIDTH = isMobile ? LABEL_WIDTH_MOBILE : LABEL_WIDTH_DESKTOP
 
   useEffect(() => {
     if (scrollRef.current && todayIdx >= 0) {
@@ -255,7 +267,7 @@ export default function TimelineView() {
             color: '#ffffff',
             border: 'none',
             borderRadius: 8,
-            padding: '7px 15px',
+            padding: isMobile ? '7px 10px' : '7px 15px',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
@@ -282,7 +294,7 @@ export default function TimelineView() {
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
             <path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          課題を追加
+          {!isMobile && '課題を追加'}
         </button>
 
         {/* Logout */}
@@ -292,7 +304,7 @@ export default function TimelineView() {
             background: 'transparent',
             border: '1px solid #E3DDD5',
             borderRadius: 7,
-            padding: '6px 11px',
+            padding: isMobile ? '6px 8px' : '6px 11px',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
@@ -301,6 +313,8 @@ export default function TimelineView() {
             flexShrink: 0,
             fontFamily: 'inherit',
             letterSpacing: '-0.01em',
+            display: 'flex',
+            alignItems: 'center',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = '#EDE8DF'
@@ -311,7 +325,11 @@ export default function TimelineView() {
             e.currentTarget.style.borderColor = '#E3DDD5'
           }}
         >
-          ログアウト
+          {isMobile ? (
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="#78716C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : 'ログアウト'}
         </button>
       </header>
 
@@ -329,17 +347,19 @@ export default function TimelineView() {
         zIndex: 99,
         overflowX: 'auto',
       }}>
-        <span style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#C4BDB5',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          flexShrink: 0,
-          marginRight: 2,
-        }}>
-          絞り込み
-        </span>
+        {!isMobile && (
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#C4BDB5',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            flexShrink: 0,
+            marginRight: 2,
+          }}>
+            絞り込み
+          </span>
+        )}
 
         {STATUS_PILLS.map(pill => {
           const isActive = selectedStatuses.has(pill.key)
@@ -653,7 +673,7 @@ export default function TimelineView() {
                           <path d="M2 3.5L5 6.5L8 3.5" stroke="#A8A29E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <span style={{
-                          fontSize: 11,
+                          fontSize: isMobile ? 10 : 11,
                           fontWeight: 700,
                           color: '#78716C',
                           letterSpacing: '-0.01em',
@@ -767,9 +787,9 @@ export default function TimelineView() {
                         borderRight: '1px solid #EDE8DF',
                         display: 'flex',
                         alignItems: 'center',
-                        paddingLeft: 22,
-                        gap: 6,
-                        paddingRight: 10,
+                        paddingLeft: isMobile ? 10 : 22,
+                        gap: isMobile ? 4 : 6,
+                        paddingRight: isMobile ? 4 : 10,
                       }}>
                         {row.isRecurring && (
                           <div style={{
@@ -782,7 +802,7 @@ export default function TimelineView() {
                           }} />
                         )}
                         <span style={{
-                          fontSize: 12,
+                          fontSize: isMobile ? 10 : 12,
                           color: '#78716C',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -793,7 +813,7 @@ export default function TimelineView() {
                         }}>
                           {row.title}
                         </span>
-                        {row.isRecurring && (
+                        {row.isRecurring && !isMobile && (
                           <span style={{
                             fontSize: 9,
                             color: '#A8A29E',
