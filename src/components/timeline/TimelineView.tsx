@@ -173,9 +173,10 @@ export default function TimelineView() {
 
   const isFiltering = selectedStatuses.size > 0
 
-  /** A row matches focus if any of its tasks starts within [today, today+30] */
+  /** A row matches focus if any of its tasks overlaps with [today, today+30]
+   *  (already started but not yet due, OR starting within the next 30 days) */
   const rowMatchesFocus = useCallback((row: TaskRow): boolean => {
-    return row.tasks.some(t => t.start_date >= todayStr && t.start_date <= focusCutoffStr)
+    return row.tasks.some(t => t.start_date <= focusCutoffStr && t.due_date >= todayStr)
   }, [todayStr, focusCutoffStr])
 
   const grouped: GroupedSubject[] = subjects
