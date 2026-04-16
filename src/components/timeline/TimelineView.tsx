@@ -60,18 +60,29 @@ interface GroupedSubject {
   taskRows: TaskRow[]
 }
 
+/**
+ * Groups tasks into rows:
+ * - Recurring tasks: grouped by recurrence_id
+ * - Single tasks: grouped by (row_id ?? task.id) — tasks pointing to the same anchor share a row
+ */
 function buildTaskRows(tasks: Task[]): TaskRow[] {
   const recurMap = new Map<string, Task[]>()
-  const singles: Task[] = []
+  const rowMap = new Map<string, Task[]>()
+
   for (const t of tasks) {
     if (t.recurrence_id) {
       const arr = recurMap.get(t.recurrence_id) ?? []
       arr.push(t)
       recurMap.set(t.recurrence_id, arr)
     } else {
-      singles.push(t)
+      // Tasks with row_id point to the anchor task's id; anchors (row_id=null) use their own id
+      const key = t.row_id ?? t.id
+      const arr = rowMap.get(key) ?? []
+      arr.push(t)
+      rowMap.set(key, arr)
     }
   }
+
   const rows: TaskRow[] = []
   for (const [key, ts] of recurMap) {
     rows.push({
@@ -81,8 +92,9 @@ function buildTaskRows(tasks: Task[]): TaskRow[] {
       isRecurring: true,
     })
   }
-  for (const t of singles) {
-    rows.push({ rowKey: t.id, title: t.title, tasks: [t], isRecurring: false })
+  for (const [key, ts] of rowMap) {
+    const sorted = [...ts].sort((a, b) => a.start_date.localeCompare(b.start_date))
+    rows.push({ rowKey: key, title: sorted[0].title, tasks: sorted, isRecurring: false })
   }
   rows.sort((a, b) => a.tasks[0].start_date.localeCompare(b.tasks[0].start_date))
   return rows
@@ -100,17 +112,29 @@ export default function TimelineView() {
   const { subjects, tasks, fetchAll, deleteSubject, signOut } = useStore()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
+  /** rowKey + subjectId for adding to an existing row */
+  const [addToRow, setAddToRow] = useState<{ rowKey: string; subjectId: string } | null>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
+  const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
+  /** Focus mode: only show rows with a task starting within the next 30 days */
+  const [focusOn, setFocusOn] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const days = getDays(TOTAL_DAYS)
   const todayStr = toDateString(new Date())
   const todayIdx = days.findIndex(d => toDateString(d) === todayStr)
+
+  // Focus cutoff: today + 30 days
+  const focusCutoffStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    return toDateString(d)
+  })()
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -149,20 +173,34 @@ export default function TimelineView() {
 
   const isFiltering = selectedStatuses.size > 0
 
+  /** A row matches focus if any of its tasks starts within [today, today+30] */
+  const rowMatchesFocus = useCallback((row: TaskRow): boolean => {
+    return row.tasks.some(t => t.start_date >= todayStr && t.start_date <= focusCutoffStr)
+  }, [todayStr, focusCutoffStr])
+
   const grouped: GroupedSubject[] = subjects
     .map(subject => {
       const allRows = buildTaskRows(tasks.filter(t => t.subject_id === subject.id))
-      const taskRows = !isFiltering
-        ? allRows
-        : allRows
-            .map(row => ({
-              ...row,
-              tasks: row.tasks.filter(t => taskMatchesFilter(t, selectedStatuses, todayStr)),
-            }))
-            .filter(row => row.tasks.length > 0)
+      let taskRows = allRows
+
+      // Apply status filter
+      if (isFiltering) {
+        taskRows = taskRows
+          .map(row => ({
+            ...row,
+            tasks: row.tasks.filter(t => taskMatchesFilter(t, selectedStatuses, todayStr)),
+          }))
+          .filter(row => row.tasks.length > 0)
+      }
+
+      // Apply focus filter
+      if (focusOn) {
+        taskRows = taskRows.filter(row => rowMatchesFocus(row))
+      }
+
       return { subject, taskRows }
     })
-    .filter(g => !isFiltering || g.taskRows.length > 0)
+    .filter(g => g.taskRows.length > 0)
 
   const filteredTotal = grouped.reduce(
     (sum, g) => sum + g.taskRows.reduce((s, r) => s + r.tasks.length, 0), 0
@@ -236,13 +274,7 @@ export default function TimelineView() {
           }}>
             <RiverLogo size={18} />
           </div>
-          <span style={{
-            fontSize: 17,
-            fontWeight: 700,
-            color: '#1C1917',
-            letterSpacing: '-0.04em',
-            flexShrink: 0,
-          }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: '#1C1917', letterSpacing: '-0.04em', flexShrink: 0 }}>
             River
           </span>
           <div style={{ width: 1, height: 14, background: '#E3DDD5', marginLeft: 2, flexShrink: 0 }} />
@@ -281,14 +313,12 @@ export default function TimelineView() {
             fontFamily: 'inherit',
           }}
           onMouseEnter={e => {
-            const el = e.currentTarget
-            el.style.boxShadow = '0 5px 16px rgba(59,99,255,0.42)'
-            el.style.transform = 'translateY(-1px)'
+            e.currentTarget.style.boxShadow = '0 5px 16px rgba(59,99,255,0.42)'
+            e.currentTarget.style.transform = 'translateY(-1px)'
           }}
           onMouseLeave={e => {
-            const el = e.currentTarget
-            el.style.boxShadow = '0 3px 10px rgba(59,99,255,0.3)'
-            el.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 3px 10px rgba(59,99,255,0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -361,6 +391,53 @@ export default function TimelineView() {
           </span>
         )}
 
+        {/* Focus toggle */}
+        <button
+          onClick={() => setFocusOn(f => !f)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            background: focusOn ? '#FEF9EE' : 'transparent',
+            color: focusOn ? '#D97706' : '#78716C',
+            border: `1px solid ${focusOn ? '#D9770644' : '#E3DDD5'}`,
+            borderRadius: 9999,
+            padding: '3px 10px 3px 7px',
+            fontSize: 12,
+            fontWeight: focusOn ? 700 : 400,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.12s',
+            flexShrink: 0,
+            letterSpacing: '-0.01em',
+            fontFamily: 'inherit',
+            boxShadow: focusOn ? '0 2px 8px rgba(217,119,6,0.18)' : 'none',
+          }}
+          onMouseEnter={e => {
+            if (!focusOn) {
+              e.currentTarget.style.background = '#FEF9EE'
+              e.currentTarget.style.borderColor = '#D9770633'
+              e.currentTarget.style.color = '#D97706'
+            }
+          }}
+          onMouseLeave={e => {
+            if (!focusOn) {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#E3DDD5'
+              e.currentTarget.style.color = '#78716C'
+            }
+          }}
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
+            <circle cx="5" cy="5" r="3.5" stroke={focusOn ? '#D97706' : '#A8A29E'} strokeWidth="1.6" fill={focusOn ? '#D97706' : 'none'} opacity={focusOn ? 0.4 : 1}/>
+            <circle cx="5" cy="5" r="1.5" fill={focusOn ? '#D97706' : '#A8A29E'}/>
+          </svg>
+          フォーカス
+        </button>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 14, background: '#E3DDD5', flexShrink: 0 }} />
+
         {STATUS_PILLS.map(pill => {
           const isActive = selectedStatuses.has(pill.key)
           const cfg = STATUS_CONFIG[pill.key]
@@ -415,37 +492,41 @@ export default function TimelineView() {
           )
         })}
 
-        {isFiltering && (
+        {(isFiltering || !focusOn) && (
           <>
             <div style={{ width: 1, height: 14, background: '#E3DDD5', margin: '0 2px', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: '#A8A29E', flexShrink: 0, letterSpacing: '-0.01em' }}>
-              {filteredTotal}件
-            </span>
-            <button
-              onClick={() => setSelectedStatuses(new Set())}
-              style={{
-                background: 'none',
-                border: '1px solid #E3DDD5',
-                cursor: 'pointer',
-                fontSize: 11,
-                color: '#A8A29E',
-                padding: '2px 8px',
-                borderRadius: 9999,
-                flexShrink: 0,
-                fontFamily: 'inherit',
-                transition: 'all 0.12s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#EDE8DF'
-                e.currentTarget.style.color = '#78716C'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'none'
-                e.currentTarget.style.color = '#A8A29E'
-              }}
-            >
-              リセット
-            </button>
+            {isFiltering && (
+              <span style={{ fontSize: 11, color: '#A8A29E', flexShrink: 0, letterSpacing: '-0.01em' }}>
+                {filteredTotal}件
+              </span>
+            )}
+            {isFiltering && (
+              <button
+                onClick={() => setSelectedStatuses(new Set())}
+                style={{
+                  background: 'none',
+                  border: '1px solid #E3DDD5',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  color: '#A8A29E',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  flexShrink: 0,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.12s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#EDE8DF'
+                  e.currentTarget.style.color = '#78716C'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'none'
+                  e.currentTarget.style.color = '#A8A29E'
+                }}
+              >
+                リセット
+              </button>
+            )}
           </>
         )}
       </div>
@@ -604,10 +685,10 @@ export default function TimelineView() {
                   </svg>
                 </div>
                 <p style={{ fontSize: 14, color: '#A8A29E', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  課題を追加してはじめましょう
+                  {focusOn ? '今後1ヶ月以内の課題がありません' : '課題を追加してはじめましょう'}
                 </p>
                 <p style={{ fontSize: 12, color: '#C4BDB5', marginTop: 5, letterSpacing: '-0.01em' }}>
-                  右上の「課題を追加」から追加できます
+                  {focusOn ? 'フォーカスをOFFにすると全ての行が表示されます' : '右上の「課題を追加」から追加できます'}
                 </p>
               </div>
             </div>
@@ -699,7 +780,7 @@ export default function TimelineView() {
                         )}
                       </div>
 
-                      {/* Add task to subject button */}
+                      {/* Add new row to subject */}
                       {!isDeletingThis && (
                         <button
                           onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
@@ -716,7 +797,7 @@ export default function TimelineView() {
                             transition: 'opacity 0.15s',
                             borderRadius: 4,
                           }}
-                          title="この科目に課題を追加"
+                          title="この科目に新しい課題を追加"
                         >
                           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                             <path d="M6 1v10M1 6h10" stroke="#3B63FF" strokeWidth="2" strokeLinecap="round"/>
@@ -803,179 +884,214 @@ export default function TimelineView() {
                   </div>
 
                   {/* Task rows */}
-                  {!collapsed && taskRows.map(row => (
-                    <div key={row.rowKey} style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid #EDE8DF' }}>
-                      {/* Sticky task label */}
-                      <div style={{
-                        ...stickyLabel(10),
-                        background: '#FFFFFF',
-                        borderRight: '1px solid #EDE8DF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        paddingLeft: isMobile ? 10 : 22,
-                        gap: isMobile ? 4 : 6,
-                        paddingRight: isMobile ? 4 : 10,
-                      }}>
-                        {row.isRecurring && (
-                          <div style={{
-                            width: 4,
-                            height: 4,
-                            borderRadius: '50%',
-                            background: subject.color,
-                            flexShrink: 0,
-                            opacity: 0.7,
-                          }} />
-                        )}
-                        <span style={{
-                          fontSize: isMobile ? 10 : 12,
-                          color: '#78716C',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          flex: 1,
-                          fontWeight: row.isRecurring ? 600 : 400,
-                          letterSpacing: '-0.01em',
+                  {!collapsed && taskRows.map(row => {
+                    const isRowHovered = hoveredRowKey === row.rowKey
+                    return (
+                      <div
+                        key={row.rowKey}
+                        style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid #EDE8DF' }}
+                        onMouseEnter={() => setHoveredRowKey(row.rowKey)}
+                        onMouseLeave={() => setHoveredRowKey(null)}
+                      >
+                        {/* Sticky task label */}
+                        <div style={{
+                          ...stickyLabel(10),
+                          background: '#FFFFFF',
+                          borderRight: '1px solid #EDE8DF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          paddingLeft: isMobile ? 10 : 22,
+                          gap: isMobile ? 4 : 6,
+                          paddingRight: isMobile ? 4 : 6,
                         }}>
-                          {row.title}
-                        </span>
-                        {row.isRecurring && !isMobile && (
+                          {row.isRecurring && (
+                            <div style={{
+                              width: 4,
+                              height: 4,
+                              borderRadius: '50%',
+                              background: subject.color,
+                              flexShrink: 0,
+                              opacity: 0.7,
+                            }} />
+                          )}
                           <span style={{
-                            fontSize: 9,
-                            color: '#A8A29E',
-                            flexShrink: 0,
-                            background: '#F2EFE9',
-                            borderRadius: 9999,
-                            padding: '1px 5px',
-                            fontWeight: 600,
+                            fontSize: isMobile ? 10 : 12,
+                            color: '#78716C',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                            fontWeight: row.isRecurring ? 600 : 400,
+                            letterSpacing: '-0.01em',
                           }}>
-                            {row.tasks.length}
+                            {row.title}
                           </span>
-                        )}
-                      </div>
+                          {row.isRecurring && !isMobile && (
+                            <span style={{
+                              fontSize: 9,
+                              color: '#A8A29E',
+                              flexShrink: 0,
+                              background: '#F2EFE9',
+                              borderRadius: 9999,
+                              padding: '1px 5px',
+                              fontWeight: 600,
+                            }}>
+                              {row.tasks.length}
+                            </span>
+                          )}
+                          {/* Add task to THIS row button */}
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              setAddToRow({ rowKey: row.rowKey, subjectId: subject.id })
+                            }}
+                            title="この行に課題を追加"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '3px 5px',
+                              color: '#3B63FF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              flexShrink: 0,
+                              opacity: isRowHovered ? 0.8 : 0,
+                              transition: 'opacity 0.15s',
+                              borderRadius: 4,
+                            }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                              <path d="M6 1v10M1 6h10" stroke="#3B63FF" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          </button>
+                        </div>
 
-                      {/* Grid + bars */}
-                      <div style={{ flex: 1, position: 'relative', background: '#FFFFFF' }}>
-                        {/* Column shading */}
-                        {days.map((d, i) => {
-                          const dow = d.getDay()
-                          const isWknd = dow === 0 || dow === 6
-                          const isTodayCol = toDateString(d) === todayStr
-                          if (!isWknd && !isTodayCol) return null
-                          return (
-                            <div
-                              key={i}
-                              style={{
-                                position: 'absolute',
-                                left: i * COL_WIDTH,
-                                top: 0,
-                                width: COL_WIDTH,
-                                height: ROW_HEIGHT,
-                                background: isTodayCol
-                                  ? 'rgba(59,99,255,0.04)'
-                                  : 'rgba(20,16,10,0.016)',
-                                borderRight: '1px solid rgba(20,16,10,0.025)',
-                                pointerEvents: 'none',
-                              }}
-                            />
-                          )
-                        })}
+                        {/* Grid + bars */}
+                        <div style={{ flex: 1, position: 'relative', background: '#FFFFFF' }}>
+                          {/* Column shading */}
+                          {days.map((d, i) => {
+                            const dow = d.getDay()
+                            const isWknd = dow === 0 || dow === 6
+                            const isTodayCol = toDateString(d) === todayStr
+                            if (!isWknd && !isTodayCol) return null
+                            return (
+                              <div
+                                key={i}
+                                style={{
+                                  position: 'absolute',
+                                  left: i * COL_WIDTH,
+                                  top: 0,
+                                  width: COL_WIDTH,
+                                  height: ROW_HEIGHT,
+                                  background: isTodayCol
+                                    ? 'rgba(59,99,255,0.04)'
+                                    : 'rgba(20,16,10,0.016)',
+                                  borderRight: '1px solid rgba(20,16,10,0.025)',
+                                  pointerEvents: 'none',
+                                }}
+                              />
+                            )
+                          })}
 
-                        {/* Task bars */}
-                        {row.tasks.map((task, taskIdx) => {
-                          const bp = getBarProps(task)
-                          if (!bp) return null
-                          const { left, width, color, bg } = bp
-                          const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
+                          {/* Task bars */}
+                          {row.tasks.map((task, taskIdx) => {
+                            const bp = getBarProps(task)
+                            if (!bp) return null
+                            const { left, width, color, bg } = bp
+                            const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
 
-                          return (
-                            <div
-                              key={task.id}
-                              onClick={e => handleBarClick(e, task)}
-                              title={row.isRecurring ? `${task.title}（第${taskIdx + 1}回/${row.tasks.length}回）：${task.start_date} → ${task.due_date}` : `${task.title}：${task.start_date} → ${task.due_date}`}
-                              style={{
-                                position: 'absolute',
-                                left,
-                                width,
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                height: 28,
-                                background: bg,
-                                borderRadius: 6,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                paddingLeft: 8,
-                                paddingRight: 16,
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                                zIndex: 2,
-                                transition: 'transform 0.12s, box-shadow 0.12s',
-                                borderLeft: `3px solid ${color}`,
-                                boxShadow: `0 1px 4px ${color}18`,
-                              }}
-                              onMouseEnter={e => {
-                                const el = e.currentTarget as HTMLElement
-                                el.style.transform = 'translateY(-50%) translateY(-2px)'
-                                el.style.boxShadow = `0 4px 12px ${color}28`
-                                el.style.zIndex = '3'
-                              }}
-                              onMouseLeave={e => {
-                                const el = e.currentTarget as HTMLElement
-                                el.style.transform = 'translateY(-50%)'
-                                el.style.boxShadow = `0 1px 4px ${color}18`
-                                el.style.zIndex = '2'
-                              }}
-                            >
-                              {/* Arrow right-end */}
-                              <div style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: 18,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: `linear-gradient(90deg, transparent, ${bg} 60%)`,
-                              }}>
-                                <svg width="5" height="9" viewBox="0 0 6 10" fill="none">
-                                  <path d="M1 1L5 5L1 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              </div>
-
-                              {occurrenceLabel && (
-                                <span style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  color,
-                                  background: `${color}22`,
-                                  borderRadius: 4,
-                                  padding: '1px 4px',
-                                  flexShrink: 0,
-                                  letterSpacing: '0.02em',
-                                  lineHeight: 1,
-                                  marginRight: 4,
+                            return (
+                              <div
+                                key={task.id}
+                                onClick={e => handleBarClick(e, task)}
+                                title={row.isRecurring
+                                  ? `${task.title}（第${taskIdx + 1}回/${row.tasks.length}回）：${task.start_date} → ${task.due_date}`
+                                  : `${task.title}：${task.start_date} → ${task.due_date}`}
+                                style={{
+                                  position: 'absolute',
+                                  left,
+                                  width,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  height: 28,
+                                  background: bg,
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  paddingLeft: 8,
+                                  paddingRight: 16,
+                                  overflow: 'hidden',
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 2,
+                                  transition: 'transform 0.12s, box-shadow 0.12s',
+                                  borderLeft: `3px solid ${color}`,
+                                  boxShadow: `0 1px 4px ${color}18`,
+                                }}
+                                onMouseEnter={e => {
+                                  const el = e.currentTarget as HTMLElement
+                                  el.style.transform = 'translateY(-50%) translateY(-2px)'
+                                  el.style.boxShadow = `0 4px 12px ${color}28`
+                                  el.style.zIndex = '3'
+                                }}
+                                onMouseLeave={e => {
+                                  const el = e.currentTarget as HTMLElement
+                                  el.style.transform = 'translateY(-50%)'
+                                  el.style.boxShadow = `0 1px 4px ${color}18`
+                                  el.style.zIndex = '2'
+                                }}
+                              >
+                                {/* Arrow right-end */}
+                                <div style={{
+                                  position: 'absolute',
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: 18,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: `linear-gradient(90deg, transparent, ${bg} 60%)`,
                                 }}>
-                                  {occurrenceLabel}
+                                  <svg width="5" height="9" viewBox="0 0 6 10" fill="none">
+                                    <path d="M1 1L5 5L1 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </div>
+
+                                {occurrenceLabel && (
+                                  <span style={{
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    color,
+                                    background: `${color}22`,
+                                    borderRadius: 4,
+                                    padding: '1px 4px',
+                                    flexShrink: 0,
+                                    letterSpacing: '0.02em',
+                                    lineHeight: 1,
+                                    marginRight: 4,
+                                  }}>
+                                    {occurrenceLabel}
+                                  </span>
+                                )}
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  letterSpacing: '-0.02em',
+                                  lineHeight: 1,
+                                }}>
+                                  {task.title}
                                 </span>
-                              )}
-                              <span style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                letterSpacing: '-0.02em',
-                                lineHeight: 1,
-                              }}>
-                                {task.title}
-                              </span>
-                            </div>
-                          )
-                        })}
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
 
                   {/* Empty subject */}
                   {!collapsed && taskRows.length === 0 && (
@@ -1021,6 +1137,14 @@ export default function TimelineView() {
           subjects={subjects}
           onClose={() => setAddModalSubjectId(null)}
           defaultSubjectId={addModalSubjectId || undefined}
+        />
+      )}
+      {addToRow !== null && (
+        <AddTaskModal
+          subjects={subjects}
+          onClose={() => setAddToRow(null)}
+          defaultSubjectId={addToRow.subjectId}
+          targetRowId={addToRow.rowKey}
         />
       )}
       {quickMenu && (

@@ -47,7 +47,37 @@ export const useStore = create<AppState>((set, get) => ({
       ])
       if (subRes.error) throw subRes.error
       if (taskRes.error) throw taskRes.error
-      set({ subjects: subRes.data, tasks: taskRes.data, loading: false })
+
+      const allTasks: Task[] = taskRes.data
+
+      // Auto-cleanup: delete rows where the last task's due_date is > 30 days ago
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const cutoff = new Date(today)
+      cutoff.setDate(cutoff.getDate() - 30)
+      const cutoffStr = toDateString(cutoff)
+
+      const rowGroups = new Map<string, Task[]>()
+      for (const t of allTasks) {
+        const key = t.recurrence_id ?? t.row_id ?? t.id
+        const arr = rowGroups.get(key) ?? []
+        arr.push(t)
+        rowGroups.set(key, arr)
+      }
+      const toDelete: string[] = []
+      for (const [, rowTasks] of rowGroups) {
+        const lastDue = rowTasks.reduce((max, t) => (t.due_date > max ? t.due_date : max), '')
+        if (lastDue < cutoffStr) {
+          toDelete.push(...rowTasks.map(t => t.id))
+        }
+      }
+      let finalTasks = allTasks
+      if (toDelete.length > 0) {
+        await supabase.from('tasks').delete().in('id', toDelete)
+        finalTasks = allTasks.filter(t => !toDelete.includes(t.id))
+      }
+
+      set({ subjects: subRes.data, tasks: finalTasks, loading: false })
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false })
     }

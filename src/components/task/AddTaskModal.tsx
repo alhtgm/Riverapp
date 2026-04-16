@@ -7,6 +7,8 @@ interface Props {
   subjects: Subject[]
   onClose: () => void
   defaultSubjectId?: string
+  /** rowKey of an existing row — if set, the new task is added to that row */
+  targetRowId?: string
 }
 
 type Mode = 'single' | 'recurring'
@@ -21,7 +23,7 @@ const INTERVALS: IntervalOption[] = [
 
 const COLORS = ['#E16259', '#3B63FF', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0891B2', '#4F46E5']
 
-export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
+export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targetRowId }: Props) {
   const { addTask, addRecurringTasks, addSubject } = useStore()
   const [mode, setMode] = useState<Mode>('single')
   const [title, setTitle] = useState('')
@@ -35,7 +37,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const [saving, setSaving] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [showNewSubject, setShowNewSubject] = useState(false)
-  const [newColor, setNewColor] = useState(COLORS[0])
+
+  // When adding to an existing row, always use single mode
+  const isRowAdd = !!targetRowId
+  const effectiveMode = isRowAdd ? 'single' : mode
 
   useEffect(() => {
     if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id)
@@ -52,8 +57,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   }
 
   const handleAddSubject = async () => {
-    if (!newSubjectName.trim()) return
-    await addSubject(newSubjectName.trim(), newColor)
+    const name = newSubjectName.trim()
+    if (!name) return
+    const autoColor = COLORS[subjects.length % COLORS.length]
+    await addSubject(name, autoColor)
     setNewSubjectName('')
     setShowNewSubject(false)
   }
@@ -61,13 +68,15 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!subjectId) { alert('科目を選択してください'); return }
+    const effectiveTitle = title.trim() || '課題'
     setSaving(true)
     try {
-      if (mode === 'single') {
+      if (effectiveMode === 'single') {
         await addTask({
           subject_id: subjectId,
           recurrence_id: null,
-          title,
+          row_id: targetRowId ?? null,
+          title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,
           status: 'todo',
@@ -75,7 +84,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
         })
       } else {
         await addRecurringTasks(
-          { subject_id: subjectId, title, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
+          { subject_id: subjectId, title: effectiveTitle, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
           subjectId
         )
       }
@@ -158,14 +167,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
           zIndex: 1,
           borderRadius: '16px 16px 0 0',
         }}>
-          <h2 style={{
-            fontSize: 16,
-            fontWeight: 700,
-            margin: 0,
-            color: '#1C1917',
-            letterSpacing: '-0.04em',
-          }}>
-            課題を追加
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#1C1917', letterSpacing: '-0.04em' }}>
+            {isRowAdd ? '行に課題を追加' : '課題を追加'}
           </h2>
           <button
             onClick={onClose}
@@ -194,39 +197,41 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
         <form onSubmit={handleSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-          {/* Mode toggle */}
-          <div style={{
-            display: 'inline-flex',
-            background: '#F2EFE9',
-            borderRadius: 10,
-            padding: 3,
-            gap: 2,
-            alignSelf: 'flex-start',
-          }}>
-            {(['single', 'recurring'] as Mode[]).map(m => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                style={{
-                  background: mode === m ? '#FFFFFF' : 'transparent',
-                  color: mode === m ? '#1C1917' : '#78716C',
-                  border: 'none',
-                  borderRadius: 7,
-                  padding: '6px 18px',
-                  fontSize: 13,
-                  fontWeight: mode === m ? 600 : 400,
-                  cursor: 'pointer',
-                  boxShadow: mode === m ? '0 1px 4px rgba(20,16,10,0.1)' : 'none',
-                  transition: 'all 0.15s',
-                  letterSpacing: '-0.01em',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {m === 'single' ? '単発' : '繰り返し'}
-              </button>
-            ))}
-          </div>
+          {/* Mode toggle — hidden when adding to existing row */}
+          {!isRowAdd && (
+            <div style={{
+              display: 'inline-flex',
+              background: '#F2EFE9',
+              borderRadius: 10,
+              padding: 3,
+              gap: 2,
+              alignSelf: 'flex-start',
+            }}>
+              {(['single', 'recurring'] as Mode[]).map(m => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  style={{
+                    background: mode === m ? '#FFFFFF' : 'transparent',
+                    color: mode === m ? '#1C1917' : '#78716C',
+                    border: 'none',
+                    borderRadius: 7,
+                    padding: '6px 18px',
+                    fontSize: 13,
+                    fontWeight: mode === m ? 600 : 400,
+                    cursor: 'pointer',
+                    boxShadow: mode === m ? '0 1px 4px rgba(20,16,10,0.1)' : 'none',
+                    transition: 'all 0.15s',
+                    letterSpacing: '-0.01em',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {m === 'single' ? '単発' : '繰り返し'}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -235,9 +240,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              required
               style={inputStyle}
-              placeholder="課題のタイトル"
+              placeholder="未入力の場合「課題」"
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
@@ -250,7 +254,14 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
               <select
                 value={subjectId}
                 onChange={e => setSubjectId(e.target.value)}
-                style={{ ...inputStyle, flex: 1, cursor: 'pointer', appearance: 'auto' }}
+                disabled={isRowAdd}
+                style={{
+                  ...inputStyle,
+                  flex: 1,
+                  cursor: isRowAdd ? 'default' : 'pointer',
+                  appearance: 'auto',
+                  opacity: isRowAdd ? 0.7 : 1,
+                }}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
               >
@@ -259,68 +270,50 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 ))}
                 {subjects.length === 0 && <option value="">科目がありません</option>}
               </select>
-              <button
-                type="button"
-                onClick={() => setShowNewSubject(!showNewSubject)}
-                style={{
-                  background: showNewSubject ? '#EEF2FF' : '#F2EFE9',
-                  border: `1px solid ${showNewSubject ? '#3B63FF44' : '#E3DDD5'}`,
-                  borderRadius: 8,
-                  padding: '0 12px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  color: showNewSubject ? '#3B63FF' : '#78716C',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.12s',
-                  fontFamily: 'inherit',
-                  letterSpacing: '-0.01em',
-                  height: 38,
-                }}
-              >
-                + 科目追加
-              </button>
+              {!isRowAdd && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewSubject(!showNewSubject)}
+                  style={{
+                    background: showNewSubject ? '#EEF2FF' : '#F2EFE9',
+                    border: `1px solid ${showNewSubject ? '#3B63FF44' : '#E3DDD5'}`,
+                    borderRadius: 8,
+                    padding: '0 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: showNewSubject ? '#3B63FF' : '#78716C',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.12s',
+                    fontFamily: 'inherit',
+                    letterSpacing: '-0.01em',
+                    height: 38,
+                    flexShrink: 0,
+                  }}
+                >
+                  + 科目
+                </button>
+              )}
             </div>
 
-            {showNewSubject && (
+            {/* Simplified inline subject add — no color picker, Enter to save */}
+            {showNewSubject && !isRowAdd && (
               <div style={{
                 marginTop: 8,
-                padding: '14px',
-                background: '#F6F3EE',
-                borderRadius: 10,
-                border: '1px solid #E3DDD5',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
+                gap: 6,
               }}>
                 <input
                   type="text"
                   value={newSubjectName}
                   onChange={e => setNewSubjectName(e.target.value)}
-                  style={inputStyle}
-                  placeholder="科目名"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubject() } }}
+                  style={{ ...inputStyle, flex: 1 }}
+                  placeholder="科目名を入力してEnter"
+                  autoFocus
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                 />
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {COLORS.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setNewColor(c)}
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        background: c,
-                        border: newColor === c ? '2.5px solid #1C1917' : '2px solid transparent',
-                        cursor: 'pointer',
-                        boxShadow: newColor === c ? `0 2px 6px ${c}55` : 'none',
-                        transition: 'all 0.12s',
-                      }}
-                    />
-                  ))}
-                </div>
                 <button
                   type="button"
                   onClick={handleAddSubject}
@@ -328,14 +321,14 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                     background: '#3B63FF',
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 7,
-                    padding: '7px 14px',
+                    borderRadius: 8,
+                    padding: '0 14px',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    alignSelf: 'flex-start',
                     fontFamily: 'inherit',
-                    letterSpacing: '-0.02em',
+                    flexShrink: 0,
+                    height: 38,
                   }}
                 >
                   追加
@@ -344,7 +337,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
             )}
           </div>
 
-          {mode === 'single' ? (
+          {effectiveMode === 'single' ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>

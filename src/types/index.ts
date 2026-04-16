@@ -26,6 +26,7 @@ export interface Task {
   user_id: string
   subject_id: string
   recurrence_id: string | null
+  row_id: string | null
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
