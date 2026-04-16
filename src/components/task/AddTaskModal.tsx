@@ -6,6 +6,7 @@ import { toDateString, parseLocalDate, formatDate } from '../../types'
 interface Props {
   subjects: Subject[]
   onClose: () => void
+  defaultSubjectId?: string
 }
 
 type Mode = 'single' | 'recurring'
@@ -20,11 +21,11 @@ const INTERVALS: IntervalOption[] = [
 
 const COLORS = ['#E16259', '#3B63FF', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0891B2', '#4F46E5']
 
-export default function AddTaskModal({ subjects, onClose }: Props) {
+export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
   const { addTask, addRecurringTasks, addSubject } = useStore()
   const [mode, setMode] = useState<Mode>('single')
   const [title, setTitle] = useState('')
-  const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '')
+  const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? '')
   const [startDate, setStartDate] = useState(toDateString(new Date()))
   const [dueDate, setDueDate] = useState(toDateString(new Date()))
   const [memo, setMemo] = useState('')

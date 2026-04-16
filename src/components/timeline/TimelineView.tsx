@@ -99,7 +99,7 @@ const RiverLogo = ({ size = 18 }: { size?: number }) => (
 export default function TimelineView() {
   const { subjects, tasks, fetchAll, deleteSubject, signOut } = useStore()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
@@ -261,7 +261,7 @@ export default function TimelineView() {
 
         {/* Add task button */}
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => setAddModalSubjectId('')}
           style={{
             background: 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
             color: '#ffffff',
@@ -699,6 +699,31 @@ export default function TimelineView() {
                         )}
                       </div>
 
+                      {/* Add task to subject button */}
+                      {!isDeletingThis && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '3px 4px 3px 2px',
+                            color: '#C4BDB5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            opacity: isHovered ? 1 : 0,
+                            transition: 'opacity 0.15s',
+                            borderRadius: 4,
+                          }}
+                          title="この科目に課題を追加"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                            <path d="M6 1v10M1 6h10" stroke="#3B63FF" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
+                        </button>
+                      )}
+
                       {/* Delete button */}
                       {!isDeletingThis && (
                         <button
@@ -856,16 +881,17 @@ export default function TimelineView() {
                         })}
 
                         {/* Task bars */}
-                        {row.tasks.map(task => {
+                        {row.tasks.map((task, taskIdx) => {
                           const bp = getBarProps(task)
                           if (!bp) return null
                           const { left, width, color, bg } = bp
+                          const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
 
                           return (
                             <div
                               key={task.id}
                               onClick={e => handleBarClick(e, task)}
-                              title={`${task.title}：${task.start_date} → ${task.due_date}`}
+                              title={row.isRecurring ? `${task.title}（第${taskIdx + 1}回/${row.tasks.length}回）：${task.start_date} → ${task.due_date}` : `${task.title}：${task.start_date} → ${task.due_date}`}
                               style={{
                                 position: 'absolute',
                                 left,
@@ -917,6 +943,22 @@ export default function TimelineView() {
                                 </svg>
                               </div>
 
+                              {occurrenceLabel && (
+                                <span style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color,
+                                  background: `${color}22`,
+                                  borderRadius: 4,
+                                  padding: '1px 4px',
+                                  flexShrink: 0,
+                                  letterSpacing: '0.02em',
+                                  lineHeight: 1,
+                                  marginRight: 4,
+                                }}>
+                                  {occurrenceLabel}
+                                </span>
+                              )}
                               <span style={{
                                 fontSize: 11,
                                 fontWeight: 600,
@@ -938,15 +980,23 @@ export default function TimelineView() {
                   {/* Empty subject */}
                   {!collapsed && taskRows.length === 0 && (
                     <div style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid #EDE8DF' }}>
-                      <div style={{
-                        ...stickyLabel(10),
-                        background: '#FFFFFF',
-                        borderRight: '1px solid #EDE8DF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        paddingLeft: 22,
-                      }}>
-                        <span style={{ fontSize: 11, color: '#C4BDB5', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題なし</span>
+                      <div
+                        style={{
+                          ...stickyLabel(10),
+                          background: '#FFFFFF',
+                          borderRight: '1px solid #EDE8DF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          paddingLeft: 22,
+                          gap: 7,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setAddModalSubjectId(subject.id)}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                          <path d="M6 1v10M1 6h10" stroke="#C4BDB5" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        <span style={{ fontSize: 11, color: '#C4BDB5', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
                       </div>
                       <div style={{ flex: 1, background: '#FFFFFF' }} />
                     </div>
@@ -966,10 +1016,11 @@ export default function TimelineView() {
           onClose={() => setSelectedTask(null)}
         />
       )}
-      {showAddModal && (
+      {addModalSubjectId !== null && (
         <AddTaskModal
           subjects={subjects}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => setAddModalSubjectId(null)}
+          defaultSubjectId={addModalSubjectId || undefined}
         />
       )}
       {quickMenu && (
