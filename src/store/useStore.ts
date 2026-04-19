@@ -23,7 +23,7 @@ interface AppState {
     recurrence: Omit<Recurrence, 'id' | 'user_id' | 'created_at'>,
     subjectId: string
   ) => Promise<void>
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'status' | 'start_date' | 'due_date' | 'memo' | 'subject_id'>>) => Promise<void>
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'status' | 'start_date' | 'due_date' | 'due_time' | 'memo' | 'subject_id'>>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   deleteTasksFromRecurrence: (recurrenceId: string, fromDate: string) => Promise<void>
 }

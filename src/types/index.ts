@@ -30,6 +30,7 @@ export interface Task {
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
+  due_time: string | null // HH:MM (optional)
   status: TaskStatus
   memo: string | null
   created_at: string

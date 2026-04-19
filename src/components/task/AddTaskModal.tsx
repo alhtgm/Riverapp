@@ -30,6 +30,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? '')
   const [startDate, setStartDate] = useState(toDateString(new Date()))
   const [dueDate, setDueDate] = useState(toDateString(new Date()))
+  const [dueTime, setDueTime] = useState('')
   const [memo, setMemo] = useState('')
   const [intervalWeeks, setIntervalWeeks] = useState(1)
   const [durationDays, setDurationDays] = useState(7)
@@ -79,6 +80,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
           title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,
+          due_time: dueTime || null,
           status: 'todo',
           memo: memo || null,
         })
@@ -347,6 +349,31 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                 <div>
                   <label style={labelStyle}>締切日</label>
                   <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>締切時刻（任意）</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={e => setDueTime(e.target.value)}
+                    style={{ ...inputStyle, width: 'auto' }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                  {dueTime && (
+                    <button
+                      type="button"
+                      onClick={() => setDueTime('')}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 11, color: '#A8A29E', padding: 0, fontFamily: 'inherit',
+                      }}
+                    >
+                      クリア
+                    </button>
+                  )}
                 </div>
               </div>
               <div>

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Subject, Task } from '../../types'
-import { STATUS_CONFIG, isOverdue, toDateString } from '../../types'
+import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
@@ -108,8 +108,24 @@ const RiverLogo = ({ size = 18 }: { size?: number }) => (
   </svg>
 )
 
+// Helper: add N days to a YYYY-MM-DD string
+function addDaysToStr(dateStr: string, days: number): string {
+  const d = parseLocalDate(dateStr)
+  d.setDate(d.getDate() + days)
+  return toDateString(d)
+}
+
+interface DragState {
+  type: 'move' | 'resize-start' | 'resize-end'
+  taskId: string
+  startX: number
+  origStartDate: string
+  origDueDate: string
+  moved: boolean
+}
+
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, signOut } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, signOut, updateTask } = useStore()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
   /** rowKey + subjectId for adding to an existing row */
@@ -124,6 +140,12 @@ export default function TimelineView() {
   /** Focus mode: only show rows with a task starting within the next 30 days */
   const [focusOn, setFocusOn] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // ---- Drag state ----
+  const dragRef = useRef<DragState | null>(null)
+  const dragOverrideRef = useRef<{ id: string; start_date: string; due_date: string } | null>(null)
+  const [dragOverride, setDragOverride] = useState<{ id: string; start_date: string; due_date: string } | null>(null)
+  const wasDraggingRef = useRef(false)
 
   const days = getDays(TOTAL_DAYS)
   const todayStr = toDateString(new Date())
@@ -153,6 +175,81 @@ export default function TimelineView() {
       scrollRef.current.scrollLeft = Math.max(0, target)
     }
   }, [todayIdx])
+
+  // ---- Scroll to today ----
+  const scrollToToday = useCallback(() => {
+    if (scrollRef.current && todayIdx >= 0) {
+      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
+      scrollRef.current.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+    }
+  }, [todayIdx, COL_WIDTH, LABEL_WIDTH])
+
+  // ---- Drag: mousemove / mouseup on document ----
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const deltaX = e.clientX - drag.startX
+      if (Math.abs(deltaX) > 4) drag.moved = true
+      const deltaCols = Math.round(deltaX / COL_WIDTH)
+
+      let newStart = drag.origStartDate
+      let newDue = drag.origDueDate
+
+      if (drag.type === 'move') {
+        newStart = addDaysToStr(drag.origStartDate, deltaCols)
+        newDue = addDaysToStr(drag.origDueDate, deltaCols)
+      } else if (drag.type === 'resize-start') {
+        newStart = addDaysToStr(drag.origStartDate, deltaCols)
+        if (newStart >= drag.origDueDate) newStart = addDaysToStr(drag.origDueDate, -1)
+      } else if (drag.type === 'resize-end') {
+        newDue = addDaysToStr(drag.origDueDate, deltaCols)
+        if (newDue <= drag.origStartDate) newDue = addDaysToStr(drag.origStartDate, 1)
+      }
+
+      const override = { id: drag.taskId, start_date: newStart, due_date: newDue }
+      dragOverrideRef.current = override
+      setDragOverride(override)
+    }
+
+    const handleMouseUp = async () => {
+      const drag = dragRef.current
+      if (!drag) return
+      wasDraggingRef.current = drag.moved
+      dragRef.current = null
+      const override = dragOverrideRef.current
+      dragOverrideRef.current = null
+      setDragOverride(null)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      if (override && drag.moved &&
+          (override.start_date !== drag.origStartDate || override.due_date !== drag.origDueDate)) {
+        await updateTask(override.id, { start_date: override.start_date, due_date: override.due_date })
+      }
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [COL_WIDTH, updateTask])
+
+  const startDrag = useCallback((e: React.MouseEvent, task: Task, type: DragState['type']) => {
+    e.preventDefault()
+    e.stopPropagation()
+    document.body.style.cursor = type === 'move' ? 'grabbing' : 'ew-resize'
+    document.body.style.userSelect = 'none'
+    dragRef.current = {
+      type,
+      taskId: task.id,
+      startX: e.clientX,
+      origStartDate: task.start_date,
+      origDueDate: task.due_date,
+      moved: false,
+    }
+  }, [])
 
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds(prev => {
@@ -378,6 +475,48 @@ export default function TimelineView() {
         zIndex: 99,
         overflowX: 'auto',
       }}>
+        {/* Today button */}
+        <button
+          onClick={scrollToToday}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'transparent',
+            color: '#78716C',
+            border: '1px solid #E3DDD5',
+            borderRadius: 9999,
+            padding: '3px 10px 3px 7px',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.12s',
+            flexShrink: 0,
+            letterSpacing: '-0.01em',
+            fontFamily: 'inherit',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#EEF2FF'
+            e.currentTarget.style.borderColor = '#3B63FF44'
+            e.currentTarget.style.color = '#3B63FF'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = '#E3DDD5'
+            e.currentTarget.style.color = '#78716C'
+          }}
+          title="今日にスクロール"
+        >
+          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
+            <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.6"/>
+            <circle cx="5" cy="5" r="1.2" fill="currentColor"/>
+          </svg>
+          今日
+        </button>
+
+        <div style={{ width: 1, height: 14, background: '#E3DDD5', flexShrink: 0 }} />
+
         {!isMobile && (
           <span style={{
             fontSize: 11,
@@ -996,18 +1135,28 @@ export default function TimelineView() {
 
                           {/* Task bars */}
                           {row.tasks.map((task, taskIdx) => {
-                            const bp = getBarProps(task)
+                            const override = dragOverride?.id === task.id ? dragOverride : null
+                            const effectiveTask = override
+                              ? { ...task, start_date: override.start_date, due_date: override.due_date }
+                              : task
+                            const bp = getBarProps(effectiveTask)
                             if (!bp) return null
                             const { left, width, color, bg } = bp
                             const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
+                            const timeLabel = task.due_time ? ` ${task.due_time}` : ''
+                            const isDragging = dragRef.current?.taskId === task.id
 
                             return (
                               <div
                                 key={task.id}
-                                onClick={e => handleBarClick(e, task)}
+                                onMouseDown={e => startDrag(e, task, 'move')}
+                                onClick={e => {
+                                  if (wasDraggingRef.current) { wasDraggingRef.current = false; return }
+                                  handleBarClick(e, task)
+                                }}
                                 title={row.isRecurring
-                                  ? `${task.title}（第${taskIdx + 1}回/${row.tasks.length}回）：${task.start_date} → ${task.due_date}`
-                                  : `${task.title}：${task.start_date} → ${task.due_date}`}
+                                  ? `${task.title}（第${taskIdx + 1}回/${row.tasks.length}回）：${effectiveTask.start_date} → ${effectiveTask.due_date}${timeLabel}`
+                                  : `${task.title}：${effectiveTask.start_date} → ${effectiveTask.due_date}${timeLabel}`}
                                 style={{
                                   position: 'absolute',
                                   left,
@@ -1017,42 +1166,60 @@ export default function TimelineView() {
                                   height: 28,
                                   background: bg,
                                   borderRadius: 6,
-                                  cursor: 'pointer',
+                                  cursor: isDragging ? 'grabbing' : 'grab',
                                   display: 'flex',
                                   alignItems: 'center',
                                   paddingLeft: 8,
                                   paddingRight: 16,
                                   overflow: 'hidden',
                                   whiteSpace: 'nowrap',
-                                  zIndex: 2,
-                                  transition: 'transform 0.12s, box-shadow 0.12s',
+                                  zIndex: isDragging ? 10 : 2,
+                                  transition: isDragging ? 'none' : 'transform 0.12s, box-shadow 0.12s',
                                   borderLeft: `3px solid ${color}`,
-                                  boxShadow: `0 1px 4px ${color}18`,
+                                  boxShadow: isDragging ? `0 6px 16px ${color}38` : `0 1px 4px ${color}18`,
+                                  userSelect: 'none',
                                 }}
                                 onMouseEnter={e => {
-                                  const el = e.currentTarget as HTMLElement
-                                  el.style.transform = 'translateY(-50%) translateY(-2px)'
-                                  el.style.boxShadow = `0 4px 12px ${color}28`
-                                  el.style.zIndex = '3'
+                                  if (!dragRef.current) {
+                                    const el = e.currentTarget as HTMLElement
+                                    el.style.transform = 'translateY(-50%) translateY(-2px)'
+                                    el.style.boxShadow = `0 4px 12px ${color}28`
+                                    el.style.zIndex = '3'
+                                  }
                                 }}
                                 onMouseLeave={e => {
-                                  const el = e.currentTarget as HTMLElement
-                                  el.style.transform = 'translateY(-50%)'
-                                  el.style.boxShadow = `0 1px 4px ${color}18`
-                                  el.style.zIndex = '2'
+                                  if (!dragRef.current) {
+                                    const el = e.currentTarget as HTMLElement
+                                    el.style.transform = 'translateY(-50%)'
+                                    el.style.boxShadow = `0 1px 4px ${color}18`
+                                    el.style.zIndex = '2'
+                                  }
                                 }}
                               >
+                                {/* Left resize handle */}
+                                <div
+                                  onMouseDown={e => { e.stopPropagation(); startDrag(e, task, 'resize-start') }}
+                                  style={{
+                                    position: 'absolute', left: 0, top: 0, bottom: 0, width: 10,
+                                    cursor: 'ew-resize', zIndex: 4, borderRadius: '6px 0 0 6px',
+                                  }}
+                                />
+                                {/* Right resize handle */}
+                                <div
+                                  onMouseDown={e => { e.stopPropagation(); startDrag(e, task, 'resize-end') }}
+                                  style={{
+                                    position: 'absolute', right: 0, top: 0, bottom: 0, width: 10,
+                                    cursor: 'ew-resize', zIndex: 4,
+                                  }}
+                                />
+
                                 {/* Arrow right-end */}
                                 <div style={{
                                   position: 'absolute',
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: 18,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
+                                  right: 0, top: 0, bottom: 0, width: 18,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   background: `linear-gradient(90deg, transparent, ${bg} 60%)`,
+                                  pointerEvents: 'none',
                                 }}>
                                   <svg width="5" height="9" viewBox="0 0 6 10" fill="none">
                                     <path d="M1 1L5 5L1 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1061,30 +1228,27 @@ export default function TimelineView() {
 
                                 {occurrenceLabel && (
                                   <span style={{
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    color,
+                                    fontSize: 9, fontWeight: 700, color,
                                     background: `${color}22`,
-                                    borderRadius: 4,
-                                    padding: '1px 4px',
-                                    flexShrink: 0,
-                                    letterSpacing: '0.02em',
-                                    lineHeight: 1,
-                                    marginRight: 4,
+                                    borderRadius: 4, padding: '1px 4px',
+                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 4,
+                                    pointerEvents: 'none',
                                   }}>
                                     {occurrenceLabel}
                                   </span>
                                 )}
                                 <span style={{
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  letterSpacing: '-0.02em',
-                                  lineHeight: 1,
+                                  fontSize: 11, fontWeight: 600, color,
+                                  overflow: 'hidden', textOverflow: 'ellipsis',
+                                  letterSpacing: '-0.02em', lineHeight: 1,
+                                  pointerEvents: 'none',
                                 }}>
                                   {task.title}
+                                  {task.due_time && (
+                                    <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
+                                      {task.due_time}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             )
