@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 import AuthPage from './components/auth/AuthPage'
 import TimelineView from './components/timeline/TimelineView'
+import { ToastProvider } from './components/ui/Toast'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -36,6 +37,6 @@ export default function App() {
     )
   }
 
-  if (!session) return <AuthPage />
-  return <TimelineView />
+  if (!session) return <ToastProvider><AuthPage /></ToastProvider>
+  return <ToastProvider><TimelineView /></ToastProvider>
 }

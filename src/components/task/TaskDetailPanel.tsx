@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Task, Subject, TaskStatus } from '../../types'
 import { STATUS_CONFIG, STATUS_ORDER } from '../../types'
 import { useStore } from '../../store/useStore'
+import { useToast } from '../ui/Toast'
 
 interface Props {
   task: Task | null
@@ -98,6 +99,7 @@ function MarkdownPreview({ text }: { text: string }) {
 
 export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   const { updateTask, deleteTask, deleteTasksFromRecurrence } = useStore()
+  const { showToast } = useToast()
   const [title, setTitle] = useState('')
   const [subjectId, setSubjectId] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -107,6 +109,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   const [memo, setMemo] = useState('')
   const [memoTab, setMemoTab] = useState<'edit' | 'preview'>('edit')
   const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
   const [showDeleteOptions, setShowDeleteOptions] = useState(false)
 
   useEffect(() => {
@@ -126,6 +129,11 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   if (!task) return null
 
   const handleSave = async () => {
+    setErrorMsg('')
+    if (!subjectId) { setErrorMsg('科目を選択してください'); return }
+    if (!startDate) { setErrorMsg('開始日を入力してください'); return }
+    if (!dueDate) { setErrorMsg('締切日を入力してください'); return }
+    if (startDate > dueDate) { setErrorMsg('締切日は開始日以降に設定してください'); return }
     setSaving(true)
     try {
       await updateTask(task.id, {
@@ -137,23 +145,32 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         status,
         memo,
       })
+      showToast('課題を保存しました')
       onClose()
     } catch (e: unknown) {
-      alert((e as Error).message)
+      setErrorMsg((e as Error).message)
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteThis = async () => {
-    try { await deleteTask(task.id); onClose() }
-    catch (e: unknown) { alert((e as Error).message) }
+    setErrorMsg('')
+    try {
+      await deleteTask(task.id)
+      showToast('課題を削除しました')
+      onClose()
+    } catch (e: unknown) { setErrorMsg((e as Error).message) }
   }
 
   const handleDeleteFromHere = async () => {
     if (!task.recurrence_id) return
-    try { await deleteTasksFromRecurrence(task.recurrence_id, task.start_date); onClose() }
-    catch (e: unknown) { alert((e as Error).message) }
+    setErrorMsg('')
+    try {
+      await deleteTasksFromRecurrence(task.recurrence_id, task.start_date)
+      showToast('課題を削除しました')
+      onClose()
+    } catch (e: unknown) { setErrorMsg((e as Error).message) }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -233,6 +250,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           </h2>
           <button
             onClick={onClose}
+            aria-label="パネルを閉じる"
             style={{
               background: '#EDE8DF', border: 'none', borderRadius: 6,
               width: 28, height: 28, cursor: 'pointer', color: '#78716C',
@@ -242,7 +260,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             onMouseEnter={e => { e.currentTarget.style.background = '#E3DDD5' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#EDE8DF' }}
           >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </button>
@@ -250,6 +268,12 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
         {/* Body */}
         <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
+
+          {errorMsg && (
+            <div style={{ padding: '12px 16px', background: '#FEF2F2', color: '#DC2626', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
 
           {/* Title */}
           <div>

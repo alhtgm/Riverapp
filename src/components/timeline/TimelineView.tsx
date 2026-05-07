@@ -5,11 +5,12 @@ import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import { useStore } from '../../store/useStore'
+import { useToast } from '../ui/Toast'
 
 const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
-const LABEL_WIDTH_DESKTOP = 186
-const LABEL_WIDTH_MOBILE = 96
+const LABEL_WIDTH_DESKTOP = 216
+const LABEL_WIDTH_MOBILE = 108
 const ROW_HEIGHT = 46
 const HEADER_HEIGHT = 56
 const SUBJECT_SEP_HEIGHT = 28
@@ -126,6 +127,7 @@ interface DragState {
 
 export default function TimelineView() {
   const { subjects, tasks, fetchAll, deleteSubject, signOut, updateTask } = useStore()
+  const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
   /** rowKey + subjectId for adding to an existing row */
@@ -225,6 +227,7 @@ export default function TimelineView() {
       if (override && drag.moved &&
           (override.start_date !== drag.origStartDate || override.due_date !== drag.origDueDate)) {
         await updateTask(override.id, { start_date: override.start_date, due_date: override.due_date })
+        showToast('課題の日程を更新しました')
       }
     }
 
@@ -234,7 +237,7 @@ export default function TimelineView() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [COL_WIDTH, updateTask])
+  }, [COL_WIDTH, updateTask, showToast])
 
   const startDrag = useCallback((e: React.MouseEvent, task: Task, type: DragState['type']) => {
     e.preventDefault()
@@ -263,8 +266,9 @@ export default function TimelineView() {
     try {
       await deleteSubject(id)
       setDeletingSubjectId(null)
+      showToast('科目を削除しました')
     } catch (e: unknown) {
-      alert((e as Error).message)
+      showToast((e as Error).message, 'error')
     }
   }
 
@@ -392,6 +396,7 @@ export default function TimelineView() {
         {/* Add task button */}
         <button
           onClick={() => setAddModalSubjectId('')}
+          aria-label="課題を追加"
           style={{
             background: 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
             color: '#ffffff',
@@ -428,6 +433,7 @@ export default function TimelineView() {
         {/* Logout */}
         <button
           onClick={() => signOut()}
+          aria-label="ログアウト"
           style={{
             background: 'transparent',
             border: '1px solid #E3DDD5',
@@ -735,7 +741,7 @@ export default function TimelineView() {
                     paddingBottom: 8,
                     gap: 2,
                     background: isToday
-                      ? 'rgba(59,99,255,0.06)'
+                      ? 'rgba(59,99,255,0.1)'
                       : (isSun || isSat)
                       ? 'rgba(20,16,10,0.015)'
                       : 'transparent',
@@ -766,18 +772,19 @@ export default function TimelineView() {
                     {DAY_JA[dow]}
                   </span>
                   <div style={{
-                    width: 24,
-                    height: 24,
+                    width: isToday ? 26 : 24,
+                    height: isToday ? 26 : 24,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
                     background: isToday ? '#3B63FF' : 'transparent',
-                    boxShadow: isToday ? '0 2px 8px rgba(59,99,255,0.35)' : 'none',
-                    fontSize: 11,
-                    fontWeight: isToday ? 700 : 400,
+                    boxShadow: isToday ? '0 2px 10px rgba(59,99,255,0.48), 0 0 0 2px rgba(59,99,255,0.18)' : 'none',
+                    fontSize: isToday ? 12 : 11,
+                    fontWeight: isToday ? 800 : 400,
                     color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? '#3B63FF' : '#78716C',
                     letterSpacing: '-0.02em',
+                    transition: 'all 0.12s',
                   }}>
                     {day.getDate()}
                   </div>
@@ -792,10 +799,11 @@ export default function TimelineView() {
             top: HEADER_HEIGHT,
             bottom: 0,
             left: LABEL_WIDTH + todayIdx * COL_WIDTH + COL_WIDTH / 2 - 1,
-            width: 1.5,
-            background: 'linear-gradient(180deg, #3B63FF 0%, rgba(59,99,255,0.08) 100%)',
+            width: 2,
+            background: 'linear-gradient(180deg, #3B63FF 0%, rgba(59,99,255,0.12) 100%)',
             zIndex: 4,
             pointerEvents: 'none',
+            boxShadow: '0 0 6px 1px rgba(59,99,255,0.28)',
           }} />
 
           {/* ---- Subject groups ---- */}
@@ -893,16 +901,19 @@ export default function TimelineView() {
                         >
                           <path d="M2 3.5L5 6.5L8 3.5" stroke="#A8A29E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        <span style={{
-                          fontSize: isMobile ? 10 : 11,
-                          fontWeight: 700,
-                          color: '#78716C',
-                          letterSpacing: '-0.01em',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          flex: 1,
-                        }}>
+                        <span
+                          title={subject.name}
+                          style={{
+                            fontSize: isMobile ? 10 : 11,
+                            fontWeight: 700,
+                            color: '#78716C',
+                            letterSpacing: '-0.01em',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                        >
                           {subject.name}
                         </span>
                         {!collapsed && taskRows.length > 0 && (
@@ -924,6 +935,7 @@ export default function TimelineView() {
                       {!isDeletingThis && (
                         <button
                           onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
+                          aria-label={`${subject.name}に課題を追加`}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -949,6 +961,7 @@ export default function TimelineView() {
                       {!isDeletingThis && (
                         <button
                           onClick={e => { e.stopPropagation(); setDeletingSubjectId(subject.id) }}
+                          aria-label={`${subject.name}を削除`}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -1054,16 +1067,19 @@ export default function TimelineView() {
                               opacity: 0.7,
                             }} />
                           )}
-                          <span style={{
-                            fontSize: isMobile ? 10 : 12,
-                            color: '#78716C',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            flex: 1,
-                            fontWeight: row.isRecurring ? 600 : 400,
-                            letterSpacing: '-0.01em',
-                          }}>
+                          <span
+                            title={row.title}
+                            style={{
+                              fontSize: isMobile ? 10 : 12,
+                              color: '#78716C',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                              fontWeight: row.isRecurring ? 600 : 400,
+                              letterSpacing: '-0.01em',
+                            }}
+                          >
                             {row.title}
                           </span>
                           {row.isRecurring && !isMobile && (
@@ -1086,6 +1102,7 @@ export default function TimelineView() {
                               setAddToRow({ rowKey: row.rowKey, subjectId: subject.id })
                             }}
                             title="この行に課題を追加"
+                            aria-label={`${row.title}の行に課題を追加`}
                             style={{
                               background: 'none',
                               border: 'none',
@@ -1240,8 +1257,11 @@ export default function TimelineView() {
                                 <span style={{
                                   fontSize: 11, fontWeight: 600, color,
                                   overflow: 'hidden', textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
                                   letterSpacing: '-0.02em', lineHeight: 1,
                                   pointerEvents: 'none',
+                                  flex: 1,
+                                  minWidth: 0,
                                 }}>
                                   {task.title}
                                   {task.due_time && (

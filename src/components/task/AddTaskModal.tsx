@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { Subject } from '../../types'
 import { useStore } from '../../store/useStore'
 import { toDateString, parseLocalDate, formatDate } from '../../types'
+import { useToast } from '../ui/Toast'
 
 interface Props {
   subjects: Subject[]
@@ -25,6 +26,7 @@ const COLORS = ['#E16259', '#3B63FF', '#16A34A', '#7C3AED', '#D97706', '#DB2777'
 
 export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targetRowId }: Props) {
   const { addTask, addRecurringTasks, addSubject } = useStore()
+  const { showToast } = useToast()
   const [mode, setMode] = useState<Mode>('single')
   const [title, setTitle] = useState('')
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? '')
@@ -36,6 +38,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   const [durationDays, setDurationDays] = useState(7)
   const [count, setCount] = useState(5)
   const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
   const [newSubjectName, setNewSubjectName] = useState('')
   const [showNewSubject, setShowNewSubject] = useState(false)
 
@@ -64,11 +67,17 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
     await addSubject(name, autoColor)
     setNewSubjectName('')
     setShowNewSubject(false)
+    showToast(`科目「${name}」を追加しました`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!subjectId) { alert('科目を選択してください'); return }
+    setErrorMsg('')
+    if (!subjectId) { setErrorMsg('科目を選択してください'); return }
+    if (!startDate) { setErrorMsg('開始日を入力してください'); return }
+    if (effectiveMode === 'single' && !dueDate) { setErrorMsg('締切日を入力してください'); return }
+    if (effectiveMode === 'single' && startDate > dueDate) { setErrorMsg('締切日は開始日以降に設定してください'); return }
+    
     const effectiveTitle = title.trim() || '課題'
     setSaving(true)
     try {
@@ -84,15 +93,17 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
           status: 'todo',
           memo: memo || null,
         })
+        showToast('課題を追加しました')
       } else {
         await addRecurringTasks(
           { subject_id: subjectId, title: effectiveTitle, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
           subjectId
         )
+        showToast(`繰り返し課題を${count}件追加しました`)
       }
       onClose()
     } catch (e: unknown) {
-      alert((e as Error).message)
+      setErrorMsg((e as Error).message)
     } finally {
       setSaving(false)
     }
@@ -174,6 +185,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
           </h2>
           <button
             onClick={onClose}
+            aria-label="モーダルを閉じる"
             style={{
               background: '#EDE8DF',
               border: 'none',
@@ -191,13 +203,19 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
             onMouseEnter={e => { e.currentTarget.style.background = '#E3DDD5' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#EDE8DF' }}
           >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {errorMsg && (
+            <div style={{ padding: '12px 16px', background: '#FEF2F2', color: '#DC2626', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
 
           {/* Mode toggle — hidden when adding to existing row */}
           {!isRowAdd && (
