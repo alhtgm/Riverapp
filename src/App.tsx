@@ -9,7 +9,7 @@ import { useStore } from './store/useStore'
 
 function AppInner() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const { tasks, fetchAll } = useStore()
+  const { tasks } = useStore()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

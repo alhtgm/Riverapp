@@ -172,6 +172,24 @@ export default function TimelineView() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
+  const LABEL_WIDTH = isMobile ? LABEL_WIDTH_MOBILE : LABEL_WIDTH_DESKTOP
+
+  // ---- Scroll to today ----
+  const scrollToToday = useCallback(() => {
+    if (scrollRef.current && todayIdx >= 0) {
+      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
+      scrollRef.current.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+    }
+  }, [todayIdx, COL_WIDTH, LABEL_WIDTH])
+
+  useEffect(() => {
+    if (scrollRef.current && todayIdx >= 0) {
+      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
+      scrollRef.current.scrollLeft = Math.max(0, target)
+    }
+  }, [todayIdx])
+
   // Keyboard shortcuts: N = new task, T = scroll to today
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -190,24 +208,6 @@ export default function TimelineView() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [scrollToToday])
-
-  const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
-  const LABEL_WIDTH = isMobile ? LABEL_WIDTH_MOBILE : LABEL_WIDTH_DESKTOP
-
-  useEffect(() => {
-    if (scrollRef.current && todayIdx >= 0) {
-      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
-      scrollRef.current.scrollLeft = Math.max(0, target)
-    }
-  }, [todayIdx])
-
-  // ---- Scroll to today ----
-  const scrollToToday = useCallback(() => {
-    if (scrollRef.current && todayIdx >= 0) {
-      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
-      scrollRef.current.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
-    }
-  }, [todayIdx, COL_WIDTH, LABEL_WIDTH])
 
   // ---- Drag: mousemove / mouseup on document ----
   useEffect(() => {
@@ -296,7 +296,6 @@ export default function TimelineView() {
   }
 
   const isFiltering = selectedStatuses.size > 0
-  const isFocused = viewRange !== 'all'
 
   /** A row matches focus if any of its tasks overlaps with [today, today+30]
    *  (already started but not yet due, OR starting within the next 30 days) */
@@ -414,6 +413,19 @@ export default function TimelineView() {
             whiteSpace: 'nowrap',
           }}>
             課題タイムライン
+          </span>
+          <span style={{
+            fontSize: 10,
+            color: 'var(--text-tertiary, var(--text-secondary))',
+            fontWeight: 500,
+            letterSpacing: '0.02em',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            padding: '1px 5px',
+            flexShrink: 0,
+          }}>
+            v{__APP_VERSION__}
           </span>
         </div>
 
