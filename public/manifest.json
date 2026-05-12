@@ -1,0 +1,26 @@
+{
+  "name": "River — 課題タイムライン",
+  "short_name": "River",
+  "description": "大学生向け課題管理アプリ。横スクロールのタイムラインで締め切りを可視化。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F3EE",
+  "theme_color": "#3B63FF",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["education", "productivity"]
+}

@@ -52,8 +52,8 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         top: y,
         left: x,
         width: menuWidth,
-        background: '#FFFFFF',
-        border: '1px solid #E3DDD5',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         boxShadow: '0 8px 32px rgba(20,16,10,0.12), 0 2px 8px rgba(20,16,10,0.06)',
         zIndex: 200,
@@ -71,13 +71,13 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
       {/* Task info */}
       <div style={{
         padding: '11px 13px 9px',
-        borderBottom: '1px solid #EDE8DF',
-        background: '#FAFAF8',
+        borderBottom: '1px solid var(--border-light)',
+        background: 'var(--surface-warm)',
       }}>
         <div style={{
           fontSize: 13,
           fontWeight: 600,
-          color: '#1C1917',
+          color: 'var(--text-primary)',
           letterSpacing: '-0.02em',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -86,7 +86,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         }}>
           {task.title}
         </div>
-        <div style={{ fontSize: 11, color: '#A8A29E', letterSpacing: '-0.01em' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '-0.01em' }}>
           {formatDate(task.start_date)} → {formatDate(task.due_date)}
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         <div style={{
           fontSize: 9,
           fontWeight: 700,
-          color: '#C4BDB5',
+          color: 'var(--text-disabled)',
           letterSpacing: '0.1em',
           marginBottom: 5,
           textTransform: 'uppercase',
@@ -149,7 +149,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
                 <span style={{
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? cfg.color : '#78716C',
+                  color: isActive ? cfg.color : 'var(--text-secondary)',
                   letterSpacing: '-0.01em',
                   flex: 1,
                 }}>
@@ -190,7 +190,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
       </div>
 
       {/* Detail link */}
-      <div style={{ borderTop: '1px solid #EDE8DF', padding: '6px 10px' }}>
+      <div style={{ borderTop: '1px solid var(--border-light)', padding: '6px 10px' }}>
         <button
           onClick={() => { onOpenDetail(); onClose() }}
           style={{

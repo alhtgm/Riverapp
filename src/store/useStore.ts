@@ -2,12 +2,17 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { Subject, Task, Recurrence, TaskStatus } from '../types'
 import { toDateString } from '../types'
+import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
 interface AppState {
   subjects: Subject[]
   tasks: Task[]
   loading: boolean
   error: string | null
+
+  // Theme
+  isDark: boolean
+  toggleTheme: () => void
 
   fetchAll: () => Promise<void>
   signOut: () => Promise<void>
@@ -24,6 +29,11 @@ interface AppState {
     subjectId: string
   ) => Promise<void>
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'status' | 'start_date' | 'due_date' | 'due_time' | 'memo' | 'subject_id'>>) => Promise<void>
+  updateTasksFromRecurrence: (
+    recurrenceId: string,
+    fromDate: string,
+    updates: Partial<Pick<Task, 'title' | 'status' | 'memo'>>
+  ) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   deleteTasksFromRecurrence: (recurrenceId: string, fromDate: string) => Promise<void>
 }
@@ -33,6 +43,13 @@ export const useStore = create<AppState>((set, get) => ({
   tasks: [],
   loading: false,
   error: null,
+
+  isDark: getStoredTheme() === 'dark',
+  toggleTheme: () => {
+    const next: ThemeMode = get().isDark ? 'light' : 'dark'
+    applyTheme(next)
+    set({ isDark: next === 'dark' })
+  },
 
   signOut: async () => {
     await supabase.auth.signOut()
@@ -182,6 +199,22 @@ export const useStore = create<AppState>((set, get) => ({
     const { error } = await supabase.from('tasks').delete().eq('id', id)
     if (error) throw error
     set(s => ({ tasks: s.tasks.filter(t => t.id !== id) }))
+  },
+
+  updateTasksFromRecurrence: async (recurrenceId, fromDate, updates) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update(updates)
+      .eq('recurrence_id', recurrenceId)
+      .gte('start_date', fromDate)
+    if (error) throw error
+    set(s => ({
+      tasks: s.tasks.map(t =>
+        t.recurrence_id === recurrenceId && t.start_date >= fromDate
+          ? { ...t, ...updates }
+          : t
+      ),
+    }))
   },
 
   deleteTasksFromRecurrence: async (recurrenceId, fromDate) => {

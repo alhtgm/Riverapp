@@ -98,7 +98,7 @@ function MarkdownPreview({ text }: { text: string }) {
 }
 
 export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
-  const { updateTask, deleteTask, deleteTasksFromRecurrence } = useStore()
+  const { updateTask, deleteTask, deleteTasksFromRecurrence, updateTasksFromRecurrence } = useStore()
   const { showToast } = useToast()
   const [title, setTitle] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -111,6 +111,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [showDeleteOptions, setShowDeleteOptions] = useState(false)
+  /** 繰り返し課題を以降すべて変更するか */
+  const [applyToAll, setApplyToAll] = useState(false)
 
   useEffect(() => {
     if (task) {
@@ -123,6 +125,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
       setMemo(task.memo ?? '')
       setMemoTab('edit')
       setShowDeleteOptions(false)
+      setApplyToAll(false)
     }
   }, [task])
 
@@ -136,16 +139,24 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
     if (startDate > dueDate) { setErrorMsg('締切日は開始日以降に設定してください'); return }
     setSaving(true)
     try {
-      await updateTask(task.id, {
-        title,
-        subject_id: subjectId,
-        start_date: startDate,
-        due_date: dueDate,
-        due_time: dueTime || null,
-        status,
-        memo,
-      })
-      showToast('課題を保存しました')
+      if (applyToAll && task.recurrence_id) {
+        // 以降すべてに適用（タイトル・ステータス・メモのみ）
+        await updateTasksFromRecurrence(task.recurrence_id, task.start_date, { title, status, memo })
+        // この課題の日程・科目は個別更新
+        await updateTask(task.id, { subject_id: subjectId, start_date: startDate, due_date: dueDate, due_time: dueTime || null })
+        showToast('以降すべての課題を更新しました')
+      } else {
+        await updateTask(task.id, {
+          title,
+          subject_id: subjectId,
+          start_date: startDate,
+          due_date: dueDate,
+          due_time: dueTime || null,
+          status,
+          memo,
+        })
+        showToast('課題を保存しました')
+      }
       onClose()
     } catch (e: unknown) {
       setErrorMsg((e as Error).message)
@@ -540,6 +551,29 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             </div>
           )}
 
+          {/* 繰り返し課題: 以降すべてに適用トグル */}
+          {task.recurrence_id && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
+              <div
+                onClick={() => setApplyToAll(v => !v)}
+                style={{
+                  width: 36, height: 20, borderRadius: 9999,
+                  background: applyToAll ? '#3B63FF' : '#C4BDB5',
+                  position: 'relative', transition: 'background 0.2s', flexShrink: 0, cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 2, left: applyToAll ? 18 : 2,
+                  width: 16, height: 16, borderRadius: '50%', background: '#FFFFFF',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+                }} />
+              </div>
+              <span style={{ fontSize: 12, color: applyToAll ? '#3B63FF' : '#78716C', fontWeight: applyToAll ? 600 : 400, letterSpacing: '-0.01em' }}>
+                以降すべての課題に適用
+              </span>
+            </label>
+          )}
+
           <button
             onClick={handleSave}
             disabled={saving}
@@ -565,7 +599,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
               }
             }}
           >
-            {saving ? '保存中...' : '保存'}
+            {saving ? '保存中...' : applyToAll ? '以降すべて保存' : '保存'}
           </button>
         </div>
       </div>

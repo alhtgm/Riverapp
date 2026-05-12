@@ -110,12 +110,12 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   }
 
   const inputStyle: React.CSSProperties = {
-    background: '#FAFAF8',
-    border: '1px solid #E3DDD5',
+    background: 'var(--surface-warm)',
+    border: '1px solid var(--border)',
     borderRadius: 8,
     padding: '9px 12px',
     fontSize: 14,
-    color: '#1C1917',
+    color: 'var(--text-primary)',
     outline: 'none',
     width: '100%',
     fontFamily: 'inherit',
@@ -126,7 +126,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
     fontWeight: 700,
-    color: '#A8A29E',
+    color: 'var(--text-tertiary)',
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
     marginBottom: 6,
@@ -134,14 +134,14 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#3B63FF'
+    e.target.style.borderColor = 'var(--accent)'
     e.target.style.boxShadow = '0 0 0 3px rgba(59,99,255,0.12)'
-    e.target.style.background = '#FFFFFF'
+    e.target.style.background = 'var(--surface)'
   }
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#E3DDD5'
+    e.target.style.borderColor = 'var(--border)'
     e.target.style.boxShadow = 'none'
-    e.target.style.background = '#FAFAF8'
+    e.target.style.background = 'var(--surface-warm)'
   }
 
   return (
@@ -155,8 +155,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        background: '#FFFFFF',
-        border: '1px solid #E3DDD5',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 16,
         boxShadow: '0 24px 64px rgba(20,16,10,0.14), 0 8px 20px rgba(20,16,10,0.07)',
         zIndex: 70,
@@ -170,38 +170,38 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
         {/* Header */}
         <div style={{
           padding: '18px 22px',
-          borderBottom: '1px solid #EDE8DF',
+          borderBottom: '1px solid var(--border-light)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           position: 'sticky',
           top: 0,
-          background: '#FFFFFF',
+          background: 'var(--surface)',
           zIndex: 1,
           borderRadius: '16px 16px 0 0',
         }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#1C1917', letterSpacing: '-0.04em' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
             {isRowAdd ? '行に課題を追加' : '課題を追加'}
           </h2>
           <button
             onClick={onClose}
             aria-label="モーダルを閉じる"
             style={{
-              background: '#EDE8DF',
+              background: 'var(--bg-secondary)',
               border: 'none',
               borderRadius: 6,
               width: 28,
               height: 28,
               cursor: 'pointer',
-              color: '#78716C',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'background 0.12s',
               fontFamily: 'inherit',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#E3DDD5' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#EDE8DF' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
           >
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -221,7 +221,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
           {!isRowAdd && (
             <div style={{
               display: 'inline-flex',
-              background: '#F2EFE9',
+              background: 'var(--bg-secondary)',
               borderRadius: 10,
               padding: 3,
               gap: 2,
@@ -233,8 +233,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                   type="button"
                   onClick={() => setMode(m)}
                   style={{
-                    background: mode === m ? '#FFFFFF' : 'transparent',
-                    color: mode === m ? '#1C1917' : '#78716C',
+                    background: mode === m ? 'var(--surface)' : 'transparent',
+                    color: mode === m ? 'var(--text-primary)' : 'var(--text-secondary)',
                     border: 'none',
                     borderRadius: 7,
                     padding: '6px 18px',
@@ -295,14 +295,14 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                   type="button"
                   onClick={() => setShowNewSubject(!showNewSubject)}
                   style={{
-                    background: showNewSubject ? '#EEF2FF' : '#F2EFE9',
-                    border: `1px solid ${showNewSubject ? '#3B63FF44' : '#E3DDD5'}`,
+                    background: showNewSubject ? 'var(--accent-bg)' : 'var(--bg-secondary)',
+                    border: `1px solid ${showNewSubject ? 'rgba(59,99,255,0.3)' : 'var(--border)'}`,
                     borderRadius: 8,
                     padding: '0 12px',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    color: showNewSubject ? '#3B63FF' : '#78716C',
+                    color: showNewSubject ? 'var(--accent)' : 'var(--text-secondary)',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.2s',
                     fontFamily: 'inherit',
@@ -386,7 +386,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                       onClick={() => setDueTime('')}
                       style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 11, color: '#A8A29E', padding: 0, fontFamily: 'inherit',
+                        fontSize: 11, color: 'var(--text-tertiary)', padding: 0, fontFamily: 'inherit',
                       }}
                     >
                       クリア
@@ -423,9 +423,9 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                       type="button"
                       onClick={() => setIntervalWeeks(iv.weeks)}
                       style={{
-                        background: intervalWeeks === iv.weeks ? '#EEF2FF' : '#F2EFE9',
-                        color: intervalWeeks === iv.weeks ? '#3B63FF' : '#78716C',
-                        border: `1px solid ${intervalWeeks === iv.weeks ? '#3B63FF44' : '#E3DDD5'}`,
+                        background: intervalWeeks === iv.weeks ? 'var(--accent-bg)' : 'var(--bg-secondary)',
+                        color: intervalWeeks === iv.weeks ? 'var(--accent)' : 'var(--text-secondary)',
+                        border: `1px solid ${intervalWeeks === iv.weeks ? 'rgba(59,99,255,0.3)' : 'var(--border)'}`,
                         borderRadius: 9999,
                         padding: '5px 14px',
                         fontSize: 13,
@@ -483,12 +483,12 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                 const preview = recurringPreview()
                 return preview ? (
                   <div style={{
-                    background: '#EEF2FF',
+                    background: 'var(--accent-bg)',
                     border: '1px solid rgba(59,99,255,0.2)',
                     borderRadius: 10,
                     padding: '11px 14px',
                     fontSize: 13,
-                    color: '#3B63FF',
+                    color: 'var(--accent)',
                     fontWeight: 500,
                     letterSpacing: '-0.01em',
                     lineHeight: 1.5,
@@ -506,26 +506,26 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
             gap: 8,
             justifyContent: 'flex-end',
             paddingTop: 8,
-            borderTop: '1px solid #EDE8DF',
+            borderTop: '1px solid var(--border-light)',
           }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                background: '#F2EFE9',
-                border: '1px solid #E3DDD5',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '9px 18px',
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: 'pointer',
-                color: '#78716C',
+                color: 'var(--text-secondary)',
                 fontFamily: 'inherit',
                 letterSpacing: '-0.02em',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#EDE8DF' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F2EFE9' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--border-light)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
             >
               キャンセル
             </button>
@@ -533,7 +533,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
               type="submit"
               disabled={saving}
               style={{
-                background: saving ? '#A8A29E' : 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
+                background: saving ? 'var(--text-tertiary)' : 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: 8,

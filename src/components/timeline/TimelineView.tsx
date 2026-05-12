@@ -4,6 +4,7 @@ import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../ty
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
+import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
 
@@ -126,7 +127,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, signOut, updateTask, loading } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -139,8 +140,10 @@ export default function TimelineView() {
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
   const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
-  /** Focus mode: only show rows with a task starting within the next 30 days */
-  const [focusOn, setFocusOn] = useState(true)
+  /** 表示範囲: 'week'=今週, 'month'=今月(30日), 'all'=すべて */
+  const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('month')
+  /** 科目カラーピッカー: subjectId */
+  const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // ---- Drag state ----
@@ -153,10 +156,11 @@ export default function TimelineView() {
   const todayStr = toDateString(new Date())
   const todayIdx = days.findIndex(d => toDateString(d) === todayStr)
 
-  // Focus cutoff: today + 30 days
+  // 表示範囲cutoff
   const focusCutoffStr = (() => {
+    if (viewRange === 'all') return '9999-12-31'
     const d = new Date()
-    d.setDate(d.getDate() + 30)
+    d.setDate(d.getDate() + (viewRange === 'week' ? 7 : 30))
     return toDateString(d)
   })()
 
@@ -179,6 +183,8 @@ export default function TimelineView() {
         setAddModalSubjectId('')
       } else if (e.key === 't' || e.key === 'T') {
         scrollToToday()
+      } else if (e.key === 'd' || e.key === 'D') {
+        toggleTheme()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -290,6 +296,7 @@ export default function TimelineView() {
   }
 
   const isFiltering = selectedStatuses.size > 0
+  const isFocused = viewRange !== 'all'
 
   /** A row matches focus if any of its tasks overlaps with [today, today+30]
    *  (already started but not yet due, OR starting within the next 30 days) */
@@ -313,7 +320,7 @@ export default function TimelineView() {
       }
 
       // Apply focus filter
-      if (focusOn) {
+      if (viewRange !== 'all') {
         taskRows = taskRows.filter(row => rowMatchesFocus(row))
       }
 
@@ -359,15 +366,15 @@ export default function TimelineView() {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: '#F6F3EE' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--bg)' }}>
 
       {/* ---- Glassmorphism header ---- */}
       <header style={{
         height: 52,
-        background: 'rgba(246,243,238,0.88)',
+        background: 'var(--header-glass)',
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-        borderBottom: '1px solid rgba(255,255,255,0.7)',
+        borderBottom: '1px solid var(--border)',
         boxShadow: '0 1px 0 rgba(20,16,10,0.06), 0 2px 8px rgba(20,16,10,0.03)',
         display: 'flex',
         alignItems: 'center',
@@ -393,13 +400,13 @@ export default function TimelineView() {
           }}>
             <RiverLogo size={18} />
           </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: '#1C1917', letterSpacing: '-0.04em', flexShrink: 0 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.04em', flexShrink: 0 }}>
             River
           </span>
-          <div style={{ width: 1, height: 14, background: '#E3DDD5', marginLeft: 2, flexShrink: 0 }} />
+          <div style={{ width: 1, height: 14, background: 'var(--border)', marginLeft: 2, flexShrink: 0 }} />
           <span style={{
             fontSize: 12,
-            color: '#6B7280',
+            color: 'var(--text-secondary)',
             fontWeight: 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -448,19 +455,44 @@ export default function TimelineView() {
           {!isMobile && '課題を追加'}
         </button>
 
+        {/* Dark mode toggle */}
+        <button
+          onClick={toggleTheme}
+          aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+          title={isDark ? 'ライトモード [D]' : 'ダークモード [D]'}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            padding: isMobile ? '6px 8px' : '6px 10px',
+            fontSize: 15,
+            cursor: 'pointer',
+            color: 'var(--text-secondary)',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          {isDark ? '☀️' : '🌙'}
+        </button>
+
         {/* Logout */}
         <button
           onClick={() => signOut()}
           aria-label="ログアウト"
           style={{
             background: 'transparent',
-            border: '1px solid #E3DDD5',
+            border: '1px solid var(--border)',
             borderRadius: 7,
             padding: isMobile ? '6px 8px' : '6px 11px',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
-            color: '#78716C',
+            color: 'var(--text-secondary)',
             transition: 'all 0.2s',
             flexShrink: 0,
             fontFamily: 'inherit',
@@ -469,17 +501,17 @@ export default function TimelineView() {
             alignItems: 'center',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = '#EDE8DF'
-            e.currentTarget.style.borderColor = '#CCC5BB'
+            e.currentTarget.style.background = 'var(--bg-secondary)'
+            e.currentTarget.style.borderColor = 'var(--border-strong)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = '#E3DDD5'
+            e.currentTarget.style.borderColor = 'var(--border)'
           }}
         >
           {isMobile ? (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="#78716C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           ) : 'ログアウト'}
         </button>
@@ -488,13 +520,13 @@ export default function TimelineView() {
       {/* ---- Filter bar ---- */}
       <div style={{
         height: 42,
-        borderBottom: '1px solid #EDE8DF',
+        borderBottom: '1px solid var(--border-light)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 18px',
         gap: 6,
         flexShrink: 0,
-        background: 'rgba(246,243,238,0.6)',
+        background: 'var(--filter-glass)',
         position: 'relative',
         zIndex: 99,
         overflowX: 'auto',
@@ -508,8 +540,8 @@ export default function TimelineView() {
             alignItems: 'center',
             gap: 4,
             background: 'transparent',
-            color: '#78716C',
-            border: '1px solid #E3DDD5',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--border)',
             borderRadius: 9999,
             padding: '3px 10px 3px 7px',
             fontSize: 12,
@@ -522,14 +554,14 @@ export default function TimelineView() {
             fontFamily: 'inherit',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = '#EEF2FF'
-            e.currentTarget.style.borderColor = '#3B63FF44'
-            e.currentTarget.style.color = '#3B63FF'
+            e.currentTarget.style.background = 'var(--accent-bg)'
+            e.currentTarget.style.borderColor = 'rgba(59,99,255,0.3)'
+            e.currentTarget.style.color = 'var(--accent)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = '#E3DDD5'
-            e.currentTarget.style.color = '#78716C'
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.color = 'var(--text-secondary)'
           }}
           title="今日にスクロール [T]"
         >
@@ -540,13 +572,13 @@ export default function TimelineView() {
           今日
         </button>
 
-        <div style={{ width: 1, height: 14, background: '#E3DDD5', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0 }} />
 
         {!isMobile && (
           <span style={{
             fontSize: 11,
             fontWeight: 700,
-            color: '#C4BDB5',
+            color: 'var(--text-disabled)',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
             flexShrink: 0,
@@ -556,52 +588,55 @@ export default function TimelineView() {
           </span>
         )}
 
-        {/* Focus toggle */}
-        <button
-          onClick={() => setFocusOn(f => !f)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            background: focusOn ? '#FEF9EE' : 'transparent',
-            color: focusOn ? '#D97706' : '#78716C',
-            border: `1px solid ${focusOn ? '#D9770644' : '#E3DDD5'}`,
-            borderRadius: 9999,
-            padding: '3px 10px 3px 7px',
-            fontSize: 12,
-            fontWeight: focusOn ? 700 : 400,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            letterSpacing: '-0.01em',
-            fontFamily: 'inherit',
-            boxShadow: focusOn ? '0 2px 8px rgba(217,119,6,0.18)' : 'none',
-          }}
-          onMouseEnter={e => {
-            if (!focusOn) {
-              e.currentTarget.style.background = '#FEF9EE'
-              e.currentTarget.style.borderColor = '#D9770633'
-              e.currentTarget.style.color = '#D97706'
-            }
-          }}
-          onMouseLeave={e => {
-            if (!focusOn) {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.borderColor = '#E3DDD5'
-              e.currentTarget.style.color = '#78716C'
-            }
-          }}
-        >
-          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
-            <circle cx="5" cy="5" r="3.5" stroke={focusOn ? '#D97706' : '#A8A29E'} strokeWidth="1.6" fill={focusOn ? '#D97706' : 'none'} opacity={focusOn ? 0.4 : 1}/>
-            <circle cx="5" cy="5" r="1.5" fill={focusOn ? '#D97706' : '#A8A29E'}/>
-          </svg>
-          フォーカス
-        </button>
+        {/* View range selector */}
+        {([
+          { key: 'week',  label: '今週' },
+          { key: 'month', label: '今月' },
+          { key: 'all',   label: 'すべて' },
+        ] as const).map(opt => {
+          const active = viewRange === opt.key
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setViewRange(opt.key)}
+              style={{
+                background: active ? '#FEF9EE' : 'transparent',
+                color: active ? '#D97706' : 'var(--text-secondary)',
+                border: `1px solid ${active ? '#D9770644' : 'var(--border)'}`,
+                borderRadius: 9999,
+                padding: '3px 10px',
+                fontSize: 12,
+                fontWeight: active ? 700 : 400,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                flexShrink: 0,
+                letterSpacing: '-0.01em',
+                fontFamily: 'inherit',
+                boxShadow: active ? '0 2px 8px rgba(217,119,6,0.18)' : 'none',
+              }}
+              onMouseEnter={e => {
+                if (!active) {
+                  e.currentTarget.style.background = '#FEF9EE'
+                  e.currentTarget.style.borderColor = '#D9770633'
+                  e.currentTarget.style.color = '#D97706'
+                }
+              }}
+              onMouseLeave={e => {
+                if (!active) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }
+              }}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
 
         {/* Divider */}
-        <div style={{ width: 1, height: 14, background: '#E3DDD5', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0 }} />
 
         {STATUS_PILLS.map(pill => {
           const isActive = selectedStatuses.has(pill.key)
@@ -615,8 +650,8 @@ export default function TimelineView() {
                 alignItems: 'center',
                 gap: 5,
                 background: isActive ? cfg.bg : 'transparent',
-                color: isActive ? cfg.color : '#78716C',
-                border: `1px solid ${isActive ? cfg.color + '44' : '#E3DDD5'}`,
+                color: isActive ? cfg.color : 'var(--text-secondary)',
+                border: `1px solid ${isActive ? cfg.color + '44' : 'var(--border)'}`,
                 borderRadius: 9999,
                 padding: '3px 10px 3px 7px',
                 fontSize: 12,
@@ -639,8 +674,8 @@ export default function TimelineView() {
               onMouseLeave={e => {
                 if (!isActive) {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.borderColor = '#E3DDD5'
-                  e.currentTarget.style.color = '#78716C'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
                 }
               }}
             >
@@ -657,41 +692,37 @@ export default function TimelineView() {
           )
         })}
 
-        {(isFiltering || !focusOn) && (
+        {isFiltering && (
           <>
-            <div style={{ width: 1, height: 14, background: '#E3DDD5', margin: '0 2px', flexShrink: 0 }} />
-            {isFiltering && (
-              <span style={{ fontSize: 11, color: '#A8A29E', flexShrink: 0, letterSpacing: '-0.01em' }}>
-                {filteredTotal}件
-              </span>
-            )}
-            {isFiltering && (
-              <button
-                onClick={() => setSelectedStatuses(new Set())}
-                style={{
-                  background: 'none',
-                  border: '1px solid #E3DDD5',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: '#A8A29E',
-                  padding: '2px 8px',
-                  borderRadius: 9999,
-                  flexShrink: 0,
-                  fontFamily: 'inherit',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#EDE8DF'
-                  e.currentTarget.style.color = '#78716C'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'none'
-                  e.currentTarget.style.color = '#A8A29E'
-                }}
-              >
-                リセット
-              </button>
-            )}
+            <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, letterSpacing: '-0.01em' }}>
+              {filteredTotal}件
+            </span>
+            <button
+              onClick={() => setSelectedStatuses(new Set())}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                cursor: 'pointer',
+                fontSize: 11,
+                color: 'var(--text-tertiary)',
+                padding: '2px 8px',
+                borderRadius: 9999,
+                flexShrink: 0,
+                fontFamily: 'inherit',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--bg-secondary)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'none'
+                e.currentTarget.style.color = 'var(--text-tertiary)'
+              }}
+            >
+              リセット
+            </button>
           </>
         )}
       </div>
@@ -714,16 +745,16 @@ export default function TimelineView() {
             height: HEADER_HEIGHT,
             display: 'flex',
             zIndex: 20,
-            background: '#F6F3EE',
-            borderBottom: '1px solid #E3DDD5',
+            background: 'var(--bg)',
+            borderBottom: '1px solid var(--border)',
             boxShadow: '0 2px 8px rgba(20,16,10,0.04)',
           }}>
             {/* Corner cell */}
             <div style={{
               ...stickyLabel(30),
               height: HEADER_HEIGHT,
-              background: '#F6F3EE',
-              borderRight: '1px solid #E3DDD5',
+              background: 'var(--bg)',
+              borderRight: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'flex-end',
               padding: '0 14px 12px',
@@ -731,7 +762,7 @@ export default function TimelineView() {
               <span style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#C4BDB5',
+                color: 'var(--text-disabled)',
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
               }}>
@@ -775,7 +806,7 @@ export default function TimelineView() {
                       left: 3,
                       fontSize: 9,
                       fontWeight: 700,
-                      color: '#78716C',
+                      color: 'var(--text-secondary)',
                       letterSpacing: '0.05em',
                       whiteSpace: 'nowrap',
                     }}>
@@ -785,7 +816,7 @@ export default function TimelineView() {
                   <span style={{
                     fontSize: 9,
                     fontWeight: 600,
-                    color: isSun ? '#DC2626' : isSat ? '#3B63FF' : '#C4BDB5',
+                    color: isSun ? '#DC2626' : isSat ? 'var(--accent)' : 'var(--text-disabled)',
                     letterSpacing: '0.02em',
                   }}>
                     {DAY_JA[dow]}
@@ -797,11 +828,11 @@ export default function TimelineView() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
-                    background: isToday ? '#3B63FF' : 'transparent',
+                    background: isToday ? 'var(--accent)' : 'transparent',
                     boxShadow: isToday ? '0 2px 10px rgba(59,99,255,0.48), 0 0 0 2px rgba(59,99,255,0.18)' : 'none',
                     fontSize: isToday ? 12 : 11,
                     fontWeight: isToday ? 800 : 400,
-                    color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? '#3B63FF' : '#78716C',
+                    color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? 'var(--accent)' : 'var(--text-secondary)',
                     letterSpacing: '-0.02em',
                     transition: 'all 0.2s',
                   }}>
@@ -831,13 +862,13 @@ export default function TimelineView() {
             <>
               <style>{`@keyframes skPulse2{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
               {[36, 52, 52, 52, 36, 52, 52].map((h, i) => (
-                <div key={i} style={{ display: 'flex', height: h, borderBottom: '1px solid #EDE8DF', background: h === 36 ? '#EDE8DF' : '#FFFFFF' }}>
-                  <div style={{ width: LABEL_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', padding: h === 36 ? '0 14px' : '0 28px', borderRight: '1px solid #EDE8DF', gap: 12 }}>
-                    <div style={{ width: h === 36 ? 52 : 80 + (i % 3) * 18, height: h === 36 ? 9 : 11, borderRadius: 5, background: '#E3DDD5', animation: `skPulse2 1.5s ease-in-out ${i * 0.08}s infinite` }} />
+                <div key={i} style={{ display: 'flex', height: h, borderBottom: '1px solid var(--border-light)', background: h === 36 ? 'var(--bg-secondary)' : 'var(--surface)' }}>
+                  <div style={{ width: LABEL_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', padding: h === 36 ? '0 14px' : '0 28px', borderRight: '1px solid var(--border-light)', gap: 12 }}>
+                    <div style={{ width: h === 36 ? 52 : 80 + (i % 3) * 18, height: h === 36 ? 9 : 11, borderRadius: 5, background: 'var(--border)', animation: `skPulse2 1.5s ease-in-out ${i * 0.08}s infinite` }} />
                   </div>
                   {h !== 36 && (
-                    <div style={{ flex: 1, position: 'relative', background: '#FFFFFF', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
-                      <div style={{ width: 120 + (i % 3) * 50, height: 34, borderRadius: 6, background: '#E3DDD5', animation: `skPulse2 1.5s ease-in-out ${i * 0.12}s infinite` }} />
+                    <div style={{ flex: 1, position: 'relative', background: 'var(--surface)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+                      <div style={{ width: 120 + (i % 3) * 50, height: 34, borderRadius: 6, background: 'var(--border)', animation: `skPulse2 1.5s ease-in-out ${i * 0.12}s infinite` }} />
                     </div>
                   )}
                 </div>
@@ -855,8 +886,8 @@ export default function TimelineView() {
                   width: 52,
                   height: 52,
                   borderRadius: 14,
-                  background: '#FFFFFF',
-                  border: '1px solid #E3DDD5',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   boxShadow: '0 2px 8px rgba(20,16,10,0.06)',
                   display: 'flex',
                   alignItems: 'center',
@@ -864,19 +895,19 @@ export default function TimelineView() {
                   margin: '0 auto 14px',
                 }}>
                   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <rect x="2.5" y="2.5" width="17" height="17" rx="4.5" stroke="#C4BDB5" strokeWidth="1.5"/>
-                    <path d="M8 11h6M11 8v6" stroke="#C4BDB5" strokeWidth="1.5" strokeLinecap="round"/>
+                    <rect x="2.5" y="2.5" width="17" height="17" rx="4.5" stroke="var(--text-disabled)" strokeWidth="1.5"/>
+                    <path d="M8 11h6M11 8v6" stroke="var(--text-disabled)" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 14, color: '#78716C', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  {focusOn ? '今後1ヶ月以内の課題がありません' : '課題を追加してはじめましょう'}
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
+                  {viewRange !== 'all' ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません` : '課題を追加してはじめましょう'}
                 </p>
-                <p style={{ fontSize: 12, color: '#6B7280', marginTop: 5, letterSpacing: '-0.01em' }}>
-                  {focusOn ? '期間外の課題は「フォーカス」をOFFにすると表示されます' : '右上の「課題を追加」から追加できます [N]'}
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 5, letterSpacing: '-0.01em' }}>
+                  {viewRange !== 'all' ? '「すべて」に切り替えると全期間の課題が表示されます' : '右上の「課題を追加」から追加できます [N]'}
                 </p>
-                {focusOn && (
+                {viewRange !== 'all' && (
                   <button
-                    onClick={() => setFocusOn(false)}
+                    onClick={() => setViewRange('all')}
                     style={{
                       marginTop: 14,
                       background: '#FEF9EE',
@@ -894,7 +925,7 @@ export default function TimelineView() {
                     onMouseEnter={e => { e.currentTarget.style.background = '#FEF3C7'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.5)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = '#FEF9EE'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)' }}
                   >
-                    フォーカスをOFFにする
+                    「すべて」に切り替える
                   </button>
                 )}
               </div>
@@ -912,7 +943,7 @@ export default function TimelineView() {
                     style={{
                       display: 'flex',
                       height: SUBJECT_SEP_HEIGHT,
-                      borderTop: '1px solid #EDE8DF',
+                      borderTop: '1px solid var(--border-light)',
                     }}
                     onMouseEnter={() => setHoveredSubjectId(subject.id)}
                     onMouseLeave={() => setHoveredSubjectId(null)}
@@ -920,20 +951,38 @@ export default function TimelineView() {
                     {/* Sticky label */}
                     <div style={{
                       ...stickyLabel(15),
-                      background: '#EDE8DF',
-                      borderRight: '1px solid #E3DDD5',
+                      background: 'var(--bg-secondary)',
+                      borderRight: '1px solid var(--border)',
                       display: 'flex',
                       alignItems: 'center',
                       paddingLeft: 0,
                     }}>
-                      {/* Subject color stripe */}
-                      <div style={{
-                        width: 4,
-                        height: '100%',
-                        background: subject.color,
-                        flexShrink: 0,
-                        borderRadius: '0 3px 3px 0',
-                      }} />
+                      {/* Subject color stripe — クリックでカラーピッカー */}
+                      <div
+                        style={{
+                          width: 8,
+                          height: '100%',
+                          background: subject.color,
+                          flexShrink: 0,
+                          borderRadius: '0 4px 4px 0',
+                          cursor: 'pointer',
+                          position: 'relative',
+                        }}
+                        title="クリックして色を変更"
+                        onClick={e => {
+                          e.stopPropagation()
+                          setColorPickerSubjectId(colorPickerSubjectId === subject.id ? null : subject.id)
+                        }}
+                      >
+                        {colorPickerSubjectId === subject.id && (
+                          <ColorPicker
+                            value={subject.color}
+                            onChange={color => updateSubject(subject.id, { color })}
+                            onClose={() => setColorPickerSubjectId(null)}
+                            position={{ top: '100%', left: 0 }}
+                          />
+                        )}
+                      </div>
 
                       {/* Collapse toggle + name */}
                       <div
@@ -958,14 +1007,14 @@ export default function TimelineView() {
                             transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
                           }}
                         >
-                          <path d="M2 3.5L5 6.5L8 3.5" stroke="#A8A29E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <span
                           title={subject.name}
                           style={{
                             fontSize: isMobile ? 10 : 11,
                             fontWeight: 700,
-                            color: '#78716C',
+                            color: 'var(--text-secondary)',
                             letterSpacing: '-0.01em',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -978,8 +1027,8 @@ export default function TimelineView() {
                         {!collapsed && taskRows.length > 0 && (
                           <span style={{
                             fontSize: 9,
-                            color: '#A8A29E',
-                            background: 'rgba(20,16,10,0.07)',
+                            color: 'var(--text-tertiary)',
+                            background: 'var(--border-light)',
                             borderRadius: 9999,
                             padding: '1px 5px',
                             flexShrink: 0,
@@ -1000,7 +1049,7 @@ export default function TimelineView() {
                             border: 'none',
                             cursor: 'pointer',
                             padding: '3px 4px 3px 2px',
-                            color: '#C4BDB5',
+                            color: 'var(--text-disabled)',
                             display: 'flex',
                             alignItems: 'center',
                             flexShrink: 0,
@@ -1026,7 +1075,7 @@ export default function TimelineView() {
                             border: 'none',
                             cursor: 'pointer',
                             padding: '3px 7px 3px 2px',
-                            color: '#C4BDB5',
+                            color: 'var(--text-disabled)',
                             display: 'flex',
                             alignItems: 'center',
                             flexShrink: 0,
@@ -1036,7 +1085,7 @@ export default function TimelineView() {
                           }}
                         >
                           <svg width="11" height="11" viewBox="0 0 13 13" fill="none">
-                            <path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 5.5v4M7.5 5.5v4M3 3.5l.5 7h6l.5-7" stroke="#A8A29E" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 5.5v4M7.5 5.5v4M3 3.5l.5 7h6l.5-7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         </button>
                       )}
@@ -1070,8 +1119,8 @@ export default function TimelineView() {
                           <button
                             onClick={e => { e.stopPropagation(); setDeletingSubjectId(null) }}
                             style={{
-                              background: 'rgba(20,16,10,0.07)',
-                              color: '#78716C',
+                              background: 'var(--border-light)',
+                              color: 'var(--text-secondary)',
                               border: 'none',
                               borderRadius: 4,
                               padding: '2px 7px',
@@ -1087,12 +1136,32 @@ export default function TimelineView() {
                       )}
                     </div>
 
-                    {/* Grid: faint color wash */}
+                    {/* Grid: faint color wash + 完了率バー */}
                     <div style={{
                       flex: 1,
                       background: `linear-gradient(90deg, ${subject.color}14 0%, transparent 140px)`,
                       borderBottom: `1px solid ${subject.color}20`,
-                    }} />
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}>
+                      {(() => {
+                        const subjectTasks = tasks.filter(t => t.subject_id === subject.id)
+                        const total = subjectTasks.length
+                        const done = subjectTasks.filter(t => t.status === 'done' || t.status === 'submitted').length
+                        if (total === 0) return null
+                        const pct = Math.round((done / total) * 100)
+                        return (
+                          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 48, height: 4, background: `${subject.color}25`, borderRadius: 9999, overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 9999, transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: subject.color, opacity: 0.8, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                              {done}/{total}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                    </div>
                   </div>
 
                   {/* Task rows */}
@@ -1101,15 +1170,15 @@ export default function TimelineView() {
                     return (
                       <div
                         key={row.rowKey}
-                        style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid #EDE8DF' }}
+                        style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}
                         onMouseEnter={() => setHoveredRowKey(row.rowKey)}
                         onMouseLeave={() => setHoveredRowKey(null)}
                       >
                         {/* Sticky task label */}
                         <div style={{
                           ...stickyLabel(10),
-                          background: '#FFFFFF',
-                          borderRight: '1px solid #EDE8DF',
+                          background: 'var(--surface)',
+                          borderRight: '1px solid var(--border-light)',
                           display: 'flex',
                           alignItems: 'center',
                           paddingLeft: isMobile ? 10 : 22,
@@ -1130,7 +1199,7 @@ export default function TimelineView() {
                             title={row.title}
                             style={{
                               fontSize: isMobile ? 10 : 12,
-                              color: '#78716C',
+                              color: 'var(--text-secondary)',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
@@ -1144,9 +1213,9 @@ export default function TimelineView() {
                           {row.isRecurring && !isMobile && (
                             <span style={{
                               fontSize: 9,
-                              color: '#A8A29E',
+                              color: 'var(--text-tertiary)',
                               flexShrink: 0,
-                              background: '#F2EFE9',
+                              background: 'var(--bg-secondary)',
                               borderRadius: 9999,
                               padding: '1px 5px',
                               fontWeight: 600,
@@ -1183,7 +1252,7 @@ export default function TimelineView() {
                         </div>
 
                         {/* Grid + bars */}
-                        <div style={{ flex: 1, position: 'relative', background: '#FFFFFF' }}>
+                        <div style={{ flex: 1, position: 'relative', background: 'var(--surface)' }}>
                           {/* Column shading */}
                           {days.map((d, i) => {
                             const dow = d.getDay()
@@ -1339,12 +1408,12 @@ export default function TimelineView() {
 
                   {/* Empty subject */}
                   {!collapsed && taskRows.length === 0 && (
-                    <div style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid #EDE8DF' }}>
+                    <div style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}>
                       <div
                         style={{
                           ...stickyLabel(10),
-                          background: '#FFFFFF',
-                          borderRight: '1px solid #EDE8DF',
+                          background: 'var(--surface)',
+                          borderRight: '1px solid var(--border-light)',
                           display: 'flex',
                           alignItems: 'center',
                           paddingLeft: 22,
@@ -1354,11 +1423,11 @@ export default function TimelineView() {
                         onClick={() => setAddModalSubjectId(subject.id)}
                       >
                         <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                          <path d="M6 1v10M1 6h10" stroke="#C4BDB5" strokeWidth="2" strokeLinecap="round"/>
+                          <path d="M6 1v10M1 6h10" stroke="var(--text-disabled)" strokeWidth="2" strokeLinecap="round"/>
                         </svg>
-                        <span style={{ fontSize: 11, color: '#C4BDB5', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
                       </div>
-                      <div style={{ flex: 1, background: '#FFFFFF' }} />
+                      <div style={{ flex: 1, background: 'var(--surface)' }} />
                     </div>
                   )}
                 </div>
