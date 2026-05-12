@@ -184,7 +184,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
     width: '100%',
     fontFamily: 'inherit',
     letterSpacing: '-0.01em',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   }
 
   const labelStyle: React.CSSProperties = {
@@ -210,6 +210,17 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
   return (
     <>
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+        @keyframes fadeInBackdrop {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+
       {/* Backdrop */}
       <div
         style={{
@@ -218,6 +229,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           backdropFilter: 'blur(2px)',
           WebkitBackdropFilter: 'blur(2px)',
           zIndex: 40,
+          animation: 'fadeInBackdrop 0.2s ease-out',
         }}
         onClick={onClose}
       />
@@ -233,6 +245,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
+        animation: 'slideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
 
         {/* Header */}
@@ -365,7 +378,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                       fontWeight: 600,
                       cursor: 'pointer',
                       letterSpacing: '-0.01em',
-                      transition: 'all 0.12s',
+                      transition: 'all 0.2s',
                       fontFamily: 'inherit',
                       boxShadow: active ? `0 2px 8px ${cfg.color}22` : 'none',
                       display: 'flex',
@@ -422,7 +435,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                       color: memoTab === tab ? '#1C1917' : '#78716C',
                       fontFamily: 'inherit',
                       boxShadow: memoTab === tab ? '0 1px 3px rgba(20,16,10,0.08)' : 'none',
-                      transition: 'all 0.12s',
+                      transition: 'all 0.2s',
                     }}
                   >
                     {tab === 'edit' ? '編集' : 'プレビュー'}
@@ -478,7 +491,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 letterSpacing: '-0.01em',
-                transition: 'all 0.12s',
+                transition: 'all 0.2s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
@@ -535,7 +548,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
               color: '#ffffff', border: 'none', borderRadius: 8,
               padding: '11px 16px', fontSize: 14, fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s', letterSpacing: '-0.02em',
+              transition: 'all 0.25s', letterSpacing: '-0.02em',
               fontFamily: 'inherit',
               boxShadow: saving ? 'none' : '0 3px 10px rgba(59,99,255,0.3)',
             }}

@@ -120,7 +120,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
     width: '100%',
     fontFamily: 'inherit',
     letterSpacing: '-0.01em',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   }
 
   const labelStyle: React.CSSProperties = {
@@ -242,7 +242,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                     fontWeight: mode === m ? 600 : 400,
                     cursor: 'pointer',
                     boxShadow: mode === m ? '0 1px 4px rgba(20,16,10,0.1)' : 'none',
-                    transition: 'all 0.15s',
+                    transition: 'all 0.25s',
                     letterSpacing: '-0.01em',
                     fontFamily: 'inherit',
                   }}
@@ -304,7 +304,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                     cursor: 'pointer',
                     color: showNewSubject ? '#3B63FF' : '#78716C',
                     whiteSpace: 'nowrap',
-                    transition: 'all 0.12s',
+                    transition: 'all 0.2s',
                     fontFamily: 'inherit',
                     letterSpacing: '-0.01em',
                     height: 38,
@@ -431,7 +431,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                         fontSize: 13,
                         fontWeight: intervalWeeks === iv.weeks ? 600 : 400,
                         cursor: 'pointer',
-                        transition: 'all 0.12s',
+                        transition: 'all 0.2s',
                         fontFamily: 'inherit',
                         letterSpacing: '-0.01em',
                         boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px rgba(59,99,255,0.18)' : 'none',
@@ -522,7 +522,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                 color: '#78716C',
                 fontFamily: 'inherit',
                 letterSpacing: '-0.02em',
-                transition: 'all 0.12s',
+                transition: 'all 0.2s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#EDE8DF' }}
               onMouseLeave={e => { e.currentTarget.style.background = '#F2EFE9' }}
@@ -541,7 +541,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: saving ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s',
+                transition: 'all 0.25s',
                 letterSpacing: '-0.02em',
                 fontFamily: 'inherit',
                 boxShadow: saving ? 'none' : '0 3px 10px rgba(59,99,255,0.3)',

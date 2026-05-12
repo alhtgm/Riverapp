@@ -58,12 +58,12 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         boxShadow: '0 8px 32px rgba(20,16,10,0.12), 0 2px 8px rgba(20,16,10,0.06)',
         zIndex: 200,
         overflow: 'hidden',
-        animation: 'quickMenuIn 0.14s cubic-bezier(0.2,0,0,1)',
+        animation: 'quickMenuIn 0.22s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
       <style>{`
         @keyframes quickMenuIn {
-          from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+          from { opacity: 0; transform: scale(0.94) translateY(-8px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>

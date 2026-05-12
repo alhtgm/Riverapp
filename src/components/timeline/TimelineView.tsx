@@ -11,9 +11,9 @@ const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
 const LABEL_WIDTH_DESKTOP = 216
 const LABEL_WIDTH_MOBILE = 108
-const ROW_HEIGHT = 46
+const ROW_HEIGHT = 52
 const HEADER_HEIGHT = 56
-const SUBJECT_SEP_HEIGHT = 28
+const SUBJECT_SEP_HEIGHT = 36
 
 function getDays(totalDays: number): Date[] {
   const today = new Date()
@@ -126,7 +126,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, signOut, updateTask } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, signOut, updateTask, loading } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -167,6 +167,23 @@ export default function TimelineView() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Keyboard shortcuts: N = new task, T = scroll to today
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault()
+        setAddModalSubjectId('')
+      } else if (e.key === 't' || e.key === 'T') {
+        scrollToToday()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [scrollToToday])
 
   const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
   const LABEL_WIDTH = isMobile ? LABEL_WIDTH_MOBILE : LABEL_WIDTH_DESKTOP
@@ -382,7 +399,7 @@ export default function TimelineView() {
           <div style={{ width: 1, height: 14, background: '#E3DDD5', marginLeft: 2, flexShrink: 0 }} />
           <span style={{
             fontSize: 12,
-            color: '#A8A29E',
+            color: '#6B7280',
             fontWeight: 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -396,7 +413,8 @@ export default function TimelineView() {
         {/* Add task button */}
         <button
           onClick={() => setAddModalSubjectId('')}
-          aria-label="課題を追加"
+          aria-label="課題を追加 (N)"
+          title="課題を追加 [N]"
           style={{
             background: 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
             color: '#ffffff',
@@ -408,7 +426,7 @@ export default function TimelineView() {
             cursor: 'pointer',
             letterSpacing: '-0.02em',
             boxShadow: '0 3px 10px rgba(59,99,255,0.3)',
-            transition: 'all 0.15s',
+            transition: 'all 0.25s',
             display: 'flex',
             alignItems: 'center',
             gap: 5,
@@ -443,7 +461,7 @@ export default function TimelineView() {
             fontWeight: 500,
             cursor: 'pointer',
             color: '#78716C',
-            transition: 'all 0.12s',
+            transition: 'all 0.2s',
             flexShrink: 0,
             fontFamily: 'inherit',
             letterSpacing: '-0.01em',
@@ -480,6 +498,7 @@ export default function TimelineView() {
         position: 'relative',
         zIndex: 99,
         overflowX: 'auto',
+        // スクロール可能であることをさりげなく示すフェード（::after は CSS-in-JS では難しいので親に position:relative が必要）
       }}>
         {/* Today button */}
         <button
@@ -497,7 +516,7 @@ export default function TimelineView() {
             fontWeight: 500,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
-            transition: 'all 0.12s',
+            transition: 'all 0.2s',
             flexShrink: 0,
             letterSpacing: '-0.01em',
             fontFamily: 'inherit',
@@ -512,7 +531,7 @@ export default function TimelineView() {
             e.currentTarget.style.borderColor = '#E3DDD5'
             e.currentTarget.style.color = '#78716C'
           }}
-          title="今日にスクロール"
+          title="今日にスクロール [T]"
         >
           <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
             <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.6"/>
@@ -553,7 +572,7 @@ export default function TimelineView() {
             fontWeight: focusOn ? 700 : 400,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
-            transition: 'all 0.12s',
+            transition: 'all 0.2s',
             flexShrink: 0,
             letterSpacing: '-0.01em',
             fontFamily: 'inherit',
@@ -604,7 +623,7 @@ export default function TimelineView() {
                 fontWeight: isActive ? 600 : 400,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                transition: 'all 0.12s',
+                transition: 'all 0.2s',
                 flexShrink: 0,
                 letterSpacing: '-0.01em',
                 fontFamily: 'inherit',
@@ -659,7 +678,7 @@ export default function TimelineView() {
                   borderRadius: 9999,
                   flexShrink: 0,
                   fontFamily: 'inherit',
-                  transition: 'all 0.12s',
+                  transition: 'all 0.2s',
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = '#EDE8DF'
@@ -784,7 +803,7 @@ export default function TimelineView() {
                     fontWeight: isToday ? 800 : 400,
                     color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? '#3B63FF' : '#78716C',
                     letterSpacing: '-0.02em',
-                    transition: 'all 0.12s',
+                    transition: 'all 0.2s',
                   }}>
                     {day.getDate()}
                   </div>
@@ -807,7 +826,24 @@ export default function TimelineView() {
           }} />
 
           {/* ---- Subject groups ---- */}
-          {grouped.length === 0 ? (
+          {loading && subjects.length === 0 ? (
+            /* Skeleton loader while fetching */
+            <>
+              <style>{`@keyframes skPulse2{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
+              {[36, 52, 52, 52, 36, 52, 52].map((h, i) => (
+                <div key={i} style={{ display: 'flex', height: h, borderBottom: '1px solid #EDE8DF', background: h === 36 ? '#EDE8DF' : '#FFFFFF' }}>
+                  <div style={{ width: LABEL_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', padding: h === 36 ? '0 14px' : '0 28px', borderRight: '1px solid #EDE8DF', gap: 12 }}>
+                    <div style={{ width: h === 36 ? 52 : 80 + (i % 3) * 18, height: h === 36 ? 9 : 11, borderRadius: 5, background: '#E3DDD5', animation: `skPulse2 1.5s ease-in-out ${i * 0.08}s infinite` }} />
+                  </div>
+                  {h !== 36 && (
+                    <div style={{ flex: 1, position: 'relative', background: '#FFFFFF', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+                      <div style={{ width: 120 + (i % 3) * 50, height: 34, borderRadius: 6, background: '#E3DDD5', animation: `skPulse2 1.5s ease-in-out ${i * 0.12}s infinite` }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          ) : grouped.length === 0 ? (
             <div style={{
               display: 'flex',
               height: 320,
@@ -832,12 +868,35 @@ export default function TimelineView() {
                     <path d="M8 11h6M11 8v6" stroke="#C4BDB5" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 14, color: '#A8A29E', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
+                <p style={{ fontSize: 14, color: '#78716C', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
                   {focusOn ? '今後1ヶ月以内の課題がありません' : '課題を追加してはじめましょう'}
                 </p>
-                <p style={{ fontSize: 12, color: '#C4BDB5', marginTop: 5, letterSpacing: '-0.01em' }}>
-                  {focusOn ? 'フォーカスをOFFにすると全ての行が表示されます' : '右上の「課題を追加」から追加できます'}
+                <p style={{ fontSize: 12, color: '#6B7280', marginTop: 5, letterSpacing: '-0.01em' }}>
+                  {focusOn ? '期間外の課題は「フォーカス」をOFFにすると表示されます' : '右上の「課題を追加」から追加できます [N]'}
                 </p>
+                {focusOn && (
+                  <button
+                    onClick={() => setFocusOn(false)}
+                    style={{
+                      marginTop: 14,
+                      background: '#FEF9EE',
+                      color: '#D97706',
+                      border: '1px solid rgba(217,119,6,0.3)',
+                      borderRadius: 9999,
+                      padding: '6px 18px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      letterSpacing: '-0.01em',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#FEF3C7'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.5)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#FEF9EE'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)' }}
+                  >
+                    フォーカスをOFFにする
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -896,7 +955,7 @@ export default function TimelineView() {
                           style={{
                             flexShrink: 0,
                             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1)',
+                            transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
                           }}
                         >
                           <path d="M2 3.5L5 6.5L8 3.5" stroke="#A8A29E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -946,7 +1005,7 @@ export default function TimelineView() {
                             alignItems: 'center',
                             flexShrink: 0,
                             opacity: isHovered ? 1 : 0,
-                            transition: 'opacity 0.15s',
+                            transition: 'opacity 0.2s',
                             borderRadius: 4,
                           }}
                           title="この科目に新しい課題を追加"
@@ -972,7 +1031,7 @@ export default function TimelineView() {
                             alignItems: 'center',
                             flexShrink: 0,
                             opacity: isHovered ? 1 : 0,
-                            transition: 'opacity 0.15s',
+                            transition: 'opacity 0.2s',
                             borderRadius: 4,
                           }}
                         >
@@ -1113,7 +1172,7 @@ export default function TimelineView() {
                               alignItems: 'center',
                               flexShrink: 0,
                               opacity: isRowHovered ? 0.8 : 0,
-                              transition: 'opacity 0.15s',
+                              transition: 'opacity 0.2s',
                               borderRadius: 4,
                             }}
                           >
@@ -1180,7 +1239,7 @@ export default function TimelineView() {
                                   width,
                                   top: '50%',
                                   transform: 'translateY(-50%)',
-                                  height: 28,
+                                  height: 34,
                                   background: bg,
                                   borderRadius: 6,
                                   cursor: isDragging ? 'grabbing' : 'grab',
@@ -1191,7 +1250,7 @@ export default function TimelineView() {
                                   overflow: 'hidden',
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
-                                  transition: isDragging ? 'none' : 'transform 0.12s, box-shadow 0.12s',
+                                  transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
                                   borderLeft: `3px solid ${color}`,
                                   boxShadow: isDragging ? `0 6px 16px ${color}38` : `0 1px 4px ${color}18`,
                                   userSelect: 'none',
