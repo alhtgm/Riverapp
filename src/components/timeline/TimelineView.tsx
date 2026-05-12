@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+﻿import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Subject, Task } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
@@ -391,12 +391,12 @@ export default function TimelineView() {
           <div style={{
             width: 30,
             height: 30,
-            background: 'linear-gradient(135deg, #3B63FF 0%, #7C3AED 100%)',
+            background: 'linear-gradient(135deg, #0891B2 0%, #06B6D4 100%)',
             borderRadius: 8,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 3px 10px rgba(59,99,255,0.35)',
+            boxShadow: '0 3px 10px rgba(8,145,178,0.35)',
             flexShrink: 0,
           }}>
             <RiverLogo size={18} />
@@ -437,7 +437,7 @@ export default function TimelineView() {
           aria-label="課題を追加 (N)"
           title="課題を追加 [N]"
           style={{
-            background: 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
+            background: 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
             color: '#ffffff',
             border: 'none',
             borderRadius: 8,
@@ -446,7 +446,7 @@ export default function TimelineView() {
             fontWeight: 600,
             cursor: 'pointer',
             letterSpacing: '-0.02em',
-            boxShadow: '0 3px 10px rgba(59,99,255,0.3)',
+            boxShadow: '0 3px 10px rgba(8,145,178,0.3)',
             transition: 'all 0.25s',
             display: 'flex',
             alignItems: 'center',
@@ -455,11 +455,11 @@ export default function TimelineView() {
             fontFamily: 'inherit',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 5px 16px rgba(59,99,255,0.42)'
+            e.currentTarget.style.boxShadow = '0 5px 16px rgba(8,145,178,0.42)'
             e.currentTarget.style.transform = 'translateY(-1px)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 3px 10px rgba(59,99,255,0.3)'
+            e.currentTarget.style.boxShadow = '0 3px 10px rgba(8,145,178,0.3)'
             e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
@@ -569,7 +569,7 @@ export default function TimelineView() {
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'var(--accent-bg)'
-            e.currentTarget.style.borderColor = 'rgba(59,99,255,0.3)'
+            e.currentTarget.style.borderColor = 'rgba(8,145,178,0.3)'
             e.currentTarget.style.color = 'var(--accent)'
           }}
           onMouseLeave={e => {
@@ -809,7 +809,7 @@ export default function TimelineView() {
                     paddingBottom: 8,
                     gap: 2,
                     background: isToday
-                      ? 'rgba(59,99,255,0.1)'
+                      ? 'rgba(8,145,178,0.1)'
                       : (isSun || isSat)
                       ? 'rgba(20,16,10,0.015)'
                       : 'transparent',
@@ -838,7 +838,7 @@ export default function TimelineView() {
                     justifyContent: 'center',
                     borderRadius: '50%',
                     background: isToday ? 'var(--accent)' : 'transparent',
-                    boxShadow: isToday ? '0 2px 10px rgba(59,99,255,0.48), 0 0 0 2px rgba(59,99,255,0.18)' : 'none',
+                    boxShadow: isToday ? '0 2px 10px rgba(8,145,178,0.48), 0 0 0 2px rgba(8,145,178,0.18)' : 'none',
                     fontSize: isToday ? 12 : 11,
                     fontWeight: isToday ? 800 : 400,
                     color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? 'var(--accent)' : 'var(--text-secondary)',
@@ -859,10 +859,10 @@ export default function TimelineView() {
             bottom: 0,
             left: LABEL_WIDTH + todayIdx * COL_WIDTH + COL_WIDTH / 2 - 1,
             width: 2,
-            background: 'linear-gradient(180deg, #3B63FF 0%, rgba(59,99,255,0.12) 100%)',
+            background: 'linear-gradient(180deg, #0891B2 0%, rgba(8,145,178,0.12) 100%)',
             zIndex: 4,
             pointerEvents: 'none',
-            boxShadow: '0 0 6px 1px rgba(59,99,255,0.28)',
+            boxShadow: '0 0 6px 1px rgba(8,145,178,0.28)',
           }} />
 
           {/* ---- Subject groups ---- */}
@@ -1069,7 +1069,7 @@ export default function TimelineView() {
                           title="この科目に新しい課題を追加"
                         >
                           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                            <path d="M6 1v10M1 6h10" stroke="#3B63FF" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M6 1v10M1 6h10" stroke="#0891B2" strokeWidth="2" strokeLinecap="round"/>
                           </svg>
                         </button>
                       )}
@@ -1245,7 +1245,7 @@ export default function TimelineView() {
                               border: 'none',
                               cursor: 'pointer',
                               padding: '3px 5px',
-                              color: '#3B63FF',
+                              color: '#0891B2',
                               display: 'flex',
                               alignItems: 'center',
                               flexShrink: 0,
@@ -1255,7 +1255,7 @@ export default function TimelineView() {
                             }}
                           >
                             <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                              <path d="M6 1v10M1 6h10" stroke="#3B63FF" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M6 1v10M1 6h10" stroke="#0891B2" strokeWidth="2" strokeLinecap="round"/>
                             </svg>
                           </button>
                         </div>
@@ -1278,7 +1278,7 @@ export default function TimelineView() {
                                   width: COL_WIDTH,
                                   height: ROW_HEIGHT,
                                   background: isTodayCol
-                                    ? 'rgba(59,99,255,0.04)'
+                                    ? 'rgba(8,145,178,0.04)'
                                     : 'rgba(20,16,10,0.016)',
                                   borderRight: '1px solid rgba(20,16,10,0.025)',
                                   pointerEvents: 'none',

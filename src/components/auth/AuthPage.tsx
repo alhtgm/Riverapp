@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 const RiverLogo = ({ size = 20 }: { size?: number }) => (
@@ -79,7 +79,7 @@ export default function AuthPage() {
         left: '-10%',
         width: 600,
         height: 600,
-        background: 'radial-gradient(circle, rgba(59,99,255,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(8,145,178,0.15) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
       <div style={{
@@ -114,12 +114,12 @@ export default function AuthPage() {
             <div style={{
               width: 36,
               height: 36,
-              background: 'linear-gradient(135deg, #3B63FF 0%, #7C3AED 100%)',
+              background: 'linear-gradient(135deg, #0891B2 0%, #06B6D4 100%)',
               borderRadius: 10,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(59,99,255,0.4)',
+              boxShadow: '0 4px 12px rgba(8,145,178,0.4)',
             }}>
               <RiverLogo size={20} />
             </div>
@@ -170,8 +170,8 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="you@example.com"
                 onFocus={e => {
-                  e.target.style.borderColor = '#3B63FF'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59,99,255,0.12)'
+                  e.target.style.borderColor = '#0891B2'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
                   e.target.style.background = '#FFFFFF'
                 }}
                 onBlur={e => {
@@ -193,8 +193,8 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="6文字以上"
                 onFocus={e => {
-                  e.target.style.borderColor = '#3B63FF'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59,99,255,0.12)'
+                  e.target.style.borderColor = '#0891B2'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
                   e.target.style.background = '#FFFFFF'
                 }}
                 onBlur={e => {
@@ -236,7 +236,7 @@ export default function AuthPage() {
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? '#A8A29E' : 'linear-gradient(135deg, #3B63FF 0%, #2D52E8 100%)',
+                background: loading ? '#A8A29E' : 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 10,
@@ -245,20 +245,20 @@ export default function AuthPage() {
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 letterSpacing: '-0.02em',
-                boxShadow: loading ? 'none' : '0 4px 12px rgba(59,99,255,0.35)',
+                boxShadow: loading ? 'none' : '0 4px 12px rgba(8,145,178,0.35)',
                 transition: 'all 0.15s',
                 marginTop: 4,
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(59,99,255,0.45)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(8,145,178,0.45)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
                 }
               }}
               onMouseLeave={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(59,99,255,0.35)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(8,145,178,0.35)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
                 }
               }}
@@ -280,7 +280,7 @@ export default function AuthPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#3B63FF',
+                color: '#0891B2',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 600,

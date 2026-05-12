@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   /* Warm neutrals — Muji/SmartHR Stone scale */
@@ -19,10 +19,10 @@
   --border-strong:   #CCC5BB;
 
   /* Accent — deep indigo-blue */
-  --accent:          #3B63FF;
-  --accent-dark:     #2349DD;
-  --accent-bg:       #EEF2FF;
-  --accent-muted:    rgba(59,99,255,0.12);
+  --accent:          #0891B2;
+  --accent-dark:     #0E7490;
+  --accent-bg:       #ECFEFF;
+  --accent-muted:    rgba(8,145,178,0.12);
 
   /* Danger */
   --danger:          #DC2626;
@@ -53,10 +53,10 @@
   --border:          #3A3733;
   --border-light:    #302E2B;
   --border-strong:   #4A4744;
-  --accent:          #6B84FF;
-  --accent-dark:     #5470E8;
-  --accent-bg:       rgba(107,132,255,0.18);
-  --accent-muted:    rgba(107,132,255,0.12);
+  --accent:          #22D3EE;
+  --accent-dark:     #06B6D4;
+  --accent-bg:       rgba(8,145,178,0.18);
+  --accent-muted:    rgba(8,145,178,0.12);
   --danger:          #EF4444;
   --danger-bg:       rgba(239,68,68,0.15);
   --header-glass: rgba(28,25,23,0.88);

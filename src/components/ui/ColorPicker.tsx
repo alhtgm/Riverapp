@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+﻿import { useEffect, useRef } from 'react'
 
 const PRESET_COLORS = [
   '#E16259', '#F97316', '#D97706', '#16A34A',
-  '#0891B2', '#3B63FF', '#7C3AED', '#DB2777',
+  '#0891B2', '#06B6D4', '#7C3AED', '#DB2777',
   '#64748B', '#78716C', '#0F766E', '#15803D',
   '#1D4ED8', '#6D28D9', '#BE185D', '#B45309',
 ]
