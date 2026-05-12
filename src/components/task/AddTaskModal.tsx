@@ -147,7 +147,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   return (
     <>
       <div
-        style={{ position: 'fixed', inset: 0, background: 'rgba(20,16,10,0.3)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', zIndex: 60 }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(20,16,10,0.3)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', zIndex: 200 }}
         onClick={onClose}
       />
       <div style={{
@@ -159,7 +159,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
         border: '1px solid var(--border)',
         borderRadius: 16,
         boxShadow: '0 24px 64px rgba(20,16,10,0.14), 0 8px 20px rgba(20,16,10,0.07)',
-        zIndex: 70,
+        zIndex: 210,
         width: 'min(520px, calc(100vw - 32px))',
         maxHeight: 'calc(100svh - 48px)',
         overflowY: 'auto',

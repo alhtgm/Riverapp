@@ -239,7 +239,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           background: 'rgba(20,16,10,0.25)',
           backdropFilter: 'blur(2px)',
           WebkitBackdropFilter: 'blur(2px)',
-          zIndex: 40,
+          zIndex: 150,
           animation: 'fadeInBackdrop 0.2s ease-out',
         }}
         onClick={onClose}
@@ -249,10 +249,10 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: 'min(420px, 100vw)',
-        background: '#FFFFFF',
-        borderLeft: '1px solid #E3DDD5',
+        background: 'var(--surface)',
+        borderLeft: '1px solid var(--border)',
         boxShadow: '-8px 0 40px rgba(20,16,10,0.1)',
-        zIndex: 50,
+        zIndex: 160,
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',

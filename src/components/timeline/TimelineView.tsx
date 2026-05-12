@@ -30,6 +30,14 @@ function getDays(totalDays: number): Date[] {
 const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 const TOTAL_DAYS = 240
 
+const DARK_BAR_CONFIG: Record<string, { color: string; bg: string }> = {
+  todo:        { color: '#A8A29E', bg: 'rgba(155,149,144,0.16)' },
+  in_progress: { color: '#6B84FF', bg: 'rgba(107,132,255,0.18)' },
+  done:        { color: '#22C55E', bg: 'rgba(22,163,74,0.18)' },
+  submitted:   { color: '#A855F7', bg: 'rgba(124,58,237,0.18)' },
+  overdue:     { color: '#EF4444', bg: 'rgba(239,68,68,0.16)' },
+}
+
 type EffectiveStatus = 'todo' | 'in_progress' | 'done' | 'submitted' | 'overdue'
 
 const STATUS_PILLS: { key: EffectiveStatus; label: string }[] = [
@@ -350,9 +358,9 @@ export default function TimelineView() {
     if (si < 0 && ei < 0) return null
     const startI = si >= 0 ? si : 0
     const endI = ei >= 0 ? ei : days.length - 1
-    const color = isOverdue(task) ? STATUS_CONFIG.overdue.color : STATUS_CONFIG[task.status].color
-    const bg = isOverdue(task) ? STATUS_CONFIG.overdue.bg : STATUS_CONFIG[task.status].bg
-    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
+    const statusKey = isOverdue(task) ? 'overdue' : task.status
+    const cfg = isDark ? DARK_BAR_CONFIG[statusKey] : (isOverdue(task) ? STATUS_CONFIG.overdue : STATUS_CONFIG[task.status])
+    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color: cfg.color, bg: cfg.bg }
   }
 
   const stickyLabel = (zIndex = 5): React.CSSProperties => ({
