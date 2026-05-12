@@ -30,13 +30,6 @@ function getDays(totalDays: number): Date[] {
 const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 const TOTAL_DAYS = 240
 
-const DARK_BAR_CONFIG: Record<string, { color: string; bg: string }> = {
-  todo:        { color: '#A8A29E', bg: 'rgba(155,149,144,0.16)' },
-  in_progress: { color: '#6B84FF', bg: 'rgba(107,132,255,0.18)' },
-  done:        { color: '#22C55E', bg: 'rgba(22,163,74,0.18)' },
-  submitted:   { color: '#A855F7', bg: 'rgba(124,58,237,0.18)' },
-  overdue:     { color: '#EF4444', bg: 'rgba(239,68,68,0.16)' },
-}
 
 type EffectiveStatus = 'todo' | 'in_progress' | 'done' | 'submitted' | 'overdue'
 
@@ -358,9 +351,10 @@ export default function TimelineView() {
     if (si < 0 && ei < 0) return null
     const startI = si >= 0 ? si : 0
     const endI = ei >= 0 ? ei : days.length - 1
-    const statusKey = isOverdue(task) ? 'overdue' : task.status
-    const cfg = isDark ? DARK_BAR_CONFIG[statusKey] : (isOverdue(task) ? STATUS_CONFIG.overdue : STATUS_CONFIG[task.status])
-    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color: cfg.color, bg: cfg.bg }
+    const cfg = isOverdue(task) ? STATUS_CONFIG.overdue : STATUS_CONFIG[task.status]
+    const color = isDark ? cfg.darkColor : cfg.color
+    const bg    = isDark ? cfg.darkBg    : cfg.bg
+    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
   }
 
   const stickyLabel = (zIndex = 5): React.CSSProperties => ({
@@ -615,13 +609,15 @@ export default function TimelineView() {
           { key: 'all',   label: 'すべて' },
         ] as const).map(opt => {
           const active = viewRange === opt.key
+          const activeBg    = isDark ? 'rgba(217,119,6,0.18)' : '#FEF9EE'
+          const activeColor = '#D97706'
           return (
             <button
               key={opt.key}
               onClick={() => setViewRange(opt.key)}
               style={{
-                background: active ? '#FEF9EE' : 'transparent',
-                color: active ? '#D97706' : 'var(--text-secondary)',
+                background: active ? activeBg : 'transparent',
+                color: active ? activeColor : 'var(--text-secondary)',
                 border: `1px solid ${active ? '#D9770644' : 'var(--border)'}`,
                 borderRadius: 9999,
                 padding: '3px 10px',
@@ -637,9 +633,9 @@ export default function TimelineView() {
               }}
               onMouseEnter={e => {
                 if (!active) {
-                  e.currentTarget.style.background = '#FEF9EE'
+                  e.currentTarget.style.background = activeBg
                   e.currentTarget.style.borderColor = '#D9770633'
-                  e.currentTarget.style.color = '#D97706'
+                  e.currentTarget.style.color = activeColor
                 }
               }}
               onMouseLeave={e => {
@@ -661,6 +657,8 @@ export default function TimelineView() {
         {STATUS_PILLS.map(pill => {
           const isActive = selectedStatuses.has(pill.key)
           const cfg = STATUS_CONFIG[pill.key]
+          const pillColor = isDark ? cfg.darkColor : cfg.color
+          const pillBg    = isDark ? cfg.darkBg    : cfg.bg
           return (
             <button
               key={pill.key}
@@ -669,9 +667,9 @@ export default function TimelineView() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 5,
-                background: isActive ? cfg.bg : 'transparent',
-                color: isActive ? cfg.color : 'var(--text-secondary)',
-                border: `1px solid ${isActive ? cfg.color + '44' : 'var(--border)'}`,
+                background: isActive ? pillBg : 'transparent',
+                color: isActive ? pillColor : 'var(--text-secondary)',
+                border: `1px solid ${isActive ? pillColor + '44' : 'var(--border)'}`,
                 borderRadius: 9999,
                 padding: '3px 10px 3px 7px',
                 fontSize: 12,
@@ -682,13 +680,13 @@ export default function TimelineView() {
                 flexShrink: 0,
                 letterSpacing: '-0.01em',
                 fontFamily: 'inherit',
-                boxShadow: isActive ? `0 2px 8px ${cfg.color}22` : 'none',
+                boxShadow: isActive ? `0 2px 8px ${pillColor}22` : 'none',
               }}
               onMouseEnter={e => {
                 if (!isActive) {
-                  e.currentTarget.style.background = cfg.bg
-                  e.currentTarget.style.borderColor = cfg.color + '33'
-                  e.currentTarget.style.color = cfg.color
+                  e.currentTarget.style.background = pillBg
+                  e.currentTarget.style.borderColor = pillColor + '33'
+                  e.currentTarget.style.color = pillColor
                 }
               }}
               onMouseLeave={e => {
@@ -703,7 +701,7 @@ export default function TimelineView() {
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: cfg.color,
+                background: pillColor,
                 flexShrink: 0,
                 opacity: isActive ? 1 : 0.45,
               }} />
@@ -819,27 +817,18 @@ export default function TimelineView() {
                     position: 'relative',
                   }}
                 >
-                  {(isFirst || i === 0) && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 9,
-                      left: 3,
-                      fontSize: 9,
-                      fontWeight: 700,
-                      color: 'var(--text-secondary)',
-                      letterSpacing: '0.05em',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {day.getMonth() + 1}月
-                    </div>
-                  )}
                   <span style={{
                     fontSize: 9,
-                    fontWeight: 600,
-                    color: isSun ? '#DC2626' : isSat ? 'var(--accent)' : 'var(--text-disabled)',
-                    letterSpacing: '0.02em',
+                    fontWeight: (isFirst || i === 0) ? 700 : 600,
+                    color: (isFirst || i === 0)
+                      ? 'var(--text-secondary)'
+                      : isSun ? '#DC2626'
+                      : isSat ? 'var(--accent)'
+                      : 'var(--text-disabled)',
+                    letterSpacing: (isFirst || i === 0) ? '0.04em' : '0.02em',
+                    whiteSpace: 'nowrap',
                   }}>
-                    {DAY_JA[dow]}
+                    {(isFirst || i === 0) ? `${day.getMonth() + 1}月` : DAY_JA[dow]}
                   </span>
                   <div style={{
                     width: isToday ? 26 : 24,
