@@ -63,7 +63,7 @@ export default function AuthPage() {
   return (
     <div style={{
       minHeight: '100svh',
-      background: 'linear-gradient(145deg, #0D1117 0%, #1A1035 45%, #0D1B35 100%)',
+      background: 'linear-gradient(145deg, #1a1235 0%, #2f2963 50%, #1e1845 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -79,7 +79,7 @@ export default function AuthPage() {
         left: '-10%',
         width: 600,
         height: 600,
-        background: 'radial-gradient(circle, rgba(8,145,178,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(239,148,108,0.15) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
       <div style={{
@@ -88,7 +88,7 @@ export default function AuthPage() {
         right: '-5%',
         width: 500,
         height: 500,
-        background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(112,135,127,0.15) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -106,7 +106,7 @@ export default function AuthPage() {
 
         {/* Card header band */}
         <div style={{
-          background: 'linear-gradient(135deg, #1C1C28 0%, #252038 100%)',
+          background: 'linear-gradient(135deg, #2f2963 0%, #454372 100%)',
           padding: '32px 36px 28px',
         }}>
           {/* Logo */}
@@ -114,12 +114,12 @@ export default function AuthPage() {
             <div style={{
               width: 36,
               height: 36,
-              background: 'linear-gradient(135deg, #0891B2 0%, #06B6D4 100%)',
+              background: 'linear-gradient(135deg, #454372 0%, #70877f 100%)',
               borderRadius: 10,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(8,145,178,0.4)',
+              boxShadow: '0 4px 12px rgba(112,135,127,0.4)',
             }}>
               <RiverLogo size={20} />
             </div>
@@ -170,7 +170,7 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="you@example.com"
                 onFocus={e => {
-                  e.target.style.borderColor = '#0891B2'
+                  e.target.style.borderColor = '#ef946c'
                   e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
                   e.target.style.background = '#FFFFFF'
                 }}
@@ -193,7 +193,7 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="6文字以上"
                 onFocus={e => {
-                  e.target.style.borderColor = '#0891B2'
+                  e.target.style.borderColor = '#ef946c'
                   e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
                   e.target.style.background = '#FFFFFF'
                 }}
@@ -236,7 +236,7 @@ export default function AuthPage() {
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? '#A8A29E' : 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
+                background: loading ? '#A8A29E' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: 10,
@@ -245,20 +245,20 @@ export default function AuthPage() {
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 letterSpacing: '-0.02em',
-                boxShadow: loading ? 'none' : '0 4px 12px rgba(8,145,178,0.35)',
+                boxShadow: loading ? 'none' : '0 4px 12px rgba(239,148,108,0.35)',
                 transition: 'all 0.15s',
                 marginTop: 4,
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(8,145,178,0.45)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(239,148,108,0.48)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
                 }
               }}
               onMouseLeave={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(8,145,178,0.35)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(239,148,108,0.35)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
                 }
               }}
@@ -280,7 +280,7 @@ export default function AuthPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#0891B2',
+                color: '#ef946c',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 600,

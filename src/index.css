@@ -18,11 +18,11 @@
   --border-light:    #EDE8DF;
   --border-strong:   #CCC5BB;
 
-  /* Accent — deep indigo-blue */
-  --accent:          #0891B2;
-  --accent-dark:     #0E7490;
-  --accent-bg:       #ECFEFF;
-  --accent-muted:    rgba(8,145,178,0.12);
+  /* Accent — warm orange */
+  --accent:          #ef946c;
+  --accent-dark:     #d4794f;
+  --accent-bg:       rgba(239,148,108,0.08);
+  --accent-muted:    rgba(239,148,108,0.12);
 
   /* Danger */
   --danger:          #DC2626;
@@ -53,10 +53,10 @@
   --border:          #3A3733;
   --border-light:    #302E2B;
   --border-strong:   #4A4744;
-  --accent:          #22D3EE;
-  --accent-dark:     #06B6D4;
-  --accent-bg:       rgba(8,145,178,0.18);
-  --accent-muted:    rgba(8,145,178,0.12);
+  --accent:          #f0a882;
+  --accent-dark:     #ef946c;
+  --accent-bg:       rgba(239,148,108,0.15);
+  --accent-muted:    rgba(239,148,108,0.12);
   --danger:          #EF4444;
   --danger-bg:       rgba(239,68,68,0.15);
   --header-glass: rgba(28,25,23,0.88);

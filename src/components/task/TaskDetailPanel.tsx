@@ -26,7 +26,7 @@ function renderInline(text: string): React.ReactNode {
     } else {
       parts.push(
         <a key={i++} href={match[5]} target="_blank" rel="noopener noreferrer"
-          style={{ color: '#0891B2', textDecoration: 'underline' }}>
+          style={{ color: '#ef946c', textDecoration: 'underline' }}>
           {match[4]}
         </a>
       )
@@ -209,8 +209,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   }
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#0891B2'
-    e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
+    e.target.style.borderColor = '#ef946c'
+    e.target.style.boxShadow = '0 0 0 3px rgba(239,148,108,0.12)'
     e.target.style.background = '#FFFFFF'
   }
   const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -558,7 +558,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 onClick={() => setApplyToAll(v => !v)}
                 style={{
                   width: 36, height: 20, borderRadius: 9999,
-                  background: applyToAll ? '#0891B2' : '#C4BDB5',
+                  background: applyToAll ? '#ef946c' : '#C4BDB5',
                   position: 'relative', transition: 'background 0.2s', flexShrink: 0, cursor: 'pointer',
                 }}
               >
@@ -568,7 +568,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                   boxShadow: '0 1px 4px rgba(0,0,0,0.2)', transition: 'left 0.2s',
                 }} />
               </div>
-              <span style={{ fontSize: 12, color: applyToAll ? '#0891B2' : '#78716C', fontWeight: applyToAll ? 600 : 400, letterSpacing: '-0.01em' }}>
+              <span style={{ fontSize: 12, color: applyToAll ? '#ef946c' : '#78716C', fontWeight: applyToAll ? 600 : 400, letterSpacing: '-0.01em' }}>
                 以降すべての課題に適用
               </span>
             </label>
@@ -578,23 +578,23 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             onClick={handleSave}
             disabled={saving}
             style={{
-              background: saving ? '#A8A29E' : 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
+              background: saving ? '#A8A29E' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
               color: '#ffffff', border: 'none', borderRadius: 8,
               padding: '11px 16px', fontSize: 14, fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
               transition: 'all 0.25s', letterSpacing: '-0.02em',
               fontFamily: 'inherit',
-              boxShadow: saving ? 'none' : '0 3px 10px rgba(8,145,178,0.3)',
+              boxShadow: saving ? 'none' : '0 3px 10px rgba(239,148,108,0.3)',
             }}
             onMouseEnter={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 5px 16px rgba(8,145,178,0.42)'
+                e.currentTarget.style.boxShadow = '0 5px 16px rgba(239,148,108,0.42)'
                 e.currentTarget.style.transform = 'translateY(-1px)'
               }
             }}
             onMouseLeave={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 3px 10px rgba(8,145,178,0.3)'
+                e.currentTarget.style.boxShadow = '0 3px 10px rgba(239,148,108,0.3)'
                 e.currentTarget.style.transform = 'translateY(0)'
               }
             }}
