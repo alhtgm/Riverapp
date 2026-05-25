@@ -76,7 +76,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       const rowGroups = new Map<string, Task[]>()
       for (const t of allTasks) {
-        const key = t.recurrence_id ?? t.row_id ?? t.id
+        const key = t.recurrence_id ?? t.id
         const arr = rowGroups.get(key) ?? []
         arr.push(t)
         rowGroups.set(key, arr)

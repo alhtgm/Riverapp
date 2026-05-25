@@ -51,26 +51,27 @@ function taskMatchesFilter(task: Task, selected: Set<EffectiveStatus>, todayStr:
   return selected.has(getEffectiveStatus(task, todayStr))
 }
 
-interface TaskRow {
-  rowKey: string
-  title: string
+interface SubjectRow {
+  rowIndex: number
   tasks: Task[]
   isRecurring: boolean
+  title: string
 }
 
 interface GroupedSubject {
   subject: Subject
-  taskRows: TaskRow[]
+  subjectRows: SubjectRow[]
 }
 
 /**
- * Groups tasks into rows:
- * - Recurring tasks: grouped by recurrence_id
- * - Single tasks: grouped by (row_id ?? task.id) — tasks pointing to the same anchor share a row
+ * Greedy interval scheduling per subject:
+ * - Recurring tasks: grouped by recurrence_id (one row per series)
+ * - Single tasks: assigned to rows using earliest-end-date greedy algorithm
+ *   so non-overlapping tasks share a row
  */
-function buildTaskRows(tasks: Task[]): TaskRow[] {
+function buildSubjectRows(tasks: Task[]): SubjectRow[] {
   const recurMap = new Map<string, Task[]>()
-  const rowMap = new Map<string, Task[]>()
+  const singles: Task[] = []
 
   for (const t of tasks) {
     if (t.recurrence_id) {
@@ -78,29 +79,51 @@ function buildTaskRows(tasks: Task[]): TaskRow[] {
       arr.push(t)
       recurMap.set(t.recurrence_id, arr)
     } else {
-      // Tasks with row_id point to the anchor task's id; anchors (row_id=null) use their own id
-      const key = t.row_id ?? t.id
-      const arr = rowMap.get(key) ?? []
-      arr.push(t)
-      rowMap.set(key, arr)
+      singles.push(t)
     }
   }
 
-  const rows: TaskRow[] = []
-  for (const [key, ts] of recurMap) {
-    rows.push({
-      rowKey: key,
-      title: ts[0].title,
-      tasks: [...ts].sort((a, b) => a.start_date.localeCompare(b.start_date)),
-      isRecurring: true,
-    })
-  }
-  for (const [key, ts] of rowMap) {
+  const recurRows: SubjectRow[] = []
+  for (const ts of recurMap.values()) {
     const sorted = [...ts].sort((a, b) => a.start_date.localeCompare(b.start_date))
-    rows.push({ rowKey: key, title: sorted[0].title, tasks: sorted, isRecurring: false })
+    recurRows.push({ rowIndex: 0, tasks: sorted, isRecurring: true, title: sorted[0].title })
   }
-  rows.sort((a, b) => a.tasks[0].start_date.localeCompare(b.tasks[0].start_date))
-  return rows
+
+  // Greedy: sort singles by start_date, assign each to the row whose end is earliest and < task.start_date
+  const sortedSingles = [...singles].sort((a, b) => a.start_date.localeCompare(b.start_date))
+  const singleBuckets: Task[][] = []
+  const rowEnds: string[] = []
+
+  for (const task of sortedSingles) {
+    let bestRow = -1
+    let bestEnd = ''
+    for (let i = 0; i < rowEnds.length; i++) {
+      if (rowEnds[i] < task.start_date) {
+        if (bestRow === -1 || rowEnds[i] < bestEnd) {
+          bestRow = i
+          bestEnd = rowEnds[i]
+        }
+      }
+    }
+    if (bestRow !== -1) {
+      singleBuckets[bestRow].push(task)
+      rowEnds[bestRow] = task.due_date
+    } else {
+      singleBuckets.push([task])
+      rowEnds.push(task.due_date)
+    }
+  }
+
+  const singleRows: SubjectRow[] = singleBuckets.map(ts => ({
+    rowIndex: 0,
+    tasks: ts,
+    isRecurring: false,
+    title: ts.length === 1 ? ts[0].title : '',
+  }))
+
+  const all = [...recurRows, ...singleRows]
+  all.sort((a, b) => a.tasks[0].start_date.localeCompare(b.tasks[0].start_date))
+  return all.map((row, i) => ({ ...row, rowIndex: i }))
 }
 
 
@@ -125,14 +148,11 @@ export default function TimelineView() {
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
-  /** rowKey + subjectId for adding to an existing row */
-  const [addToRow, setAddToRow] = useState<{ rowKey: string; subjectId: string } | null>(null)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
-  const [hoveredRowKey, setHoveredRowKey] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
   /** 表示範囲: 'week'=今週, 'month'=今月(30日), 'all'=すべて */
   const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('month')
@@ -293,18 +313,18 @@ export default function TimelineView() {
 
   /** A row matches focus if any of its tasks overlaps with [today, today+30]
    *  (already started but not yet due, OR starting within the next 30 days) */
-  const rowMatchesFocus = useCallback((row: TaskRow): boolean => {
+  const rowMatchesFocus = useCallback((row: SubjectRow): boolean => {
     return row.tasks.some(t => t.start_date <= focusCutoffStr && t.due_date >= todayStr)
   }, [todayStr, focusCutoffStr])
 
   const grouped: GroupedSubject[] = subjects
     .map(subject => {
-      const allRows = buildTaskRows(tasks.filter(t => t.subject_id === subject.id))
-      let taskRows = allRows
+      const allRows = buildSubjectRows(tasks.filter(t => t.subject_id === subject.id))
+      let subjectRows = allRows
 
       // Apply status filter
       if (isFiltering) {
-        taskRows = taskRows
+        subjectRows = subjectRows
           .map(row => ({
             ...row,
             tasks: row.tasks.filter(t => taskMatchesFilter(t, selectedStatuses, todayStr)),
@@ -314,15 +334,15 @@ export default function TimelineView() {
 
       // Apply focus filter
       if (viewRange !== 'all') {
-        taskRows = taskRows.filter(row => rowMatchesFocus(row))
+        subjectRows = subjectRows.filter(row => rowMatchesFocus(row))
       }
 
-      return { subject, taskRows }
+      return { subject, subjectRows }
     })
-    .filter(g => g.taskRows.length > 0)
+    .filter(g => g.subjectRows.length > 0)
 
   const filteredTotal = grouped.reduce(
-    (sum, g) => sum + g.taskRows.reduce((s, r) => s + r.tasks.length, 0), 0
+    (sum, g) => sum + g.subjectRows.reduce((s, r) => s + r.tasks.length, 0), 0
   )
 
   const toggleStatus = (key: EffectiveStatus) => {
@@ -931,7 +951,7 @@ export default function TimelineView() {
               </div>
             </div>
           ) : (
-            grouped.map(({ subject, taskRows }) => {
+            grouped.map(({ subject, subjectRows }) => {
               const collapsed = collapsedIds.has(subject.id)
               const isDeletingThis = deletingSubjectId === subject.id
               const isHovered = hoveredSubjectId === subject.id
@@ -1024,7 +1044,7 @@ export default function TimelineView() {
                         >
                           {subject.name}
                         </span>
-                        {!collapsed && taskRows.length > 0 && (
+                        {!collapsed && subjectRows.length > 0 && (
                           <span style={{
                             fontSize: 9,
                             color: 'var(--text-tertiary)',
@@ -1034,7 +1054,7 @@ export default function TimelineView() {
                             flexShrink: 0,
                             fontWeight: 700,
                           }}>
-                            {taskRows.length}
+                            {subjectRows.reduce((s, r) => s + r.tasks.length, 0)}
                           </span>
                         )}
                       </div>
@@ -1165,14 +1185,11 @@ export default function TimelineView() {
                   </div>
 
                   {/* Task rows */}
-                  {!collapsed && taskRows.map(row => {
-                    const isRowHovered = hoveredRowKey === row.rowKey
+                  {!collapsed && subjectRows.map(row => {
                     return (
                       <div
-                        key={row.rowKey}
+                        key={row.rowIndex}
                         style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}
-                        onMouseEnter={() => setHoveredRowKey(row.rowKey)}
-                        onMouseLeave={() => setHoveredRowKey(null)}
                       >
                         {/* Sticky task label */}
                         <div style={{
@@ -1195,21 +1212,25 @@ export default function TimelineView() {
                               opacity: 0.7,
                             }} />
                           )}
-                          <span
-                            title={row.title}
-                            style={{
-                              fontSize: isMobile ? 10 : 12,
-                              color: 'var(--text-secondary)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              flex: 1,
-                              fontWeight: row.isRecurring ? 600 : 400,
-                              letterSpacing: '-0.01em',
-                            }}
-                          >
-                            {row.title}
-                          </span>
+                          {row.title ? (
+                            <span
+                              title={row.title}
+                              style={{
+                                fontSize: isMobile ? 10 : 12,
+                                color: 'var(--text-secondary)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flex: 1,
+                                fontWeight: row.isRecurring ? 600 : 400,
+                                letterSpacing: '-0.01em',
+                              }}
+                            >
+                              {row.title}
+                            </span>
+                          ) : (
+                            <span style={{ flex: 1 }} />
+                          )}
                           {row.isRecurring && !isMobile && (
                             <span style={{
                               fontSize: 9,
@@ -1223,32 +1244,6 @@ export default function TimelineView() {
                               {row.tasks.length}
                             </span>
                           )}
-                          {/* Add task to THIS row button */}
-                          <button
-                            onClick={e => {
-                              e.stopPropagation()
-                              setAddToRow({ rowKey: row.rowKey, subjectId: subject.id })
-                            }}
-                            title="この行に課題を追加"
-                            aria-label={`${row.title}の行に課題を追加`}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              padding: '3px 5px',
-                              color: '#ef946c',
-                              display: 'flex',
-                              alignItems: 'center',
-                              flexShrink: 0,
-                              opacity: isRowHovered ? 0.8 : 0,
-                              transition: 'opacity 0.2s',
-                              borderRadius: 4,
-                            }}
-                          >
-                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                              <path d="M6 1v10M1 6h10" stroke="#ef946c" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                          </button>
                         </div>
 
                         {/* Grid + bars */}
@@ -1407,7 +1402,7 @@ export default function TimelineView() {
                   })}
 
                   {/* Empty subject */}
-                  {!collapsed && taskRows.length === 0 && (
+                  {!collapsed && subjectRows.length === 0 && (
                     <div style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}>
                       <div
                         style={{
@@ -1452,14 +1447,7 @@ export default function TimelineView() {
           defaultSubjectId={addModalSubjectId || undefined}
         />
       )}
-      {addToRow !== null && (
-        <AddTaskModal
-          subjects={subjects}
-          onClose={() => setAddToRow(null)}
-          defaultSubjectId={addToRow.subjectId}
-          targetRowId={addToRow.rowKey}
-        />
-      )}
+
       {quickMenu && (
         <TaskQuickMenu
           task={quickMenu.task}

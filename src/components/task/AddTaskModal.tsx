@@ -8,8 +8,6 @@ interface Props {
   subjects: Subject[]
   onClose: () => void
   defaultSubjectId?: string
-  /** rowKey of an existing row — if set, the new task is added to that row */
-  targetRowId?: string
 }
 
 type Mode = 'single' | 'recurring'
@@ -24,7 +22,7 @@ const INTERVALS: IntervalOption[] = [
 
 const COLORS = ['#E16259', '#ef946c', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0284C7', '#4F46E5']
 
-export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targetRowId }: Props) {
+export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
   const { addTask, addRecurringTasks, addSubject } = useStore()
   const { showToast } = useToast()
   const [mode, setMode] = useState<Mode>('single')
@@ -42,9 +40,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
   const [newSubjectName, setNewSubjectName] = useState('')
   const [showNewSubject, setShowNewSubject] = useState(false)
 
-  // When adding to an existing row, always use single mode
-  const isRowAdd = !!targetRowId
-  const effectiveMode = isRowAdd ? 'single' : mode
+  const effectiveMode = mode
 
   useEffect(() => {
     if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id)
@@ -85,7 +81,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
         await addTask({
           subject_id: subjectId,
           recurrence_id: null,
-          row_id: targetRowId ?? null,
+          row_id: null,
           title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,
@@ -181,7 +177,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
           borderRadius: '16px 16px 0 0',
         }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-            {isRowAdd ? '行に課題を追加' : '課題を追加'}
+            {'課題を追加'}
           </h2>
           <button
             onClick={onClose}
@@ -217,8 +213,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
             </div>
           )}
 
-          {/* Mode toggle — hidden when adding to existing row */}
-          {!isRowAdd && (
+          {/* Mode toggle */}
+          {(
             <div style={{
               display: 'inline-flex',
               background: 'var(--bg-secondary)',
@@ -274,13 +270,11 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
               <select
                 value={subjectId}
                 onChange={e => setSubjectId(e.target.value)}
-                disabled={isRowAdd}
                 style={{
                   ...inputStyle,
                   flex: 1,
-                  cursor: isRowAdd ? 'default' : 'pointer',
+                  cursor: 'pointer',
                   appearance: 'auto',
-                  opacity: isRowAdd ? 0.7 : 1,
                 }}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
@@ -290,7 +284,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
                 ))}
                 {subjects.length === 0 && <option value="">科目がありません</option>}
               </select>
-              {!isRowAdd && (
+              {(
                 <button
                   type="button"
                   onClick={() => setShowNewSubject(!showNewSubject)}
@@ -317,7 +311,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId, targ
             </div>
 
             {/* Simplified inline subject add — no color picker, Enter to save */}
-            {showNewSubject && !isRowAdd && (
+            {showNewSubject && (
               <div style={{
                 marginTop: 8,
                 display: 'flex',
