@@ -7,6 +7,8 @@ import TaskQuickMenu from '../task/TaskQuickMenu'
 import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
+import { loadHolidays } from '../../lib/holidays'
+import AppHeader from '../layout/AppHeader'
 
 const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
@@ -103,13 +105,6 @@ function buildTaskRows(tasks: Task[]): TaskRow[] {
   return rows
 }
 
-// River wave logo SVG
-const RiverLogo = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
-    <path d="M2 13C4.5 8.5 7.5 6.5 10 9C12.5 11.5 15.5 9.5 18 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2 16.5C4.5 12 7.5 10 10 12.5C12.5 15 15.5 13 18 8.5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
 
 // Helper: add N days to a YYYY-MM-DD string
 function addDaysToStr(dateStr: string, days: number): string {
@@ -128,7 +123,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, updateTask, loading, isDark, toggleTheme } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -145,6 +140,7 @@ export default function TimelineView() {
   const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('month')
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map())
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // ---- Drag state ----
@@ -166,6 +162,7 @@ export default function TimelineView() {
   })()
 
   useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => { loadHolidays().then(setHolidays) }, [])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640)
@@ -369,165 +366,8 @@ export default function TimelineView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--bg)' }}>
 
-      {/* ---- Brand header ---- */}
-      <header style={{
-        height: 52,
-        background: 'linear-gradient(135deg, #2f2963 0%, #454372 100%)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 2px 12px rgba(28,22,60,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 18px',
-        gap: 12,
-        flexShrink: 0,
-        position: 'relative',
-        zIndex: 100,
-      }}>
-
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
-          <div style={{
-            width: 30,
-            height: 30,
-            background: 'linear-gradient(135deg, #454372 0%, #70877f 100%)',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 3px 10px rgba(112,135,127,0.35)',
-            flexShrink: 0,
-          }}>
-            <RiverLogo size={18} />
-          </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.04em', flexShrink: 0 }}>
-            River
-          </span>
-          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.18)', marginLeft: 2, flexShrink: 0 }} />
-          <span style={{
-            fontSize: 12,
-            color: 'rgba(255,255,255,0.55)',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
-            課題タイムライン
-          </span>
-          <span style={{
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.4)',
-            fontWeight: 500,
-            letterSpacing: '0.02em',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 4,
-            padding: '1px 5px',
-            flexShrink: 0,
-          }}>
-            v{__APP_VERSION__}
-          </span>
-        </div>
-
-        {/* Add task button */}
-        <button
-          onClick={() => setAddModalSubjectId('')}
-          aria-label="課題を追加 (N)"
-          title="課題を追加 [N]"
-          style={{
-            background: 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 8,
-            padding: isMobile ? '7px 10px' : '7px 15px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            letterSpacing: '-0.02em',
-            boxShadow: '0 3px 10px rgba(239,148,108,0.35)',
-            transition: 'all 0.25s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            flexShrink: 0,
-            fontFamily: 'inherit',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 5px 16px rgba(239,148,108,0.48)'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 3px 10px rgba(239,148,108,0.35)'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          {!isMobile && '課題を追加'}
-        </button>
-
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleTheme}
-          aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-          title={isDark ? 'ライトモード [D]' : 'ダークモード [D]'}
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 10px',
-            fontSize: 15,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            lineHeight: 1,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
-        >
-          {isDark ? '☀️' : '🌙'}
-        </button>
-
-        {/* Logout */}
-        <button
-          onClick={() => signOut()}
-          aria-label="ログアウト"
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 11px',
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            fontFamily: 'inherit',
-            letterSpacing: '-0.01em',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.14)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.07)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-          }}
-        >
-          {isMobile ? (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          ) : 'ログアウト'}
-        </button>
-      </header>
+      {/* ---- Brand header (shared) ---- */}
+      <AppHeader isMobile={isMobile} onAddClick={() => setAddModalSubjectId('')} />
 
       {/* ---- Filter bar ---- */}
       <div style={{
@@ -788,15 +628,27 @@ export default function TimelineView() {
 
             {/* Date columns */}
             {days.map((day, i) => {
-              const isToday = toDateString(day) === todayStr
+              const dateStr = toDateString(day)
+              const isToday = dateStr === todayStr
               const dow = day.getDay()
               const isSun = dow === 0
               const isSat = dow === 6
               const isFirst = day.getDate() === 1
+              const holidayName = holidays.get(dateStr)
+              const isHoliday = !!holidayName
+
+              const holidayRed = isDark ? '#f87171' : '#DC2626'
+              const labelColor = isHoliday
+                ? holidayRed
+                : (isFirst || i === 0) ? 'var(--text-secondary)'
+                : isSun ? '#DC2626'
+                : isSat ? '#c4a77d'
+                : 'var(--text-disabled)'
 
               return (
                 <div
                   key={i}
+                  title={holidayName}
                   style={{
                     width: COL_WIDTH,
                     flexShrink: 0,
@@ -808,25 +660,30 @@ export default function TimelineView() {
                     gap: 2,
                     background: isToday
                       ? 'rgba(112,135,127,0.08)'
+                      : isHoliday
+                      ? (isDark ? 'rgba(239,68,68,0.10)' : 'rgba(220,38,38,0.06)')
                       : (isSun || isSat)
                       ? 'rgba(20,16,10,0.015)'
                       : 'transparent',
                     borderRight: '1px solid rgba(20,16,10,0.04)',
                     position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
                   <span style={{
-                    fontSize: 9,
-                    fontWeight: (isFirst || i === 0) ? 700 : 600,
-                    color: (isFirst || i === 0)
-                      ? 'var(--text-secondary)'
-                      : isSun ? '#DC2626'
-                      : isSat ? '#c4a77d'
-                      : 'var(--text-disabled)',
-                    letterSpacing: (isFirst || i === 0) ? '0.04em' : '0.02em',
+                    fontSize: isHoliday ? 8 : 9,
+                    fontWeight: isHoliday ? 700 : (isFirst || i === 0) ? 700 : 600,
+                    color: labelColor,
+                    letterSpacing: isHoliday ? '-0.03em' : (isFirst || i === 0) ? '0.04em' : '0.02em',
                     whiteSpace: 'nowrap',
+                    maxWidth: COL_WIDTH - 2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}>
-                    {(isFirst || i === 0) ? `${day.getMonth() + 1}月` : DAY_JA[dow]}
+                    {isHoliday
+                      ? holidayName
+                      : (isFirst || i === 0) ? `${day.getMonth() + 1}月`
+                      : DAY_JA[dow]}
                   </span>
                   <div style={{
                     width: isToday ? 26 : 24,
@@ -838,8 +695,8 @@ export default function TimelineView() {
                     background: isToday ? '#70877f' : 'transparent',
                     boxShadow: isToday ? '0 2px 10px rgba(112,135,127,0.48), 0 0 0 2px rgba(112,135,127,0.18)' : 'none',
                     fontSize: isToday ? 12 : 11,
-                    fontWeight: isToday ? 800 : 400,
-                    color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? '#c4a77d' : 'var(--text-secondary)',
+                    fontWeight: isToday ? 800 : isHoliday ? 600 : 400,
+                    color: isToday ? '#ffffff' : isHoliday ? holidayRed : isSun ? '#DC2626' : isSat ? '#c4a77d' : 'var(--text-secondary)',
                     letterSpacing: '-0.02em',
                     transition: 'all 0.2s',
                   }}>
@@ -1262,10 +1119,12 @@ export default function TimelineView() {
                         <div style={{ flex: 1, position: 'relative', background: 'var(--surface)' }}>
                           {/* Column shading */}
                           {days.map((d, i) => {
+                            const colDateStr = toDateString(d)
                             const dow = d.getDay()
                             const isWknd = dow === 0 || dow === 6
-                            const isTodayCol = toDateString(d) === todayStr
-                            if (!isWknd && !isTodayCol) return null
+                            const isTodayCol = colDateStr === todayStr
+                            const isHolidayCol = holidays.has(colDateStr)
+                            if (!isWknd && !isTodayCol && !isHolidayCol) return null
                             return (
                               <div
                                 key={i}
@@ -1277,6 +1136,8 @@ export default function TimelineView() {
                                   height: ROW_HEIGHT,
                                   background: isTodayCol
                                     ? 'rgba(112,135,127,0.04)'
+                                    : isHolidayCol
+                                    ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(220,38,38,0.04)')
                                     : 'rgba(20,16,10,0.016)',
                                   borderRight: '1px solid rgba(20,16,10,0.025)',
                                   pointerEvents: 'none',

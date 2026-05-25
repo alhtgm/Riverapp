@@ -3,13 +3,15 @@ import { supabase } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 import AuthPage from './components/auth/AuthPage'
 import TimelineView from './components/timeline/TimelineView'
+import TodoView from './components/todo/TodoView'
+import CalendarView from './components/calendar/CalendarView'
 import { ToastProvider } from './components/ui/Toast'
 import { requestAndNotify } from './lib/notifications'
 import { useStore } from './store/useStore'
 
 function AppInner() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const { tasks } = useStore()
+  const { tasks, activeView } = useStore()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -51,7 +53,13 @@ function AppInner() {
   }
 
   if (!session) return <ToastProvider><AuthPage /></ToastProvider>
-  return <ToastProvider><TimelineView /></ToastProvider>
+  return (
+    <ToastProvider>
+      {activeView === 'timeline' && <TimelineView />}
+      {activeView === 'todo'     && <TodoView />}
+      {activeView === 'calendar' && <CalendarView />}
+    </ToastProvider>
+  )
 }
 
 export default function App() {

@@ -4,6 +4,8 @@ import type { Subject, Task, Recurrence, TaskStatus } from '../types'
 import { toDateString } from '../types'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
+export type ViewMode = 'timeline' | 'todo' | 'calendar'
+
 interface AppState {
   subjects: Subject[]
   tasks: Task[]
@@ -13,6 +15,10 @@ interface AppState {
   // Theme
   isDark: boolean
   toggleTheme: () => void
+
+  // View navigation
+  activeView: ViewMode
+  setActiveView: (v: ViewMode) => void
 
   fetchAll: () => Promise<void>
   signOut: () => Promise<void>
@@ -50,6 +56,9 @@ export const useStore = create<AppState>((set, get) => ({
     applyTheme(next)
     set({ isDark: next === 'dark' })
   },
+
+  activeView: 'timeline',
+  setActiveView: (v) => set({ activeView: v }),
 
   signOut: async () => {
     await supabase.auth.signOut()
