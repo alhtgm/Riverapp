@@ -10,8 +10,6 @@ import { useToast } from '../ui/Toast'
 
 const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
-const LABEL_WIDTH_DESKTOP = 216
-const LABEL_WIDTH_MOBILE = 108
 const ROW_HEIGHT = 52
 const HEADER_HEIGHT = 56
 const SUBJECT_SEP_HEIGHT = 36
@@ -64,66 +62,70 @@ interface GroupedSubject {
 }
 
 /**
- * Greedy interval scheduling per subject:
- * - Recurring tasks: grouped by recurrence_id (one row per series)
- * - Single tasks: assigned to rows using earliest-end-date greedy algorithm
- *   so non-overlapping tasks share a row
+ * Greedy interval scheduling per subject (applies to ALL tasks — both single and recurring).
+ * Tasks are sorted by start_date, then each is placed in the row whose last due_date is
+ * earliest and strictly before this task's start_date (= no overlap).
+ * If no such row exists, a new row is created.
  */
 function buildSubjectRows(tasks: Task[]): SubjectRow[] {
-  const recurMap = new Map<string, Task[]>()
-  const singles: Task[] = []
+  if (tasks.length === 0) return []
 
-  for (const t of tasks) {
-    if (t.recurrence_id) {
-      const arr = recurMap.get(t.recurrence_id) ?? []
-      arr.push(t)
-      recurMap.set(t.recurrence_id, arr)
-    } else {
-      singles.push(t)
-    }
-  }
+  const sorted = [...tasks].sort((a, b) => a.start_date.localeCompare(b.start_date))
 
-  const recurRows: SubjectRow[] = []
-  for (const ts of recurMap.values()) {
-    const sorted = [...ts].sort((a, b) => a.start_date.localeCompare(b.start_date))
-    recurRows.push({ rowIndex: 0, tasks: sorted, isRecurring: true, title: sorted[0].title })
-  }
+  const rowEnds: string[] = []   // due_date of last task in each row
+  const assignments: { task: Task; rowIdx: number }[] = []
 
-  // Greedy: sort singles by start_date, assign each to the row whose end is earliest and < task.start_date
-  const sortedSingles = [...singles].sort((a, b) => a.start_date.localeCompare(b.start_date))
-  const singleBuckets: Task[][] = []
-  const rowEnds: string[] = []
+  for (const task of sorted) {
+    let assignedRow = -1
+    let earliestEnd = '9999-12-31'  // sentinel = "no qualifying row yet"
 
-  for (const task of sortedSingles) {
-    let bestRow = -1
-    let bestEnd = ''
     for (let i = 0; i < rowEnds.length; i++) {
-      if (rowEnds[i] < task.start_date) {
-        if (bestRow === -1 || rowEnds[i] < bestEnd) {
-          bestRow = i
-          bestEnd = rowEnds[i]
-        }
+      // no overlap: row's last due_date must be strictly before this task's start_date
+      if (rowEnds[i] < task.start_date && rowEnds[i] < earliestEnd) {
+        assignedRow = i
+        earliestEnd = rowEnds[i]
       }
     }
-    if (bestRow !== -1) {
-      singleBuckets[bestRow].push(task)
-      rowEnds[bestRow] = task.due_date
-    } else {
-      singleBuckets.push([task])
+
+    if (assignedRow === -1) {
+      assignedRow = rowEnds.length
       rowEnds.push(task.due_date)
+    } else {
+      rowEnds[assignedRow] = task.due_date
     }
+
+    assignments.push({ task, rowIdx: assignedRow })
   }
 
-  const singleRows: SubjectRow[] = singleBuckets.map(ts => ({
-    rowIndex: 0,
-    tasks: ts,
-    isRecurring: false,
-    title: ts.length === 1 ? ts[0].title : '',
-  }))
+  // Debug: log row assignments
+  if (typeof window !== 'undefined' && tasks.length > 0) {
+    console.log('[buildSubjectRows]', assignments.map(a => ({
+      title: a.task.title,
+      start: a.task.start_date,
+      due: a.task.due_date,
+      row: a.rowIdx,
+    })))
+  }
 
-  const all = [...recurRows, ...singleRows]
-  all.sort((a, b) => a.tasks[0].start_date.localeCompare(b.tasks[0].start_date))
-  return all.map((row, i) => ({ ...row, rowIndex: i }))
+  // Group by rowIdx
+  const buckets = new Map<number, Task[]>()
+  for (const { task, rowIdx } of assignments) {
+    const arr = buckets.get(rowIdx) ?? []
+    arr.push(task)
+    buckets.set(rowIdx, arr)
+  }
+
+  const rows: SubjectRow[] = []
+  for (const [, rowTasks] of [...buckets.entries()].sort(([a], [b]) => a - b)) {
+    const sortedTasks = [...rowTasks].sort((a, b) => a.start_date.localeCompare(b.start_date))
+    const recurrenceIds = new Set(sortedTasks.filter(t => t.recurrence_id).map(t => t.recurrence_id!))
+    // isRecurring = all tasks in this row share exactly one recurrence_id
+    const isRecurring = recurrenceIds.size === 1 && sortedTasks.every(t => t.recurrence_id)
+    const title = (sortedTasks.length === 1 || isRecurring) ? sortedTasks[0].title : ''
+    rows.push({ rowIndex: rows.length, tasks: sortedTasks, isRecurring, title })
+  }
+
+  return rows
 }
 
 
@@ -187,19 +189,18 @@ export default function TimelineView() {
   }, [])
 
   const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
-  const LABEL_WIDTH = isMobile ? LABEL_WIDTH_MOBILE : LABEL_WIDTH_DESKTOP
 
   // ---- Scroll to today ----
   const scrollToToday = useCallback(() => {
     if (scrollRef.current && todayIdx >= 0) {
-      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
+      const target = todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
       scrollRef.current.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
     }
-  }, [todayIdx, COL_WIDTH, LABEL_WIDTH])
+  }, [todayIdx, COL_WIDTH])
 
   useEffect(() => {
     if (scrollRef.current && todayIdx >= 0) {
-      const target = LABEL_WIDTH + todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
+      const target = todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
       scrollRef.current.scrollLeft = Math.max(0, target)
     }
   }, [todayIdx])
@@ -369,15 +370,6 @@ export default function TimelineView() {
     const bg    = isDark ? cfg.darkBg    : cfg.bg
     return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
   }
-
-  const stickyLabel = (zIndex = 5): React.CSSProperties => ({
-    width: LABEL_WIDTH,
-    flexShrink: 0,
-    position: 'sticky',
-    left: 0,
-    zIndex,
-    background: 'inherit',
-  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--bg)' }}>
@@ -765,7 +757,7 @@ export default function TimelineView() {
           position: 'relative',
         }}
       >
-        <div style={{ width: LABEL_WIDTH + days.length * COL_WIDTH, minHeight: '100%' }}>
+        <div style={{ width: days.length * COL_WIDTH, minHeight: '100%' }}>
 
           {/* ---- Date header (sticky top) ---- */}
           <div style={{
@@ -778,27 +770,6 @@ export default function TimelineView() {
             borderBottom: '1px solid var(--border)',
             boxShadow: '0 2px 8px rgba(20,16,10,0.04)',
           }}>
-            {/* Corner cell */}
-            <div style={{
-              ...stickyLabel(30),
-              height: HEADER_HEIGHT,
-              background: 'var(--bg)',
-              borderRight: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'flex-end',
-              padding: '0 14px 12px',
-            }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: 'var(--text-disabled)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}>
-                科目 / 課題
-              </span>
-            </div>
-
             {/* Date columns */}
             {days.map((day, i) => {
               const isToday = toDateString(day) === todayStr
@@ -868,7 +839,7 @@ export default function TimelineView() {
             position: 'absolute',
             top: HEADER_HEIGHT,
             bottom: 0,
-            left: LABEL_WIDTH + todayIdx * COL_WIDTH + COL_WIDTH / 2 - 1,
+            left: todayIdx * COL_WIDTH + COL_WIDTH / 2 - 1,
             width: 2,
             background: 'linear-gradient(180deg, #70877f 0%, rgba(112,135,127,0.1) 100%)',
             zIndex: 4,
@@ -882,15 +853,10 @@ export default function TimelineView() {
             <>
               <style>{`@keyframes skPulse2{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
               {[36, 52, 52, 52, 36, 52, 52].map((h, i) => (
-                <div key={i} style={{ display: 'flex', height: h, borderBottom: '1px solid var(--border-light)', background: h === 36 ? 'var(--bg-secondary)' : 'var(--surface)' }}>
-                  <div style={{ width: LABEL_WIDTH, flexShrink: 0, display: 'flex', alignItems: 'center', padding: h === 36 ? '0 14px' : '0 28px', borderRight: '1px solid var(--border-light)', gap: 12 }}>
-                    <div style={{ width: h === 36 ? 52 : 80 + (i % 3) * 18, height: h === 36 ? 9 : 11, borderRadius: 5, background: 'var(--border)', animation: `skPulse2 1.5s ease-in-out ${i * 0.08}s infinite` }} />
+                <div key={i} style={{ display: 'flex', height: h, borderBottom: '1px solid var(--border-light)', background: h === 36 ? 'var(--bg-secondary)' : 'var(--surface)', position: 'relative' }}>
+                  <div style={{ flex: 1, position: 'relative', background: h === 36 ? 'var(--bg-secondary)' : 'var(--surface)', display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+                    <div style={{ width: h === 36 ? 52 : 120 + (i % 3) * 50, height: h === 36 ? 9 : 34, borderRadius: h === 36 ? 5 : 6, background: 'var(--border)', animation: `skPulse2 1.5s ease-in-out ${i * 0.08}s infinite` }} />
                   </div>
-                  {h !== 36 && (
-                    <div style={{ flex: 1, position: 'relative', background: 'var(--surface)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
-                      <div style={{ width: 120 + (i % 3) * 50, height: 34, borderRadius: 6, background: 'var(--border)', animation: `skPulse2 1.5s ease-in-out ${i * 0.12}s infinite` }} />
-                    </div>
-                  )}
                 </div>
               ))}
             </>
@@ -958,33 +924,40 @@ export default function TimelineView() {
 
               return (
                 <div key={subject.id}>
-                  {/* Subject separator row */}
+                  {/* Subject separator row — full width, name sticky at left */}
                   <div
                     style={{
-                      display: 'flex',
                       height: SUBJECT_SEP_HEIGHT,
                       borderTop: '1px solid var(--border-light)',
+                      borderBottom: `1px solid ${subject.color}20`,
+                      background: `linear-gradient(90deg, ${subject.color}18 0%, transparent 320px)`,
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
                     }}
                     onMouseEnter={() => setHoveredSubjectId(subject.id)}
                     onMouseLeave={() => setHoveredSubjectId(null)}
                   >
-                    {/* Sticky label */}
+                    {/* Sticky name area — overlays timeline, stays at left edge during scroll */}
                     <div style={{
-                      ...stickyLabel(15),
-                      background: 'var(--bg-secondary)',
-                      borderRight: '1px solid var(--border)',
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 15,
                       display: 'flex',
                       alignItems: 'center',
+                      height: '100%',
+                      background: `linear-gradient(90deg, var(--bg-secondary) 85%, transparent 100%)`,
                       paddingLeft: 0,
+                      flexShrink: 0,
                     }}>
-                      {/* Subject color stripe — クリックでカラーピッカー */}
+                      {/* Color stripe — クリックでカラーピッカー */}
                       <div
                         style={{
-                          width: 8,
+                          width: 6,
                           height: '100%',
                           background: subject.color,
                           flexShrink: 0,
-                          borderRadius: '0 4px 4px 0',
+                          borderRadius: '0 3px 3px 0',
                           cursor: 'pointer',
                           position: 'relative',
                         }}
@@ -1004,10 +977,9 @@ export default function TimelineView() {
                         )}
                       </div>
 
-                      {/* Collapse toggle + name */}
+                      {/* Collapse toggle + name (no truncation) */}
                       <div
                         style={{
-                          flex: 1,
                           display: 'flex',
                           alignItems: 'center',
                           gap: 6,
@@ -1015,7 +987,6 @@ export default function TimelineView() {
                           cursor: 'pointer',
                           height: '100%',
                           userSelect: 'none',
-                          minWidth: 0,
                         }}
                         onClick={() => toggleCollapse(subject.id)}
                       >
@@ -1030,16 +1001,12 @@ export default function TimelineView() {
                           <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <span
-                          title={subject.name}
                           style={{
                             fontSize: isMobile ? 10 : 11,
                             fontWeight: 700,
                             color: 'var(--text-secondary)',
                             letterSpacing: '-0.01em',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            flex: 1,
                           }}
                         >
                           {subject.name}
@@ -1059,7 +1026,7 @@ export default function TimelineView() {
                         )}
                       </div>
 
-                      {/* Add new row to subject */}
+                      {/* Add button */}
                       {!isDeletingThis && (
                         <button
                           onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
@@ -1068,8 +1035,7 @@ export default function TimelineView() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            padding: '3px 4px 3px 2px',
-                            color: 'var(--text-disabled)',
+                            padding: '3px 4px',
                             display: 'flex',
                             alignItems: 'center',
                             flexShrink: 0,
@@ -1077,7 +1043,7 @@ export default function TimelineView() {
                             transition: 'opacity 0.2s',
                             borderRadius: 4,
                           }}
-                          title="この科目に新しい課題を追加"
+                          title="この科目に課題を追加"
                         >
                           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                             <path d="M6 1v10M1 6h10" stroke="#ef946c" strokeWidth="2" strokeLinecap="round"/>
@@ -1094,8 +1060,7 @@ export default function TimelineView() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            padding: '3px 7px 3px 2px',
-                            color: 'var(--text-disabled)',
+                            padding: '3px 6px 3px 2px',
                             display: 'flex',
                             alignItems: 'center',
                             flexShrink: 0,
@@ -1112,76 +1077,38 @@ export default function TimelineView() {
 
                       {/* Inline delete confirm */}
                       {isDeletingThis && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '0 7px 0 2px',
-                          flexShrink: 0,
-                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 8px 0 2px', flexShrink: 0 }}>
                           <span style={{ fontSize: 9, color: '#DC2626', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>削除?</span>
                           <button
                             onClick={e => { e.stopPropagation(); handleDeleteSubject(subject.id) }}
-                            style={{
-                              background: '#DC2626',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: 4,
-                              padding: '2px 7px',
-                              fontSize: 9,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              fontFamily: 'inherit',
-                            }}
-                          >
-                            はい
-                          </button>
+                            style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                          >はい</button>
                           <button
                             onClick={e => { e.stopPropagation(); setDeletingSubjectId(null) }}
-                            style={{
-                              background: 'var(--border-light)',
-                              color: 'var(--text-secondary)',
-                              border: 'none',
-                              borderRadius: 4,
-                              padding: '2px 7px',
-                              fontSize: 9,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              fontFamily: 'inherit',
-                            }}
-                          >
-                            否
-                          </button>
+                            style={{ background: 'var(--border-light)', color: 'var(--text-secondary)', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                          >否</button>
                         </div>
                       )}
                     </div>
 
-                    {/* Grid: faint color wash + 完了率バー */}
-                    <div style={{
-                      flex: 1,
-                      background: `linear-gradient(90deg, ${subject.color}14 0%, transparent 140px)`,
-                      borderBottom: `1px solid ${subject.color}20`,
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}>
-                      {(() => {
-                        const subjectTasks = tasks.filter(t => t.subject_id === subject.id)
-                        const total = subjectTasks.length
-                        const done = subjectTasks.filter(t => t.status === 'done' || t.status === 'submitted').length
-                        if (total === 0) return null
-                        const pct = Math.round((done / total) * 100)
-                        return (
-                          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 48, height: 4, background: `${subject.color}25`, borderRadius: 9999, overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 9999, transition: 'width 0.4s ease' }} />
-                            </div>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: subject.color, opacity: 0.8, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-                              {done}/{total}
-                            </span>
+                    {/* 完了率バー — absolute right */}
+                    {(() => {
+                      const subjectTasks = tasks.filter(t => t.subject_id === subject.id)
+                      const total = subjectTasks.length
+                      const done = subjectTasks.filter(t => t.status === 'done' || t.status === 'submitted').length
+                      if (total === 0) return null
+                      const pct = Math.round((done / total) * 100)
+                      return (
+                        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 48, height: 4, background: `${subject.color}25`, borderRadius: 9999, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 9999, transition: 'width 0.4s ease' }} />
                           </div>
-                        )
-                      })()}
-                    </div>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: subject.color, opacity: 0.8, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                            {done}/{total}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Task rows */}
@@ -1189,65 +1116,10 @@ export default function TimelineView() {
                     return (
                       <div
                         key={row.rowIndex}
-                        style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}
+                        style={{ height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)', position: 'relative', background: 'var(--surface)' }}
                       >
-                        {/* Sticky task label */}
-                        <div style={{
-                          ...stickyLabel(10),
-                          background: 'var(--surface)',
-                          borderRight: '1px solid var(--border-light)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          paddingLeft: isMobile ? 10 : 22,
-                          gap: isMobile ? 4 : 6,
-                          paddingRight: isMobile ? 4 : 6,
-                        }}>
-                          {row.isRecurring && (
-                            <div style={{
-                              width: 4,
-                              height: 4,
-                              borderRadius: '50%',
-                              background: subject.color,
-                              flexShrink: 0,
-                              opacity: 0.7,
-                            }} />
-                          )}
-                          {row.title ? (
-                            <span
-                              title={row.title}
-                              style={{
-                                fontSize: isMobile ? 10 : 12,
-                                color: 'var(--text-secondary)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flex: 1,
-                                fontWeight: row.isRecurring ? 600 : 400,
-                                letterSpacing: '-0.01em',
-                              }}
-                            >
-                              {row.title}
-                            </span>
-                          ) : (
-                            <span style={{ flex: 1 }} />
-                          )}
-                          {row.isRecurring && !isMobile && (
-                            <span style={{
-                              fontSize: 9,
-                              color: 'var(--text-tertiary)',
-                              flexShrink: 0,
-                              background: 'var(--bg-secondary)',
-                              borderRadius: 9999,
-                              padding: '1px 5px',
-                              fontWeight: 600,
-                            }}>
-                              {row.tasks.length}
-                            </span>
-                          )}
-                        </div>
-
                         {/* Grid + bars */}
-                        <div style={{ flex: 1, position: 'relative', background: 'var(--surface)' }}>
+                        <div style={{ position: 'absolute', inset: 0 }}>
                           {/* Column shading */}
                           {days.map((d, i) => {
                             const dow = d.getDay()
@@ -1403,26 +1275,23 @@ export default function TimelineView() {
 
                   {/* Empty subject */}
                   {!collapsed && subjectRows.length === 0 && (
-                    <div style={{ display: 'flex', height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)' }}>
-                      <div
-                        style={{
-                          ...stickyLabel(10),
-                          background: 'var(--surface)',
-                          borderRight: '1px solid var(--border-light)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          paddingLeft: 22,
-                          gap: 7,
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setAddModalSubjectId(subject.id)}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                          <path d="M6 1v10M1 6h10" stroke="var(--text-disabled)" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                        <span style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
-                      </div>
-                      <div style={{ flex: 1, background: 'var(--surface)' }} />
+                    <div
+                      style={{
+                        height: ROW_HEIGHT,
+                        borderBottom: '1px solid var(--border-light)',
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        paddingLeft: 20,
+                        gap: 7,
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setAddModalSubjectId(subject.id)}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1v10M1 6h10" stroke="var(--text-disabled)" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      <span style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
                     </div>
                   )}
                 </div>
