@@ -791,7 +791,7 @@ export default function TimelineView() {
                     paddingBottom: 8,
                     gap: 2,
                     background: isToday
-                      ? 'rgba(112,135,127,0.08)'
+                      ? 'rgba(59,130,246,0.08)'
                       : (isSun || isSat)
                       ? 'rgba(20,16,10,0.015)'
                       : 'transparent',
@@ -833,19 +833,6 @@ export default function TimelineView() {
               )
             })}
           </div>
-
-          {/* ---- Today vertical line ---- */}
-          <div style={{
-            position: 'absolute',
-            top: HEADER_HEIGHT,
-            bottom: 0,
-            left: todayIdx * COL_WIDTH + COL_WIDTH / 2 - 1,
-            width: 2,
-            background: 'linear-gradient(180deg, #70877f 0%, rgba(112,135,127,0.1) 100%)',
-            zIndex: 4,
-            pointerEvents: 'none',
-            boxShadow: '0 0 6px 1px rgba(112,135,127,0.28)',
-          }} />
 
           {/* ---- Subject groups ---- */}
           {loading && subjects.length === 0 ? (
@@ -1136,7 +1123,7 @@ export default function TimelineView() {
                                   width: COL_WIDTH,
                                   height: ROW_HEIGHT,
                                   background: isTodayCol
-                                    ? 'rgba(112,135,127,0.04)'
+                                    ? 'rgba(59,130,246,0.08)'
                                     : 'rgba(20,16,10,0.016)',
                                   borderRight: '1px solid rgba(20,16,10,0.025)',
                                   pointerEvents: 'none',
