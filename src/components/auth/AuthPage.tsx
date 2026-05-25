@@ -1,12 +1,6 @@
 ﻿import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const RiverLogo = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
-    <path d="M2 13C4.5 8.5, 7.5 6.5, 10 9C12.5 11.5, 15.5 9.5, 18 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2 16.5C4.5 12, 7.5 10, 10 12.5C12.5 15, 15.5 13, 18 8.5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
 
 export default function AuthPage() {
   const [email, setEmail] = useState('')
@@ -111,18 +105,13 @@ export default function AuthPage() {
         }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              background: 'linear-gradient(135deg, #454372 0%, #70877f 100%)',
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(112,135,127,0.4)',
-            }}>
-              <RiverLogo size={20} />
-            </div>
+            <img
+              src="/river-icon.png"
+              width={36}
+              height={36}
+              alt="River"
+              style={{ borderRadius: 10, objectFit: 'cover', boxShadow: '0 4px 12px rgba(112,135,127,0.4)' }}
+            />
             <span style={{
               fontSize: 20,
               fontWeight: 700,

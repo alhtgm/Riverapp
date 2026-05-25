@@ -103,13 +103,6 @@ function buildTaskRows(tasks: Task[]): TaskRow[] {
   return rows
 }
 
-// River wave logo SVG
-const RiverLogo = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
-    <path d="M2 13C4.5 8.5 7.5 6.5 10 9C12.5 11.5 15.5 9.5 18 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2 16.5C4.5 12 7.5 10 10 12.5C12.5 15 15.5 13 18 8.5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
 
 // Helper: add N days to a YYYY-MM-DD string
 function addDaysToStr(dateStr: string, days: number): string {
@@ -386,19 +379,13 @@ export default function TimelineView() {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
-          <div style={{
-            width: 30,
-            height: 30,
-            background: 'linear-gradient(135deg, #454372 0%, #70877f 100%)',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 3px 10px rgba(112,135,127,0.35)',
-            flexShrink: 0,
-          }}>
-            <RiverLogo size={18} />
-          </div>
+          <img
+            src="/river-icon.png"
+            width={30}
+            height={30}
+            alt="River"
+            style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(112,135,127,0.35)' }}
+          />
           <span style={{ fontSize: 17, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.04em', flexShrink: 0 }}>
             River
           </span>
@@ -489,7 +476,13 @@ export default function TimelineView() {
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
         >
-          {isDark ? '☀️' : '🌙'}
+          <img
+            src={isDark ? '/sun.png' : '/moon.png'}
+            width={17}
+            height={17}
+            alt={isDark ? 'ライトモード' : 'ダークモード'}
+            style={{ display: 'block', filter: 'brightness(0) invert(1)', opacity: 0.75 }}
+          />
         </button>
 
         {/* Logout */}
