@@ -22,6 +22,33 @@ const INTERVALS: IntervalOption[] = [
 
 const COLORS = ['#E16259', '#ef946c', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0284C7', '#4F46E5']
 
+const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
+
+type DuePreset = { label: string; days: number }
+// 締切日クイック設定（今日からの日数）
+const DUE_PRESETS: DuePreset[] = [
+  { label: '今日',    days: 0 },
+  { label: '1日後',   days: 1 },
+  { label: '3日後',   days: 3 },
+  { label: '1週間後', days: 7 },
+  { label: '2週間後', days: 14 },
+]
+
+// 今日からの日数オフセットを YYYY-MM-DD に変換
+function dateStringFromTodayOffset(days: number): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + days)
+  return toDateString(d)
+}
+
+// 指定日が今日から何日後かを返す（プリセット判定用）
+function offsetFromToday(dateStr: string): number {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((parseLocalDate(dateStr).getTime() - today.getTime()) / 86400000)
+}
+
 export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
   const { addTask, addRecurringTasks, addSubject } = useStore()
   const { showToast } = useToast()
@@ -39,6 +66,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const [errorMsg, setErrorMsg] = useState('')
   const [newSubjectName, setNewSubjectName] = useState('')
   const [showNewSubject, setShowNewSubject] = useState(false)
+  /** 締切日を「その他」（カレンダー直接指定）で編集中か */
+  const [showCustomDue, setShowCustomDue] = useState(false)
 
   const effectiveMode = mode
 
@@ -139,6 +168,33 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     e.target.style.boxShadow = 'none'
     e.target.style.background = 'var(--surface-warm)'
   }
+
+  // 締切日クイックボタン: 今日から N 日後を締切に設定
+  const applyDuePreset = (days: number) => {
+    setDueDate(dateStringFromTodayOffset(days))
+    setShowCustomDue(false)
+  }
+
+  // 現在の締切日に一致するプリセット（「その他」編集中は無し）
+  const activePresetDays = !showCustomDue
+    ? DUE_PRESETS.find(p => p.days === offsetFromToday(dueDate))?.days
+    : undefined
+
+  // 締切日プリセット用ピル（繰り返しの発生間隔ピルと同じ見た目）
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? 'var(--accent-bg)' : 'var(--bg-secondary)',
+    color: active ? 'var(--accent)' : 'var(--text-secondary)',
+    border: `1px solid ${active ? 'rgba(239,148,108,0.3)' : 'var(--border)'}`,
+    borderRadius: 9999,
+    padding: '5px 14px',
+    fontSize: 13,
+    fontWeight: active ? 600 : 400,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontFamily: 'inherit',
+    letterSpacing: '-0.01em',
+    boxShadow: active ? '0 2px 6px rgba(239,148,108,0.18)' : 'none',
+  })
 
   return (
     <>
@@ -353,14 +409,49 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
           {effectiveMode === 'single' ? (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>開始日</label>
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+              <div>
+                <label style={labelStyle}>開始日</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+              </div>
+              <div>
+                <label style={labelStyle}>締切日</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {DUE_PRESETS.map(p => (
+                    <button
+                      key={p.days}
+                      type="button"
+                      onClick={() => applyDuePreset(p.days)}
+                      style={pillStyle(activePresetDays === p.days)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomDue(true)}
+                    style={pillStyle(showCustomDue)}
+                  >
+                    その他
+                  </button>
                 </div>
-                <div>
-                  <label style={labelStyle}>締切日</label>
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+
+                {showCustomDue && (
+                  <input
+                    type="date"
+                    value={dueDate}
+                    min={startDate}
+                    onChange={e => setDueDate(e.target.value)}
+                    required
+                    autoFocus
+                    style={{ ...inputStyle, marginTop: 8 }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                )}
+
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', letterSpacing: '-0.01em' }}>
+                  締切日: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{formatDate(dueDate)}（{DAY_JA[parseLocalDate(dueDate).getDay()]}）</span>
+                  {dueDate < startDate && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>※開始日より前です</span>}
                 </div>
               </div>
               <div>
