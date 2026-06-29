@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import type { Subject, Task, Recurrence, TaskStatus } from '../types'
+import type { Subject, Task, Recurrence, TaskStatus, Profile } from '../types'
 import { toDateString } from '../types'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
@@ -9,6 +9,12 @@ interface AppState {
   tasks: Task[]
   loading: boolean
   error: string | null
+
+  // Account / profile
+  profile: Profile | null
+  profileLoaded: boolean
+  fetchProfile: () => Promise<void>
+  completeOnboarding: (schoolEmail: string, displayName: string) => Promise<void>
 
   // Theme
   isDark: boolean
@@ -44,6 +50,9 @@ export const useStore = create<AppState>((set, get) => ({
   loading: false,
   error: null,
 
+  profile: null,
+  profileLoaded: false,
+
   isDark: getStoredTheme() === 'dark',
   toggleTheme: () => {
     const next: ThemeMode = get().isDark ? 'light' : 'dark'
@@ -51,8 +60,62 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isDark: next === 'dark' })
   },
 
+  fetchProfile: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      set({ profile: null, profileLoaded: true })
+      return
+    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (error) {
+      set({ error: error.message, profileLoaded: true })
+      return
+    }
+    set({ profile: data ?? null, profileLoaded: true })
+  },
+
+  completeOnboarding: async (schoolEmail, displayName) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('ログインが必要です')
+
+    const email = schoolEmail.trim().toLowerCase()
+    const name = displayName.trim()
+    const domain = email.split('@')[1] ?? ''
+    if (!domain) throw new Error('メールアドレスの形式が正しくありません')
+    if (!name) throw new Error('表示名を入力してください')
+
+    // ドメインを許可リストと照合して学校を特定
+    const { data: domainRow, error: domainErr } = await supabase
+      .from('school_domains')
+      .select('school_id')
+      .eq('domain', domain)
+      .maybeSingle()
+    if (domainErr) throw domainErr
+    if (!domainRow) {
+      throw new Error(`未対応の学校ドメインです（${domain}）`)
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        school_email: email,
+        school_id: domainRow.school_id,
+        display_name: name,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    set({ profile: data, profileLoaded: true })
+  },
+
   signOut: async () => {
     await supabase.auth.signOut()
+    set({ profile: null, profileLoaded: false, subjects: [], tasks: [] })
   },
 
   fetchAll: async () => {

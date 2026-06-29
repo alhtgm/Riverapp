@@ -150,7 +150,7 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             <div>
-              <label style={labelBase}>メールアドレス</label>
+              <label style={labelBase}>普段使いのメールアドレス</label>
               <input
                 type="email"
                 value={email}

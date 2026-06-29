@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 import AuthPage from './components/auth/AuthPage'
+import Onboarding from './components/auth/Onboarding'
 import TimelineView from './components/timeline/TimelineView'
 import { ToastProvider } from './components/ui/Toast'
 import { requestAndNotify } from './lib/notifications'
@@ -9,7 +10,7 @@ import { useStore } from './store/useStore'
 
 function AppInner() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const { tasks } = useStore()
+  const { tasks, profile, profileLoaded, fetchProfile } = useStore()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -20,6 +21,11 @@ function AppInner() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // ログイン後にプロフィール（学校所属・表示名）を読み込む
+  useEffect(() => {
+    if (session) fetchProfile()
+  }, [session, fetchProfile])
 
   // 通知: データ取得後に1回チェック
   useEffect(() => {
@@ -51,6 +57,10 @@ function AppInner() {
   }
 
   if (!session) return <ToastProvider><AuthPage /></ToastProvider>
+  // プロフィール読み込み中は何も出さない（ちらつき防止）
+  if (!profileLoaded) return <div style={{ height: '100svh', background: 'var(--bg)' }} />
+  // 学校所属・表示名が未設定ならオンボーディング
+  if (!profile) return <ToastProvider><Onboarding /></ToastProvider>
   return <ToastProvider><TimelineView /></ToastProvider>
 }
 
