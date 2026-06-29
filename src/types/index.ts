@@ -1,5 +1,20 @@
 ﻿export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'submitted'
 
+export interface School {
+  id: string
+  name: string
+  created_at: string
+}
+
+export interface Profile {
+  id: string
+  school_email: string | null
+  school_email_verified: boolean
+  school_id: string | null
+  display_name: string
+  created_at: string
+}
+
 export interface Subject {
   id: string
   user_id: string
