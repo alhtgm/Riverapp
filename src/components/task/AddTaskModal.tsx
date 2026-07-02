@@ -3,6 +3,7 @@ import type { Subject } from '../../types'
 import { useStore } from '../../store/useStore'
 import { toDateString, parseLocalDate, formatDate } from '../../types'
 import { useToast } from '../ui/Toast'
+import MiniCalendar from '../ui/MiniCalendar'
 
 interface Props {
   subjects: Subject[]
@@ -436,16 +437,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 </div>
 
                 {showCustomDue && (
-                  <input
-                    type="date"
+                  <MiniCalendar
                     value={dueDate}
                     min={startDate}
-                    onChange={e => setDueDate(e.target.value)}
-                    required
-                    autoFocus
-                    style={{ ...inputStyle, marginTop: 8 }}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
+                    onChange={d => setDueDate(d)}
                   />
                 )}
 
