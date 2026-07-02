@@ -962,10 +962,12 @@ export default function TimelineView() {
                     onMouseLeave={() => setHoveredSubjectId(null)}
                   >
                     {/* Sticky name area — overlays timeline, stays at left edge during scroll */}
+                    {/* カラーピッカーを開いている間は、この科目のスタッキングコンテキストを
+                        持ち上げて、下の科目セクションがパレットの下に回り込むようにする */}
                     <div style={{
                       position: 'sticky',
                       left: 0,
-                      zIndex: 15,
+                      zIndex: colorPickerSubjectId === subject.id ? 200 : 15,
                       display: 'flex',
                       alignItems: 'center',
                       height: '100%',
