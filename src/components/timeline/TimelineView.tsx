@@ -1018,21 +1018,29 @@ export default function TimelineView() {
                         <button
                           onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
                           aria-label={`${subject.name}に課題を追加`}
+                          title="この科目に課題を追加"
                           style={{
-                            background: 'none',
-                            border: 'none',
+                            background: 'var(--accent-bg)',
+                            border: '1px solid var(--accent-muted)',
                             cursor: 'pointer',
-                            padding: '3px 4px',
+                            padding: 0,
+                            width: 28,
+                            height: 28,
+                            marginLeft: 4,
+                            borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'center',
                             flexShrink: 0,
-                            opacity: isHovered ? 1 : 0,
-                            transition: 'opacity 0.2s',
-                            borderRadius: 4,
+                            opacity: isHovered ? 1 : 0.72,
+                            transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, transform 0.1s',
                           }}
-                          title="この科目に課題を追加"
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,148,108,0.22)'; e.currentTarget.style.borderColor = 'rgba(239,148,108,0.45)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
+                          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
+                          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
                         >
-                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                          <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
                             <path d="M6 1v10M1 6h10" stroke="#ef946c" strokeWidth="2" strokeLinecap="round"/>
                           </svg>
                         </button>
@@ -1043,37 +1051,48 @@ export default function TimelineView() {
                         <button
                           onClick={e => { e.stopPropagation(); setDeletingSubjectId(subject.id) }}
                           aria-label={`${subject.name}を削除`}
+                          title="この科目を削除"
                           style={{
-                            background: 'none',
-                            border: 'none',
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border)',
                             cursor: 'pointer',
-                            padding: '3px 6px 3px 2px',
+                            padding: 0,
+                            width: 28,
+                            height: 28,
+                            marginLeft: 4,
+                            marginRight: 6,
+                            borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'center',
                             flexShrink: 0,
-                            opacity: isHovered ? 1 : 0,
-                            transition: 'opacity 0.2s',
-                            borderRadius: 4,
+                            color: 'var(--text-tertiary)',
+                            opacity: isHovered ? 1 : 0.72,
+                            transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s',
                           }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.35)'; e.currentTarget.style.color = 'var(--danger)' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
+                          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
                         >
-                          <svg width="11" height="11" viewBox="0 0 13 13" fill="none">
-                            <path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 5.5v4M7.5 5.5v4M3 3.5l.5 7h6l.5-7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                            <path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 5.5v4M7.5 5.5v4M3 3.5l.5 7h6l.5-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         </button>
                       )}
 
                       {/* Inline delete confirm */}
                       {isDeletingThis && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 8px 0 2px', flexShrink: 0 }}>
-                          <span style={{ fontSize: 9, color: '#DC2626', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>削除?</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px 0 4px', flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>削除しますか?</span>
                           <button
                             onClick={e => { e.stopPropagation(); handleDeleteSubject(subject.id) }}
-                            style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                          >はい</button>
+                            style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          >削除</button>
                           <button
                             onClick={e => { e.stopPropagation(); setDeletingSubjectId(null) }}
-                            style={{ background: 'var(--border-light)', color: 'var(--text-secondary)', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 9, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                          >否</button>
+                            style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          >キャンセル</button>
                         </div>
                       )}
                     </div>
