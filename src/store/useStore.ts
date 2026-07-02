@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import type { Subject, Task, Recurrence, TaskStatus, Profile } from '../types'
+import type { Subject, Task, Recurrence, TaskStatus, Profile, Template, TemplateMeta } from '../types'
 import { toDateString } from '../types'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
@@ -15,6 +15,13 @@ interface AppState {
   profileLoaded: boolean
   fetchProfile: () => Promise<void>
   completeOnboarding: (schoolEmail: string, displayName: string) => Promise<void>
+
+  // Templates (学校スコープ共有)
+  templates: Template[]
+  fetchTemplates: () => Promise<void>
+  importTemplate: (templateId: string) => Promise<void>
+  createTemplateFromSubject: (subjectId: string, meta?: TemplateMeta) => Promise<void>
+  deleteTemplate: (templateId: string) => Promise<void>
 
   // Theme
   isDark: boolean
@@ -52,6 +59,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   profile: null,
   profileLoaded: false,
+  templates: [],
 
   isDark: getStoredTheme() === 'dark',
   toggleTheme: () => {
@@ -113,9 +121,159 @@ export const useStore = create<AppState>((set, get) => ({
     set({ profile: data, profileLoaded: true })
   },
 
+  fetchTemplates: async () => {
+    // RLS で自分の学校のテンプレートだけ返る。件数は埋め込みで取得
+    const { data, error } = await supabase
+      .from('templates')
+      .select('*, template_items(count)')
+      .order('created_at', { ascending: false })
+    if (error) {
+      set({ error: error.message })
+      return
+    }
+    const templates: Template[] = (data ?? []).map((row: Record<string, unknown>) => {
+      const items = row.template_items as { count: number }[] | undefined
+      return {
+        id: row.id as string,
+        school_id: row.school_id as string,
+        created_by: (row.created_by as string) ?? null,
+        title: row.title as string,
+        color: row.color as string,
+        description: (row.description as string) ?? null,
+        professor: (row.professor as string) ?? null,
+        department: (row.department as string) ?? null,
+        schedule: (row.schedule as string) ?? null,
+        import_count: (row.import_count as number) ?? 0,
+        created_at: row.created_at as string,
+        creator_name: (row.creator_name as string) ?? null,
+        item_count: items?.[0]?.count ?? 0,
+      }
+    })
+    set({ templates })
+  },
+
+  importTemplate: async (templateId) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('ログインが必要です')
+
+    // テンプレート本体と課題を取得
+    const tmpl = get().templates.find(t => t.id === templateId)
+    const { data: items, error: itemsErr } = await supabase
+      .from('template_items')
+      .select('*')
+      .eq('template_id', templateId)
+      .order('sort_order')
+    if (itemsErr) throw itemsErr
+
+    const title = tmpl?.title ?? '取り込んだ講義'
+    const color = tmpl?.color ?? '#0891B2'
+
+    // 取り込み先の科目を新規作成
+    const maxOrder = Math.max(0, ...get().subjects.map(s => s.order))
+    const { data: subject, error: subErr } = await supabase
+      .from('subjects')
+      .insert({ user_id: user.id, name: title, color, order: maxOrder + 1 })
+      .select()
+      .single()
+    if (subErr) throw subErr
+
+    // 課題を自分のタスクとしてコピー（元と切り離し、source_template_id だけ保持）
+    const newTasks = (items ?? []).map(it => ({
+      user_id: user.id,
+      subject_id: subject.id,
+      recurrence_id: null,
+      row_id: null,
+      source_template_id: templateId,
+      title: it.title,
+      start_date: it.start_date,
+      due_date: it.due_date,
+      due_time: it.due_time,
+      status: 'todo' as TaskStatus,
+      memo: null,
+    }))
+
+    let insertedTasks: Task[] = []
+    if (newTasks.length > 0) {
+      const { data: tasksData, error: tasksErr } = await supabase
+        .from('tasks')
+        .insert(newTasks)
+        .select()
+      if (tasksErr) throw tasksErr
+      insertedTasks = tasksData
+    }
+
+    // 取り込み記録（ユニーク人数。同じ人の2回目以降は加算されない）
+    await supabase.rpc('import_template_once', { p_template_id: templateId })
+
+    set(s => ({
+      subjects: [...s.subjects, subject],
+      tasks: [...s.tasks, ...insertedTasks],
+    }))
+    // 正確なユニーク人数を反映するため再取得
+    await get().fetchTemplates()
+  },
+
+  createTemplateFromSubject: async (subjectId, meta) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('ログインが必要です')
+    const profile = get().profile
+    if (!profile?.school_id) throw new Error('学校が設定されていません')
+
+    const subject = get().subjects.find(s => s.id === subjectId)
+    if (!subject) throw new Error('科目が見つかりません')
+    const subjectTasks = get().tasks.filter(t => t.subject_id === subjectId)
+    if (subjectTasks.length === 0) throw new Error('この科目には課題がありません')
+
+    const clean = (v?: string) => {
+      const s = v?.trim()
+      return s ? s : null
+    }
+
+    // テンプレート本体
+    const { data: tmpl, error: tmplErr } = await supabase
+      .from('templates')
+      .insert({
+        school_id: profile.school_id,
+        created_by: user.id,
+        creator_name: profile.display_name,
+        title: subject.name,
+        color: subject.color,
+        description: clean(meta?.description),
+        professor: clean(meta?.professor),
+        department: clean(meta?.department),
+        schedule: clean(meta?.schedule),
+      })
+      .select()
+      .single()
+    if (tmplErr) throw tmplErr
+
+    // 課題を items としてコピー
+    const items = subjectTasks
+      .slice()
+      .sort((a, b) => (a.start_date < b.start_date ? -1 : 1))
+      .map((t, i) => ({
+        template_id: tmpl.id,
+        title: t.title,
+        start_date: t.start_date,
+        due_date: t.due_date,
+        due_time: t.due_time,
+        sort_order: i,
+      }))
+    const { error: itemsErr } = await supabase.from('template_items').insert(items)
+    if (itemsErr) throw itemsErr
+
+    await get().fetchTemplates()
+  },
+
+  deleteTemplate: async (templateId) => {
+    const { error } = await supabase.from('templates').delete().eq('id', templateId)
+    if (error) throw error
+    set(s => ({ templates: s.templates.filter(t => t.id !== templateId) }))
+  },
+
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ profile: null, profileLoaded: false, subjects: [], tasks: [] })
+    set({ profile: null, profileLoaded: false, subjects: [], tasks: [], templates: [] })
   },
 
   fetchAll: async () => {

@@ -42,12 +42,48 @@ export interface Task {
   subject_id: string
   recurrence_id: string | null
   row_id: string | null
+  source_template_id: string | null
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
   due_time: string | null // HH:MM (optional)
   status: TaskStatus
   memo: string | null
+  created_at: string
+}
+
+export interface Template {
+  id: string
+  school_id: string
+  created_by: string | null
+  title: string
+  color: string
+  description: string | null
+  professor: string | null
+  department: string | null
+  schedule: string | null
+  import_count: number
+  created_at: string
+  // join で付与（一覧表示用）
+  item_count?: number
+  creator_name?: string | null
+}
+
+export interface TemplateMeta {
+  description?: string
+  professor?: string
+  department?: string
+  schedule?: string
+}
+
+export interface TemplateItem {
+  id: string
+  template_id: string
+  title: string
+  start_date: string // YYYY-MM-DD
+  due_date: string   // YYYY-MM-DD
+  due_time: string | null
+  sort_order: number
   created_at: string
 }
 

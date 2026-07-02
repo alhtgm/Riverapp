@@ -3,6 +3,7 @@ import type { Subject, Task } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
+import TemplateLibrary from '../template/TemplateLibrary'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
@@ -150,6 +151,7 @@ export default function TimelineView() {
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
@@ -427,6 +429,40 @@ export default function TimelineView() {
             v{__APP_VERSION__}
           </span>
         </div>
+
+        {/* Template library button */}
+        <button
+          onClick={() => setShowTemplates(true)}
+          aria-label="テンプレート"
+          title="テンプレート"
+          style={{
+            background: 'rgba(255,255,255,0.07)',
+            color: 'rgba(255,255,255,0.85)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 8,
+            padding: isMobile ? '7px 8px' : '7px 13px',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            letterSpacing: '-0.02em',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            flexShrink: 0,
+            fontFamily: 'inherit',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+            <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+            <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+            <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+          {!isMobile && 'テンプレート'}
+        </button>
 
         {/* Add task button */}
         <button
@@ -1321,6 +1357,10 @@ export default function TimelineView() {
           onClose={() => setAddModalSubjectId(null)}
           defaultSubjectId={addModalSubjectId || undefined}
         />
+      )}
+
+      {showTemplates && (
+        <TemplateLibrary onClose={() => setShowTemplates(false)} />
       )}
 
       {quickMenu && (
