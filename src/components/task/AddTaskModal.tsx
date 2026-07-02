@@ -111,6 +111,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
           subject_id: subjectId,
           recurrence_id: null,
           row_id: null,
+          source_template_id: null,
           title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,

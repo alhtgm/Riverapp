@@ -56,7 +56,7 @@ insert into schools (name) values ('テスト大学');
 insert into school_domains (school_id, domain)
   select id, 'gmail.com' from schools where name = 'テスト大学';
 
--- ↓ 自分の大学を登録する例（domain は @ より後ろだけ）。実際の値に書き換えて使う。
--- insert into schools (name) values ('○○大学');
--- insert into school_domains (school_id, domain)
---   select id, 's.yourschool.ac.jp' from schools where name = '○○大学';
+-- 金沢工業大学
+insert into schools (name) values ('金沢工業大学');
+insert into school_domains (school_id, domain)
+  select id, 'st.kanazawa-it.ac.jp' from schools where name = '金沢工業大学';
