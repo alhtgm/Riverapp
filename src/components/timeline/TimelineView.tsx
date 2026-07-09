@@ -438,6 +438,7 @@ export default function TimelineView() {
         subject_id: reAdd.subjectId,
         recurrence_id: null,
         row_id: null,
+        source_template_id: null,
         title: t.title,
         start_date: todayStr,
         due_date: t.nextDue,
