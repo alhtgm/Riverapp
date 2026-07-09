@@ -43,6 +43,7 @@ export interface Task {
   recurrence_id: string | null
   row_id: string | null
   source_template_id: string | null
+  source_item_id: string | null
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
@@ -63,10 +64,14 @@ export interface Template {
   department: string | null
   schedule: string | null
   import_count: number
+  version: number
   created_at: string
   // join で付与（一覧表示用）
   item_count?: number
   creator_name?: string | null
+  // クライアント側で付与（自分の取り込み状況）
+  imported?: boolean
+  applied_version?: number | null
 }
 
 export interface TemplateMeta {
@@ -85,6 +90,20 @@ export interface TemplateItem {
   due_time: string | null
   sort_order: number
   created_at: string
+}
+
+/** テンプレート編集フォームで扱う項目（id があれば既存、なければ新規） */
+export interface TemplateItemDraft {
+  id?: string
+  title: string
+  start_date: string
+  due_date: string
+  due_time: string | null
+}
+
+/** テンプレートに更新があるか（version > applied_version） */
+export function hasTemplateUpdate(t: Template): boolean {
+  return !!t.imported && (t.applied_version ?? 0) < t.version
 }
 
 export const STATUS_CONFIG: Record<
