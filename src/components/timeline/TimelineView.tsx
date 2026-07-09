@@ -1,10 +1,11 @@
 ﻿import { useRef, useEffect, useState, useCallback } from 'react'
-import type { Subject, Task } from '../../types'
+import type { Subject, Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TemplateLibrary from '../template/TemplateLibrary'
 import TaskQuickMenu from '../task/TaskQuickMenu'
+import ReAddCard, { type ReAddTemplate } from '../task/ReAddCard'
 import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
@@ -137,6 +138,16 @@ function addDaysToStr(dateStr: string, days: number): string {
   return toDateString(d)
 }
 
+// 再追加用: 元の締切と同じ曜日の「翌週」の日付を返す（週始まり=日曜）
+function nextWeekSameWeekdayStr(origDueStr: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const origDow = parseLocalDate(origDueStr).getDay() // 0=日
+  const d = new Date(today)
+  d.setDate(today.getDate() + (7 - today.getDay()) + origDow) // 次の日曜 + 元の曜日
+  return toDateString(d)
+}
+
 interface DragState {
   type: 'move' | 'resize-start' | 'resize-end'
   taskId: string
@@ -147,7 +158,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme, schoolName } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme, schoolName } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -163,6 +174,12 @@ export default function TimelineView() {
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
+  const [reAdd, setReAdd] = useState<{ subjectId: string; reason: 'completed' | 'overdue' } | null>(null)
+  const prevStatusRef = useRef<Map<string, TaskStatus> | null>(null)
+  /** 開発用: Rキーで再追加カードを強制表示する際、科目を順送りするためのインデックス */
+  const devReAddCycleRef = useRef(0)
 
   // ---- Drag state ----
   const dragRef = useRef<DragState | null>(null)
@@ -183,6 +200,30 @@ export default function TimelineView() {
   })()
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // 再追加カードのトリガー: 初回ロード時に期限切れをチェック、以降は完了への遷移を検知
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    if (prev === null) {
+      // 初回: 期限切れ課題があればその科目を提案
+      const overdueTask = tasks.find(t => isOverdue(t))
+      if (overdueTask) setReAdd({ subjectId: overdueTask.subject_id, reason: 'overdue' })
+    } else {
+      // 以降: 未完了→完了/提出済み への遷移を検知
+      for (const t of tasks) {
+        const before = prev.get(t.id)
+        const beforeDone = before === 'done' || before === 'submitted'
+        const nowDone = t.status === 'done' || t.status === 'submitted'
+        if (before !== undefined && nowDone && !beforeDone) {
+          setReAdd({ subjectId: t.subject_id, reason: 'completed' })
+          break
+        }
+      }
+    }
+    const next = new Map<string, TaskStatus>()
+    for (const t of tasks) next.set(t.id, t.status)
+    prevStatusRef.current = next
+  }, [tasks])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640)
@@ -207,7 +248,9 @@ export default function TimelineView() {
     }
   }, [todayIdx])
 
-  // Keyboard shortcuts: N = new task, T = scroll to today
+  // Keyboard shortcuts: N = new task, T = scroll to today, D = dark mode
+  // 開発用: R = 再追加カードを強制表示（科目を順送り・完了扱い）, Shift+R = 期限切れ扱い
+  // import.meta.env.DEV でガードされているため本番ビルドには含まれない
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
@@ -220,11 +263,23 @@ export default function TimelineView() {
         scrollToToday()
       } else if (e.key === 'd' || e.key === 'D') {
         toggleTheme()
+      } else if (import.meta.env.DEV && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault()
+        const candidates = subjects.filter(s => tasks.some(t => t.subject_id === s.id))
+        if (candidates.length === 0) {
+          console.warn('[dev] Rキー: 課題を持つ科目がないため再追加カードを表示できません')
+          return
+        }
+        const subject = candidates[devReAddCycleRef.current % candidates.length]
+        devReAddCycleRef.current += 1
+        const reason = e.shiftKey ? 'overdue' : 'completed'
+        console.info(`[dev] 再追加カードを強制表示: ${subject.name} / ${reason}`)
+        setReAdd({ subjectId: subject.id, reason })
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [scrollToToday])
+  }, [scrollToToday, subjects, tasks])
 
   // ---- Drag: mousemove / mouseup on document ----
   useEffect(() => {
@@ -359,6 +414,43 @@ export default function TimelineView() {
   const handleBarClick = (e: React.MouseEvent, task: Task) => {
     e.stopPropagation()
     setQuickMenu({ task, x: e.clientX, y: e.clientY })
+  }
+
+  // 再追加カード: 対象科目と、その科目の過去課題（タイトル重複を除き最新5件）をテンプレ化
+  const reAddSubject = reAdd ? subjects.find(s => s.id === reAdd.subjectId) ?? null : null
+  const reAddTemplates: ReAddTemplate[] = (() => {
+    if (!reAdd) return []
+    const seen = new Set<string>()
+    return tasks
+      .filter(t => t.subject_id === reAdd.subjectId)
+      .sort((a, b) => b.due_date.localeCompare(a.due_date))
+      .filter(t => { const k = t.title.trim(); if (seen.has(k)) return false; seen.add(k); return true })
+      .slice(0, 5)
+      .map(t => ({ key: t.id, title: t.title, dueTime: t.due_time, nextDue: nextWeekSameWeekdayStr(t.due_date) }))
+  })()
+
+  // 過去課題をワンタップで再追加（開始=今日 / 締切=翌週の同じ曜日 / 時刻は引き継ぎ）
+  const handleReAdd = async (t: ReAddTemplate) => {
+    if (!reAdd) return
+    setReAdd(null)
+    try {
+      await addTask({
+        subject_id: reAdd.subjectId,
+        recurrence_id: null,
+        row_id: null,
+        source_template_id: null,
+        source_item_id: null,
+        title: t.title,
+        start_date: todayStr,
+        due_date: t.nextDue,
+        due_time: t.dueTime,
+        status: 'todo',
+        memo: null,
+      })
+      showToast(`「${t.title}」を追加しました（締切 ${t.nextDue.slice(5).replace('-', '/')}）`)
+    } catch (e: unknown) {
+      showToast((e as Error).message, 'error')
+    }
   }
 
   const getBarProps = (task: Task) => {
@@ -976,10 +1068,12 @@ export default function TimelineView() {
                     onMouseLeave={() => setHoveredSubjectId(null)}
                   >
                     {/* Sticky name area — overlays timeline, stays at left edge during scroll */}
+                    {/* カラーピッカーを開いている間は、この科目のスタッキングコンテキストを
+                        持ち上げて、下の科目セクションがパレットの下に回り込むようにする */}
                     <div style={{
                       position: 'sticky',
                       left: 0,
-                      zIndex: 15,
+                      zIndex: colorPickerSubjectId === subject.id ? 200 : 15,
                       display: 'flex',
                       alignItems: 'center',
                       height: '100%',
@@ -1383,6 +1477,15 @@ export default function TimelineView() {
           position={{ x: quickMenu.x, y: quickMenu.y }}
           onClose={() => setQuickMenu(null)}
           onOpenDetail={() => { setSelectedTask(quickMenu.task); setQuickMenu(null) }}
+        />
+      )}
+
+      {reAdd && reAddSubject && reAddTemplates.length > 0 && (
+        <ReAddCard
+          subject={reAddSubject}
+          templates={reAddTemplates}
+          onAdd={handleReAdd}
+          onClose={() => setReAdd(null)}
         />
       )}
     </div>
