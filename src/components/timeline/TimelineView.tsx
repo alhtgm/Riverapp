@@ -178,8 +178,8 @@ export default function TimelineView() {
   // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
   const [reAdd, setReAdd] = useState<{ subjectId: string; reason: 'completed' | 'overdue' } | null>(null)
   const prevStatusRef = useRef<Map<string, TaskStatus> | null>(null)
-  /** 開発用: Rキーで再追加カードを強制表示する際、科目を順送りするためのインデックス */
-  const devReAddCycleRef = useRef(0)
+  /** Shift+Rで再追加カードを強制表示する際、科目を順送りするためのインデックス */
+  const reAddCycleRef = useRef(0)
 
   // ---- Drag state ----
   const dragRef = useRef<DragState | null>(null)
@@ -249,8 +249,7 @@ export default function TimelineView() {
   }, [todayIdx])
 
   // Keyboard shortcuts: N = new task, T = scroll to today, D = dark mode
-  // 開発用: R = 再追加カードを強制表示（科目を順送り・完了扱い）, Shift+R = 期限切れ扱い
-  // import.meta.env.DEV でガードされているため本番ビルドには含まれない
+  // Shift+R = 再追加カードを強制表示（科目を順送り）。本番環境でも有効。
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
@@ -263,18 +262,14 @@ export default function TimelineView() {
         scrollToToday()
       } else if (e.key === 'd' || e.key === 'D') {
         toggleTheme()
-      } else if (import.meta.env.DEV && (e.key === 'r' || e.key === 'R')) {
+      } else if (e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+        // Shift+R: 再追加カードを強制表示（課題を持つ科目を順送り）
         e.preventDefault()
         const candidates = subjects.filter(s => tasks.some(t => t.subject_id === s.id))
-        if (candidates.length === 0) {
-          console.warn('[dev] Rキー: 課題を持つ科目がないため再追加カードを表示できません')
-          return
-        }
-        const subject = candidates[devReAddCycleRef.current % candidates.length]
-        devReAddCycleRef.current += 1
-        const reason = e.shiftKey ? 'overdue' : 'completed'
-        console.info(`[dev] 再追加カードを強制表示: ${subject.name} / ${reason}`)
-        setReAdd({ subjectId: subject.id, reason })
+        if (candidates.length === 0) return
+        const subject = candidates[reAddCycleRef.current % candidates.length]
+        reAddCycleRef.current += 1
+        setReAdd({ subjectId: subject.id, reason: 'completed' })
       }
     }
     window.addEventListener('keydown', handleKeyDown)
