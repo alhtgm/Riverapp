@@ -147,7 +147,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme, schoolName } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -406,14 +406,28 @@ export default function TimelineView() {
           <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.18)', marginLeft: 2, flexShrink: 0 }} />
           <span style={{
             fontSize: 12,
-            color: 'rgba(255,255,255,0.55)',
+            color: 'rgba(255,255,255,0.6)',
             fontWeight: 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-          }}>
-            課題タイムライン
+            maxWidth: isMobile ? 130 : 220,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          title={schoolName ?? '課題タイムライン'}
+          >
+            {schoolName ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <path d="M8 2L15 5.5L8 9L1 5.5L8 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                  <path d="M4 7v3.5c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{schoolName}</span>
+              </>
+            ) : '課題タイムライン'}
           </span>
           <span style={{
             fontSize: 10,
