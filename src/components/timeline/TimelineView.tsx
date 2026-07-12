@@ -158,7 +158,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme, schoolName } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -434,6 +434,7 @@ export default function TimelineView() {
         recurrence_id: null,
         row_id: null,
         source_template_id: null,
+        source_item_id: null,
         title: t.title,
         start_date: todayStr,
         due_date: t.nextDue,
@@ -498,8 +499,22 @@ export default function TimelineView() {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-          }}>
-            課題タイムライン
+            maxWidth: isMobile ? 130 : 220,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          title={schoolName ?? '課題タイムライン'}
+          >
+            {schoolName ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <path d="M8 2L15 5.5L8 9L1 5.5L8 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                  <path d="M4 7v3.5c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{schoolName}</span>
+              </>
+            ) : '課題タイムライン'}
           </span>
           <span style={{
             fontSize: 10,
@@ -1007,7 +1022,7 @@ export default function TimelineView() {
                       marginTop: 14,
                       background: 'var(--accent-bg)',
                       color: 'var(--accent)',
-                      border: '1px solid rgba(196,167,125,0.35)',
+                      border: '1px solid var(--accent-muted)',
                       borderRadius: 9999,
                       padding: '6px 18px',
                       fontSize: 12,
