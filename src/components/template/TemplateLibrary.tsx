@@ -106,7 +106,7 @@ export default function TemplateLibrary({ onClose }: Props) {
     flex: 1,
     background: active ? 'var(--accent-bg)' : 'transparent',
     color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    border: `1px solid ${active ? 'rgba(239,148,108,0.3)' : 'var(--border)'}`,
+    border: `1px solid ${active ? 'var(--accent-muted)' : 'var(--border)'}`,
     borderRadius: 8,
     padding: '7px 10px',
     fontSize: 13,
@@ -246,7 +246,7 @@ export default function TemplateLibrary({ onClose }: Props) {
                   disabled={!publishSubjectId || publishing}
                   style={{
                     flex: 1,
-                    background: (!publishSubjectId || publishing) ? 'var(--text-tertiary)' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+                    background: (!publishSubjectId || publishing) ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                     color: '#fff', border: 'none', borderRadius: 8, padding: '9px 14px', fontSize: 13, fontWeight: 600,
                     cursor: (!publishSubjectId || publishing) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
                   }}
@@ -338,7 +338,7 @@ export default function TemplateLibrary({ onClose }: Props) {
                     onClick={() => handleImport(t.id)}
                     disabled={busyId === t.id}
                     style={{
-                      background: busyId === t.id ? 'var(--text-tertiary)' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+                      background: busyId === t.id ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                       color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600,
                       cursor: busyId === t.id ? 'not-allowed' : 'pointer', fontFamily: 'inherit', flexShrink: 0,
                     }}

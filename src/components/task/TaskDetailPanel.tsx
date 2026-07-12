@@ -26,7 +26,7 @@ function renderInline(text: string): React.ReactNode {
     } else {
       parts.push(
         <a key={i++} href={match[5]} target="_blank" rel="noopener noreferrer"
-          style={{ color: '#ef946c', textDecoration: 'underline' }}>
+          style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
           {match[4]}
         </a>
       )
@@ -48,7 +48,7 @@ function MarkdownPreview({ text }: { text: string }) {
       elements.push(
         <ul key={key++} style={{ paddingLeft: 18, margin: '4px 0' }}>
           {listItems.map((item, i) => (
-            <li key={i} style={{ fontSize: 14, color: '#1C1917', lineHeight: 1.6 }}>{item}</li>
+            <li key={i} style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6 }}>{item}</li>
           ))}
         </ul>
       )
@@ -59,13 +59,13 @@ function MarkdownPreview({ text }: { text: string }) {
   for (const line of lines) {
     if (line.startsWith('### ')) {
       flushList()
-      elements.push(<h3 key={key++} style={{ fontSize: 13, fontWeight: 700, margin: '8px 0 2px', color: '#1C1917' }}>{renderInline(line.slice(4))}</h3>)
+      elements.push(<h3 key={key++} style={{ fontSize: 13, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text-primary)' }}>{renderInline(line.slice(4))}</h3>)
     } else if (line.startsWith('## ')) {
       flushList()
-      elements.push(<h2 key={key++} style={{ fontSize: 14, fontWeight: 700, margin: '8px 0 2px', color: '#1C1917' }}>{renderInline(line.slice(3))}</h2>)
+      elements.push(<h2 key={key++} style={{ fontSize: 14, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text-primary)' }}>{renderInline(line.slice(3))}</h2>)
     } else if (line.startsWith('# ')) {
       flushList()
-      elements.push(<h1 key={key++} style={{ fontSize: 15, fontWeight: 700, margin: '8px 0 2px', color: '#1C1917' }}>{renderInline(line.slice(2))}</h1>)
+      elements.push(<h1 key={key++} style={{ fontSize: 15, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text-primary)' }}>{renderInline(line.slice(2))}</h1>)
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       listItems.push(renderInline(line.slice(2)))
     } else if (line.trim() === '') {
@@ -74,7 +74,7 @@ function MarkdownPreview({ text }: { text: string }) {
     } else {
       flushList()
       elements.push(
-        <p key={key++} style={{ margin: '2px 0', fontSize: 14, color: '#1C1917', lineHeight: 1.6 }}>
+        <p key={key++} style={{ margin: '2px 0', fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6 }}>
           {renderInline(line)}
         </p>
       )
@@ -84,15 +84,15 @@ function MarkdownPreview({ text }: { text: string }) {
 
   return (
     <div style={{
-      background: '#FAFAF8',
-      border: '1px solid #E3DDD5',
+      background: 'var(--surface-warm)',
+      border: '1px solid var(--border)',
       borderRadius: 8,
       padding: '9px 12px',
       minHeight: 96,
     }}>
       {elements.length > 0
         ? elements
-        : <span style={{ color: '#C4BDB5', fontSize: 14 }}>プレビューなし</span>}
+        : <span style={{ color: 'var(--text-disabled)', fontSize: 14 }}>プレビューなし</span>}
     </div>
   )
 }
@@ -185,12 +185,12 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   }
 
   const inputStyle: React.CSSProperties = {
-    background: '#FAFAF8',
-    border: '1px solid #E3DDD5',
+    background: 'var(--surface-warm)',
+    border: '1px solid var(--border)',
     borderRadius: 8,
     padding: '9px 12px',
     fontSize: 14,
-    color: '#1C1917',
+    color: 'var(--text-primary)',
     outline: 'none',
     width: '100%',
     fontFamily: 'inherit',
@@ -199,24 +199,24 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 700,
-    color: '#A8A29E',
-    letterSpacing: '0.06em',
+    color: 'var(--text-secondary)',
+    letterSpacing: '0.05em',
     textTransform: 'uppercase',
     marginBottom: 6,
     display: 'block',
   }
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#ef946c'
-    e.target.style.boxShadow = '0 0 0 3px rgba(239,148,108,0.12)'
-    e.target.style.background = '#FFFFFF'
+    e.target.style.borderColor = 'var(--accent)'
+    e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.12)'
+    e.target.style.background = 'var(--surface)'
   }
   const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = '#E3DDD5'
+    e.target.style.borderColor = 'var(--border)'
     e.target.style.boxShadow = 'none'
-    e.target.style.background = '#FAFAF8'
+    e.target.style.background = 'var(--surface-warm)'
   }
 
   return (
@@ -262,27 +262,27 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         {/* Header */}
         <div style={{
           padding: '18px 22px',
-          borderBottom: '1px solid #EDE8DF',
+          borderBottom: '1px solid var(--bg-secondary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: '#FAFAF8',
+          background: 'var(--surface-warm)',
           flexShrink: 0,
         }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.03em' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' }}>
             課題の詳細
           </h2>
           <button
             onClick={onClose}
             aria-label="パネルを閉じる"
             style={{
-              background: '#EDE8DF', border: 'none', borderRadius: 6,
-              width: 28, height: 28, cursor: 'pointer', color: '#78716C',
+              background: 'var(--bg-secondary)', border: 'none', borderRadius: 6,
+              width: 28, height: 28, cursor: 'pointer', color: 'var(--text-secondary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'background 0.12s', fontFamily: 'inherit',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#E3DDD5' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#EDE8DF' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
           >
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -294,7 +294,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
 
           {errorMsg && (
-            <div style={{ padding: '12px 16px', background: '#FEF2F2', color: '#DC2626', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+            <div style={{ padding: '12px 16px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
               {errorMsg}
             </div>
           )}
@@ -358,7 +358,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                   onClick={() => setDueTime('')}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 11, color: '#A8A29E', padding: 0, fontFamily: 'inherit',
+                    fontSize: 11, color: 'var(--text-tertiary)', padding: 0, fontFamily: 'inherit',
                     letterSpacing: '-0.01em',
                   }}
                 >
@@ -380,12 +380,12 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                     key={s}
                     onClick={() => setStatus(s)}
                     style={{
-                      background: active ? cfg.bg : '#FAFAF8',
-                      color: active ? cfg.color : '#78716C',
-                      border: `1.5px solid ${active ? cfg.color + '55' : '#E3DDD5'}`,
+                      background: active ? cfg.bg : 'var(--surface-warm)',
+                      color: active ? cfg.color : 'var(--text-secondary)',
+                      border: `1.5px solid ${active ? cfg.color + '55' : 'var(--border)'}`,
                       borderRadius: 9999,
-                      padding: '5px 14px',
-                      fontSize: 12,
+                      padding: '6px 15px',
+                      fontSize: 13,
                       fontWeight: 600,
                       cursor: 'pointer',
                       letterSpacing: '-0.01em',
@@ -405,9 +405,9 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                     }}
                     onMouseLeave={e => {
                       if (!active) {
-                        e.currentTarget.style.background = '#FAFAF8'
-                        e.currentTarget.style.borderColor = '#E3DDD5'
-                        e.currentTarget.style.color = '#78716C'
+                        e.currentTarget.style.background = 'var(--surface-warm)'
+                        e.currentTarget.style.borderColor = 'var(--border)'
+                        e.currentTarget.style.color = 'var(--text-secondary)'
                       }
                     }}
                   >
@@ -429,21 +429,21 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <label style={{ ...labelStyle, marginBottom: 0 }}>メモ</label>
               {/* Edit / Preview tabs */}
-              <div style={{ display: 'inline-flex', background: '#F2EFE9', borderRadius: 8, padding: 2, gap: 2 }}>
+              <div style={{ display: 'inline-flex', background: 'var(--bg-secondary)', borderRadius: 8, padding: 2, gap: 2 }}>
                 {(['edit', 'preview'] as const).map(tab => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setMemoTab(tab)}
                     style={{
-                      background: memoTab === tab ? '#FFFFFF' : 'transparent',
+                      background: memoTab === tab ? 'var(--surface)' : 'transparent',
                       border: 'none',
                       borderRadius: 6,
                       padding: '3px 10px',
                       fontSize: 11,
                       fontWeight: memoTab === tab ? 600 : 400,
                       cursor: 'pointer',
-                      color: memoTab === tab ? '#1C1917' : '#78716C',
+                      color: memoTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
                       fontFamily: 'inherit',
                       boxShadow: memoTab === tab ? '0 1px 3px rgba(20,16,10,0.08)' : 'none',
                       transition: 'all 0.2s',
@@ -453,7 +453,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                   </button>
                 ))}
               </div>
-              <span style={{ fontSize: 10, color: '#C4BDB5', letterSpacing: '-0.01em' }}>Markdown</span>
+              <span style={{ fontSize: 10, color: 'var(--text-disabled)', letterSpacing: '-0.01em' }}>Markdown</span>
             </div>
 
             {memoTab === 'edit' ? (
@@ -481,11 +481,11 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         {/* Footer */}
         <div style={{
           padding: '16px 22px',
-          borderTop: '1px solid #EDE8DF',
+          borderTop: '1px solid var(--bg-secondary)',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
-          background: '#FAFAF8',
+          background: 'var(--surface-warm)',
           flexShrink: 0,
         }}>
           {!showDeleteOptions ? (
@@ -493,7 +493,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
               onClick={() => task.recurrence_id ? setShowDeleteOptions(true) : handleDeleteThis()}
               style={{
                 background: 'transparent',
-                color: '#DC2626',
+                color: 'var(--danger)',
                 border: '1px solid rgba(220,38,38,0.25)',
                 borderRadius: 8,
                 padding: '9px 16px',
@@ -504,21 +504,21 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 letterSpacing: '-0.01em',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             >
               削除
             </button>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ fontSize: 11, color: '#78716C', margin: 0, letterSpacing: '-0.01em', fontWeight: 600 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, letterSpacing: '-0.01em', fontWeight: 600 }}>
                 繰り返し課題の削除範囲:
               </p>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   onClick={handleDeleteThis}
                   style={{
-                    flex: 1, background: '#FEF2F2', color: '#DC2626',
+                    flex: 1, background: 'var(--danger-bg)', color: 'var(--danger)',
                     border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8,
                     padding: '8px', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', fontFamily: 'inherit',
@@ -529,7 +529,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 <button
                   onClick={handleDeleteFromHere}
                   style={{
-                    flex: 1, background: '#FEF2F2', color: '#DC2626',
+                    flex: 1, background: 'var(--danger-bg)', color: 'var(--danger)',
                     border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8,
                     padding: '8px', fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', fontFamily: 'inherit',
@@ -541,7 +541,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
               <button
                 onClick={() => setShowDeleteOptions(false)}
                 style={{
-                  background: 'none', border: 'none', color: '#A8A29E',
+                  background: 'none', border: 'none', color: 'var(--text-tertiary)',
                   fontSize: 12, cursor: 'pointer', padding: '2px 0',
                   fontFamily: 'inherit', letterSpacing: '-0.01em',
                 }}
@@ -558,17 +558,17 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 onClick={() => setApplyToAll(v => !v)}
                 style={{
                   width: 36, height: 20, borderRadius: 9999,
-                  background: applyToAll ? '#ef946c' : '#C4BDB5',
+                  background: applyToAll ? 'var(--accent)' : 'var(--text-disabled)',
                   position: 'relative', transition: 'background 0.2s', flexShrink: 0, cursor: 'pointer',
                 }}
               >
                 <div style={{
                   position: 'absolute', top: 2, left: applyToAll ? 18 : 2,
-                  width: 16, height: 16, borderRadius: '50%', background: '#FFFFFF',
+                  width: 16, height: 16, borderRadius: '50%', background: 'var(--surface)',
                   boxShadow: '0 1px 4px rgba(0,0,0,0.2)', transition: 'left 0.2s',
                 }} />
               </div>
-              <span style={{ fontSize: 12, color: applyToAll ? '#ef946c' : '#78716C', fontWeight: applyToAll ? 600 : 400, letterSpacing: '-0.01em' }}>
+              <span style={{ fontSize: 12, color: applyToAll ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: applyToAll ? 600 : 400, letterSpacing: '-0.01em' }}>
                 以降すべての課題に適用
               </span>
             </label>
@@ -578,23 +578,23 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             onClick={handleSave}
             disabled={saving}
             style={{
-              background: saving ? '#A8A29E' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+              background: saving ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
               color: '#ffffff', border: 'none', borderRadius: 8,
               padding: '11px 16px', fontSize: 14, fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
               transition: 'all 0.25s', letterSpacing: '-0.02em',
               fontFamily: 'inherit',
-              boxShadow: saving ? 'none' : '0 3px 10px rgba(239,148,108,0.3)',
+              boxShadow: saving ? 'none' : '0 3px 10px rgba(224,110,66,0.3)',
             }}
             onMouseEnter={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 5px 16px rgba(239,148,108,0.42)'
+                e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.42)'
                 e.currentTarget.style.transform = 'translateY(-1px)'
               }
             }}
             onMouseLeave={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 3px 10px rgba(239,148,108,0.3)'
+                e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.3)'
                 e.currentTarget.style.transform = 'translateY(0)'
               }
             }}

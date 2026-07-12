@@ -1,66 +1,68 @@
 ﻿@import "tailwindcss";
 
 :root {
-  /* Warm neutrals — Muji/SmartHR Stone scale */
-  --bg:              #F6F3EE;
-  --bg-secondary:    #EDE8DF;
+  /* Warm neutrals — Muji/SmartHR Stone scale
+     (2026-07 redesign: コントラストをWCAG AA基準に引き上げ) */
+  --bg:              #F5F2EC;
+  --bg-secondary:    #EAE4DA;
   --surface:         #FFFFFF;
-  --surface-warm:    #FAFAF8;
+  --surface-warm:    #FAF8F4;
 
-  /* Text — warm tones, never pure black */
-  --text-primary:    #1C1917;
-  --text-secondary:  #78716C;
-  --text-tertiary:   #A8A29E;
-  --text-disabled:   #C4BDB5;
+  /* Text — warm tones, never pure black
+     secondary 8.2:1 / tertiary 4.9:1 on white */
+  --text-primary:    #211D1A;
+  --text-secondary:  #544E48;
+  --text-tertiary:   #7D766E;
+  --text-disabled:   #ABA49A;
 
-  /* Borders — warm */
-  --border:          #E3DDD5;
-  --border-light:    #EDE8DF;
-  --border-strong:   #CCC5BB;
+  /* Borders — warm, clearly visible */
+  --border:          #D8D1C6;
+  --border-light:    #E7E1D7;
+  --border-strong:   #B5ACA0;
 
-  /* Accent — warm orange */
-  --accent:          #ef946c;
-  --accent-dark:     #d4794f;
-  --accent-bg:       rgba(239,148,108,0.08);
-  --accent-muted:    rgba(239,148,108,0.12);
+  /* Accent — warm orange (deepened for text/fill legibility) */
+  --accent:          #E06E42;
+  --accent-dark:     #C2582F;
+  --accent-bg:       rgba(224,110,66,0.10);
+  --accent-muted:    rgba(224,110,66,0.22);
 
   /* Danger */
-  --danger:          #DC2626;
-  --danger-bg:       #FEF2F2;
+  --danger:          #D42222;
+  --danger-bg:       #FDEEEE;
 
   /* Glassmorphism */
-  --header-glass: rgba(246,243,238,0.88);
-  --filter-glass: rgba(246,243,238,0.6);
+  --header-glass: rgba(245,242,236,0.9);
+  --filter-glass: rgba(245,242,236,0.72);
 
   /* Shadows — layered, warm */
-  --shadow-xs:   0 1px 2px rgba(20,16,10,0.05);
-  --shadow-sm:   0 1px 3px rgba(20,16,10,0.04), 0 2px 8px rgba(20,16,10,0.04);
-  --shadow-md:   0 4px 16px rgba(20,16,10,0.07), 0 2px 4px rgba(20,16,10,0.04);
-  --shadow-lg:   0 8px 32px rgba(20,16,10,0.09), 0 2px 8px rgba(20,16,10,0.04);
-  --shadow-xl:   0 24px 64px rgba(20,16,10,0.14), 0 8px 20px rgba(20,16,10,0.07);
+  --shadow-xs:   0 1px 2px rgba(20,16,10,0.07);
+  --shadow-sm:   0 1px 3px rgba(20,16,10,0.06), 0 2px 8px rgba(20,16,10,0.06);
+  --shadow-md:   0 4px 16px rgba(20,16,10,0.09), 0 2px 4px rgba(20,16,10,0.05);
+  --shadow-lg:   0 8px 32px rgba(20,16,10,0.11), 0 2px 8px rgba(20,16,10,0.05);
+  --shadow-xl:   0 24px 64px rgba(20,16,10,0.16), 0 8px 20px rgba(20,16,10,0.08);
 }
 
 /* ─── Dark mode overrides ───────────────────────────── */
 [data-theme="dark"] {
-  --bg:              #1C1917;
-  --bg-secondary:    #262320;
-  --surface:         #2A2825;
-  --surface-warm:    #302E2B;
-  --text-primary:    #F0EDE8;
-  --text-secondary:  #B5B0AA;
-  --text-tertiary:   #78716C;
-  --text-disabled:   #4A4744;
-  --border:          #3A3733;
-  --border-light:    #302E2B;
-  --border-strong:   #4A4744;
-  --accent:          #f0a882;
-  --accent-dark:     #ef946c;
-  --accent-bg:       rgba(239,148,108,0.15);
-  --accent-muted:    rgba(239,148,108,0.12);
-  --danger:          #EF4444;
-  --danger-bg:       rgba(239,68,68,0.15);
-  --header-glass: rgba(28,25,23,0.88);
-  --filter-glass: rgba(28,25,23,0.6);
+  --bg:              #181512;
+  --bg-secondary:    #242019;
+  --surface:         #2B2622;
+  --surface-warm:    #332D28;
+  --text-primary:    #F4F1EB;
+  --text-secondary:  #CBC5BC;
+  --text-tertiary:   #9B948B;
+  --text-disabled:   #625B53;
+  --border:          #47403A;
+  --border-light:    #37322C;
+  --border-strong:   #5C554D;
+  --accent:          #F29B6E;
+  --accent-dark:     #E27C4D;
+  --accent-bg:       rgba(242,155,110,0.16);
+  --accent-muted:    rgba(242,155,110,0.26);
+  --danger:          #F26565;
+  --danger-bg:       rgba(242,101,101,0.16);
+  --header-glass: rgba(24,21,18,0.9);
+  --filter-glass: rgba(24,21,18,0.72);
   --shadow-xs:   0 1px 2px rgba(0,0,0,0.4);
   --shadow-sm:   0 1px 3px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
   --shadow-md:   0 4px 16px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
@@ -99,7 +101,7 @@ body {
 }
 
 /* Refined scrollbar */
-::-webkit-scrollbar        { height: 4px; width: 4px; }
+::-webkit-scrollbar        { height: 7px; width: 7px; }
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }

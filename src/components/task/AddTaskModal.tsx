@@ -21,7 +21,7 @@ const INTERVALS: IntervalOption[] = [
   { label: '4週ごと', weeks: 4 },
 ]
 
-const COLORS = ['#E16259', '#ef946c', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0284C7', '#4F46E5']
+const COLORS = ['#E16259', 'var(--accent)', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0284C7', '#4F46E5']
 
 const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -151,10 +151,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 700,
-    color: 'var(--text-tertiary)',
-    letterSpacing: '0.06em',
+    color: 'var(--text-secondary)',
+    letterSpacing: '0.05em',
     textTransform: 'uppercase',
     marginBottom: 6,
     display: 'block',
@@ -162,7 +162,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = 'var(--accent)'
-    e.target.style.boxShadow = '0 0 0 3px rgba(239,148,108,0.12)'
+    e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.12)'
     e.target.style.background = 'var(--surface)'
   }
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -186,7 +186,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const pillStyle = (active: boolean): React.CSSProperties => ({
     background: active ? 'var(--accent-bg)' : 'var(--bg-secondary)',
     color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    border: `1px solid ${active ? 'rgba(239,148,108,0.3)' : 'var(--border)'}`,
+    border: `1px solid ${active ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
     borderRadius: 9999,
     padding: '5px 14px',
     fontSize: 13,
@@ -195,7 +195,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     transition: 'all 0.2s',
     fontFamily: 'inherit',
     letterSpacing: '-0.01em',
-    boxShadow: active ? '0 2px 6px rgba(239,148,108,0.18)' : 'none',
+    boxShadow: active ? '0 2px 6px rgba(224,110,66,0.18)' : 'none',
   })
 
   return (
@@ -266,7 +266,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
         <form onSubmit={handleSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           {errorMsg && (
-            <div style={{ padding: '12px 16px', background: '#FEF2F2', color: '#DC2626', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+            <div style={{ padding: '12px 16px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
               {errorMsg}
             </div>
           )}
@@ -348,7 +348,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                   onClick={() => setShowNewSubject(!showNewSubject)}
                   style={{
                     background: showNewSubject ? 'var(--accent-bg)' : 'var(--bg-secondary)',
-                    border: `1px solid ${showNewSubject ? 'rgba(239,148,108,0.3)' : 'var(--border)'}`,
+                    border: `1px solid ${showNewSubject ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
                     borderRadius: 8,
                     padding: '0 12px',
                     fontSize: 12,
@@ -390,7 +390,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                   type="button"
                   onClick={handleAddSubject}
                   style={{
-                    background: '#ef946c',
+                    background: 'var(--accent)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 8,
@@ -506,7 +506,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                       style={{
                         background: intervalWeeks === iv.weeks ? 'var(--accent-bg)' : 'var(--bg-secondary)',
                         color: intervalWeeks === iv.weeks ? 'var(--accent)' : 'var(--text-secondary)',
-                        border: `1px solid ${intervalWeeks === iv.weeks ? 'rgba(239,148,108,0.3)' : 'var(--border)'}`,
+                        border: `1px solid ${intervalWeeks === iv.weeks ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
                         borderRadius: 9999,
                         padding: '5px 14px',
                         fontSize: 13,
@@ -515,7 +515,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                         transition: 'all 0.2s',
                         fontFamily: 'inherit',
                         letterSpacing: '-0.01em',
-                        boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px rgba(239,148,108,0.18)' : 'none',
+                        boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px rgba(224,110,66,0.18)' : 'none',
                       }}
                     >
                       {iv.label}
@@ -565,7 +565,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 return preview ? (
                   <div style={{
                     background: 'var(--accent-bg)',
-                    border: '1px solid rgba(59,99,255,0.2)',
+                    border: '1px solid var(--accent-muted)',
                     borderRadius: 10,
                     padding: '11px 14px',
                     fontSize: 13,
@@ -614,7 +614,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
               type="submit"
               disabled={saving}
               style={{
-                background: saving ? 'var(--text-tertiary)' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+                background: saving ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: 8,
@@ -625,17 +625,17 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 transition: 'all 0.25s',
                 letterSpacing: '-0.02em',
                 fontFamily: 'inherit',
-                boxShadow: saving ? 'none' : '0 3px 10px rgba(239,148,108,0.3)',
+                boxShadow: saving ? 'none' : '0 3px 10px rgba(224,110,66,0.3)',
               }}
               onMouseEnter={e => {
                 if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 5px 16px rgba(239,148,108,0.42)'
+                  e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.42)'
                   e.currentTarget.style.transform = 'translateY(-1px)'
                 }
               }}
               onMouseLeave={e => {
                 if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 3px 10px rgba(239,148,108,0.3)'
+                  e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.3)'
                   e.currentTarget.style.transform = 'translateY(0)'
                 }
               }}
