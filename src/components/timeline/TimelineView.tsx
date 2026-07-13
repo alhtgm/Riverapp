@@ -14,7 +14,7 @@ const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
 const ROW_HEIGHT = 52
 const HEADER_HEIGHT = 56
-const SUBJECT_SEP_HEIGHT = 36
+const SUBJECT_SEP_HEIGHT = 40
 
 function getDays(totalDays: number): Date[] {
   const today = new Date()
@@ -490,10 +490,10 @@ export default function TimelineView() {
           <span style={{ fontSize: 17, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.04em', flexShrink: 0 }}>
             River
           </span>
-          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.18)', marginLeft: 2, flexShrink: 0 }} />
+          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.28)', marginLeft: 2, flexShrink: 0 }} />
           <span style={{
             fontSize: 12,
-            color: 'rgba(255,255,255,0.6)',
+            color: 'rgba(255,255,255,0.8)',
             fontWeight: 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -518,7 +518,7 @@ export default function TimelineView() {
           </span>
           <span style={{
             fontSize: 10,
-            color: 'rgba(255,255,255,0.4)',
+            color: 'rgba(255,255,255,0.62)',
             fontWeight: 500,
             letterSpacing: '0.02em',
             background: 'rgba(255,255,255,0.08)',
@@ -571,7 +571,7 @@ export default function TimelineView() {
           aria-label="課題を追加 (N)"
           title="課題を追加 [N]"
           style={{
-            background: 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
             color: '#ffffff',
             border: 'none',
             borderRadius: 8,
@@ -580,7 +580,7 @@ export default function TimelineView() {
             fontWeight: 600,
             cursor: 'pointer',
             letterSpacing: '-0.02em',
-            boxShadow: '0 3px 10px rgba(239,148,108,0.35)',
+            boxShadow: '0 3px 10px rgba(224,110,66,0.35)',
             transition: 'all 0.25s',
             display: 'flex',
             alignItems: 'center',
@@ -589,11 +589,11 @@ export default function TimelineView() {
             fontFamily: 'inherit',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 5px 16px rgba(239,148,108,0.48)'
+            e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.48)'
             e.currentTarget.style.transform = 'translateY(-1px)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 3px 10px rgba(239,148,108,0.35)'
+            e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.35)'
             e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
@@ -673,7 +673,7 @@ export default function TimelineView() {
 
       {/* ---- Filter bar ---- */}
       <div style={{
-        height: 42,
+        height: 46,
         borderBottom: '1px solid var(--border-light)',
         display: 'flex',
         alignItems: 'center',
@@ -697,8 +697,8 @@ export default function TimelineView() {
             color: 'var(--text-secondary)',
             border: '1px solid var(--border)',
             borderRadius: 9999,
-            padding: '3px 10px 3px 7px',
-            fontSize: 12,
+            padding: '5px 12px 5px 9px',
+            fontSize: 13,
             fontWeight: 500,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
@@ -732,7 +732,7 @@ export default function TimelineView() {
           <span style={{
             fontSize: 11,
             fontWeight: 700,
-            color: 'var(--text-disabled)',
+            color: 'var(--text-tertiary)',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
             flexShrink: 0,
@@ -749,8 +749,8 @@ export default function TimelineView() {
           { key: 'all',   label: 'すべて' },
         ] as const).map(opt => {
           const active = viewRange === opt.key
-          const activeBg    = isDark ? 'rgba(196,167,125,0.18)' : 'rgba(196,167,125,0.12)'
-          const activeColor = '#c4a77d'
+          const activeBg    = 'var(--accent-bg)'
+          const activeColor = 'var(--accent)'
           return (
             <button
               key={opt.key}
@@ -758,24 +758,24 @@ export default function TimelineView() {
               style={{
                 background: active ? activeBg : 'transparent',
                 color: active ? activeColor : 'var(--text-secondary)',
-                border: `1px solid ${active ? '#D9770644' : 'var(--border)'}`,
+                border: `1px solid ${active ? 'var(--accent-muted)' : 'var(--border)'}`,
                 borderRadius: 9999,
-                padding: '3px 10px',
-                fontSize: 12,
-                fontWeight: active ? 700 : 400,
+                padding: '5px 12px',
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 transition: 'all 0.2s',
                 flexShrink: 0,
                 letterSpacing: '-0.01em',
                 fontFamily: 'inherit',
-                boxShadow: active ? '0 2px 8px rgba(196,167,125,0.25)' : 'none',
+                boxShadow: active ? '0 2px 8px rgba(224,110,66,0.22)' : 'none',
               }}
               onMouseEnter={e => {
                 if (!active) {
                   e.currentTarget.style.background = activeBg
-                  e.currentTarget.style.borderColor = 'rgba(196,167,125,0.35)'
-                  e.currentTarget.style.color = activeColor
+                  e.currentTarget.style.borderColor = 'var(--accent-muted)'
+                  e.currentTarget.style.color = 'var(--accent)'
                 }
               }}
               onMouseLeave={e => {
@@ -809,11 +809,11 @@ export default function TimelineView() {
                 gap: 5,
                 background: isActive ? pillBg : 'transparent',
                 color: isActive ? pillColor : 'var(--text-secondary)',
-                border: `1px solid ${isActive ? pillColor + '44' : 'var(--border)'}`,
+                border: `1px solid ${isActive ? pillColor + '55' : 'var(--border)'}`,
                 borderRadius: 9999,
-                padding: '3px 10px 3px 7px',
-                fontSize: 12,
-                fontWeight: isActive ? 600 : 400,
+                padding: '5px 12px 5px 9px',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 transition: 'all 0.2s',
@@ -838,12 +838,12 @@ export default function TimelineView() {
               }}
             >
               <div style={{
-                width: 6,
-                height: 6,
+                width: 7,
+                height: 7,
                 borderRadius: '50%',
                 background: pillColor,
                 flexShrink: 0,
-                opacity: isActive ? 1 : 0.45,
+                opacity: isActive ? 1 : 0.55,
               }} />
               {pill.label}
             </button>
@@ -853,7 +853,7 @@ export default function TimelineView() {
         {isFiltering && (
           <>
             <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, letterSpacing: '-0.01em' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0, letterSpacing: '-0.01em' }}>
               {filteredTotal}件
             </span>
             <button
@@ -862,9 +862,9 @@ export default function TimelineView() {
                 background: 'none',
                 border: '1px solid var(--border)',
                 cursor: 'pointer',
-                fontSize: 11,
-                color: 'var(--text-tertiary)',
-                padding: '2px 8px',
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                padding: '4px 10px',
                 borderRadius: 9999,
                 flexShrink: 0,
                 fontFamily: 'inherit',
@@ -928,39 +928,39 @@ export default function TimelineView() {
                     paddingBottom: 8,
                     gap: 2,
                     background: isToday
-                      ? 'rgba(59,130,246,0.08)'
+                      ? (isDark ? 'rgba(112,135,127,0.22)' : 'rgba(112,135,127,0.14)')
                       : (isSun || isSat)
-                      ? 'rgba(20,16,10,0.015)'
+                      ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(20,16,10,0.035)')
                       : 'transparent',
-                    borderRight: '1px solid rgba(20,16,10,0.04)',
+                    borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(20,16,10,0.06)'}`,
                     position: 'relative',
                   }}
                 >
                   <span style={{
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: (isFirst || i === 0) ? 700 : 600,
                     color: (isFirst || i === 0)
-                      ? 'var(--text-secondary)'
-                      : isSun ? '#DC2626'
-                      : isSat ? '#c4a77d'
-                      : 'var(--text-disabled)',
+                      ? 'var(--text-primary)'
+                      : isSun ? 'var(--danger)'
+                      : isSat ? (isDark ? '#D4B78A' : '#A9834B')
+                      : 'var(--text-tertiary)',
                     letterSpacing: (isFirst || i === 0) ? '0.04em' : '0.02em',
                     whiteSpace: 'nowrap',
                   }}>
                     {(isFirst || i === 0) ? `${day.getMonth() + 1}月` : DAY_JA[dow]}
                   </span>
                   <div style={{
-                    width: isToday ? 26 : 24,
-                    height: isToday ? 26 : 24,
+                    width: isToday ? 28 : 26,
+                    height: isToday ? 28 : 26,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
                     background: isToday ? '#70877f' : 'transparent',
                     boxShadow: isToday ? '0 2px 10px rgba(112,135,127,0.48), 0 0 0 2px rgba(112,135,127,0.18)' : 'none',
-                    fontSize: isToday ? 12 : 11,
-                    fontWeight: isToday ? 800 : 400,
-                    color: isToday ? '#ffffff' : isSun ? '#DC2626' : isSat ? '#c4a77d' : 'var(--text-secondary)',
+                    fontSize: isToday ? 13 : 12,
+                    fontWeight: isToday ? 800 : 500,
+                    color: isToday ? '#ffffff' : isSun ? 'var(--danger)' : isSat ? (isDark ? '#D4B78A' : '#A9834B') : 'var(--text-secondary)',
                     letterSpacing: '-0.02em',
                     transition: 'all 0.2s',
                   }}>
@@ -1020,9 +1020,9 @@ export default function TimelineView() {
                     onClick={() => setViewRange('all')}
                     style={{
                       marginTop: 14,
-                      background: 'rgba(196,167,125,0.1)',
-                      color: '#c4a77d',
-                      border: '1px solid rgba(196,167,125,0.35)',
+                      background: 'var(--accent-bg)',
+                      color: 'var(--accent)',
+                      border: '1px solid var(--accent-muted)',
                       borderRadius: 9999,
                       padding: '6px 18px',
                       fontSize: 12,
@@ -1032,8 +1032,8 @@ export default function TimelineView() {
                       letterSpacing: '-0.01em',
                       transition: 'all 0.2s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(196,167,125,0.2)'; e.currentTarget.style.borderColor = 'rgba(196,167,125,0.55)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(196,167,125,0.1)'; e.currentTarget.style.borderColor = 'rgba(196,167,125,0.35)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,110,66,0.2)'; e.currentTarget.style.borderColor = 'rgba(224,110,66,0.5)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
                   >
                     「すべて」に切り替える
                   </button>
@@ -1128,9 +1128,9 @@ export default function TimelineView() {
                         </svg>
                         <span
                           style={{
-                            fontSize: isMobile ? 10 : 11,
+                            fontSize: isMobile ? 12 : 13,
                             fontWeight: 700,
-                            color: 'var(--text-secondary)',
+                            color: 'var(--text-primary)',
                             letterSpacing: '-0.01em',
                             whiteSpace: 'nowrap',
                           }}
@@ -1139,11 +1139,11 @@ export default function TimelineView() {
                         </span>
                         {!collapsed && subjectRows.length > 0 && (
                           <span style={{
-                            fontSize: 9,
-                            color: 'var(--text-tertiary)',
+                            fontSize: 10,
+                            color: 'var(--text-secondary)',
                             background: 'var(--border-light)',
                             borderRadius: 9999,
-                            padding: '1px 5px',
+                            padding: '2px 7px',
                             flexShrink: 0,
                             fontWeight: 700,
                           }}>
@@ -1174,13 +1174,13 @@ export default function TimelineView() {
                             opacity: isHovered ? 1 : 0.72,
                             transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, transform 0.1s',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,148,108,0.22)'; e.currentTarget.style.borderColor = 'rgba(239,148,108,0.45)' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,110,66,0.20)'; e.currentTarget.style.borderColor = 'rgba(224,110,66,0.45)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
                           onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
                           onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
                         >
                           <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                            <path d="M6 1v10M1 6h10" stroke="#ef946c" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M6 1v10M1 6h10" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"/>
                           </svg>
                         </button>
                       )}
@@ -1245,10 +1245,10 @@ export default function TimelineView() {
                       const pct = Math.round((done / total) * 100)
                       return (
                         <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 48, height: 4, background: `${subject.color}25`, borderRadius: 9999, overflow: 'hidden' }}>
+                          <div style={{ width: 56, height: 5, background: `${subject.color}30`, borderRadius: 9999, overflow: 'hidden' }}>
                             <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 9999, transition: 'width 0.4s ease' }} />
                           </div>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: subject.color, opacity: 0.8, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: subject.color, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
                             {done}/{total}
                           </span>
                         </div>
@@ -1281,9 +1281,9 @@ export default function TimelineView() {
                                   width: COL_WIDTH,
                                   height: ROW_HEIGHT,
                                   background: isTodayCol
-                                    ? 'rgba(59,130,246,0.08)'
-                                    : 'rgba(20,16,10,0.016)',
-                                  borderRight: '1px solid rgba(20,16,10,0.025)',
+                                    ? (isDark ? 'rgba(112,135,127,0.16)' : 'rgba(112,135,127,0.10)')
+                                    : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(20,16,10,0.03)'),
+                                  borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(20,16,10,0.05)'}`,
                                   pointerEvents: 'none',
                                 }}
                               />
@@ -1320,9 +1320,9 @@ export default function TimelineView() {
                                   width,
                                   top: '50%',
                                   transform: 'translateY(-50%)',
-                                  height: 34,
+                                  height: 36,
                                   background: bg,
-                                  borderRadius: 6,
+                                  borderRadius: 7,
                                   cursor: isDragging ? 'grabbing' : 'grab',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -1385,17 +1385,17 @@ export default function TimelineView() {
 
                                 {occurrenceLabel && (
                                   <span style={{
-                                    fontSize: 9, fontWeight: 700, color,
+                                    fontSize: 10, fontWeight: 700, color,
                                     background: `${color}22`,
-                                    borderRadius: 4, padding: '1px 4px',
-                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 4,
+                                    borderRadius: 4, padding: '2px 5px',
+                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
                                     pointerEvents: 'none',
                                   }}>
                                     {occurrenceLabel}
                                   </span>
                                 )}
                                 <span style={{
-                                  fontSize: 11, fontWeight: 600, color,
+                                  fontSize: 12, fontWeight: 600, color,
                                   overflow: 'hidden', textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                   letterSpacing: '-0.02em', lineHeight: 1,

@@ -86,7 +86,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         }}>
           {task.title}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '-0.01em' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>
           {formatDate(task.start_date)} → {formatDate(task.due_date)}
         </div>
       </div>
@@ -94,9 +94,9 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
       {/* Status buttons */}
       <div style={{ padding: '8px 10px' }}>
         <div style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 700,
-          color: 'var(--text-disabled)',
+          color: 'var(--text-tertiary)',
           letterSpacing: '0.1em',
           marginBottom: 5,
           textTransform: 'uppercase',

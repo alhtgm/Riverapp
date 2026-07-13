@@ -56,10 +56,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               alignItems: 'center',
               gap: 10,
               padding: '11px 16px',
-              background: toast.type === 'success' ? '#1C1917' : '#FEF2F2',
-              color: toast.type === 'success' ? '#FFFFFF' : '#DC2626',
+              background: toast.type === 'success' ? '#211D1A' : '#FDECEC',
+              color: toast.type === 'success' ? '#FFFFFF' : '#D42222',
               borderRadius: 10,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 500,
               letterSpacing: '-0.02em',
               boxShadow: '0 4px 20px rgba(20,16,10,0.18), 0 1px 4px rgba(20,16,10,0.1)',
@@ -79,7 +79,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             ) : (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
                 <circle cx="7" cy="7" r="6.5" stroke="rgba(220,38,38,0.4)" strokeWidth="1"/>
-                <path d="M7 4v4M7 9.5v.5" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M7 4v4M7 9.5v.5" stroke="#D42222" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             )}
             {toast.message}

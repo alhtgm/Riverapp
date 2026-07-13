@@ -110,11 +110,11 @@ export const STATUS_CONFIG: Record<
   TaskStatus | 'overdue',
   { label: string; color: string; bg: string; darkColor: string; darkBg: string }
 > = {
-  todo:        { label: '未着手',   color: '#9B9590', bg: '#F2EFE9', darkColor: '#A8A29E', darkBg: 'rgba(155,149,144,0.16)' },
-  in_progress: { label: '進行中',   color: '#0891B2', bg: '#ECFEFF', darkColor: '#22D3EE', darkBg: 'rgba(8,145,178,0.18)' },
-  done:        { label: '完了',     color: '#16A34A', bg: '#ECFDF5', darkColor: '#22C55E', darkBg: 'rgba(22,163,74,0.18)'   },
-  submitted:   { label: '提出済み', color: '#7C3AED', bg: '#F5F3FF', darkColor: '#A855F7', darkBg: 'rgba(124,58,237,0.18)' },
-  overdue:     { label: '期限切れ', color: '#DC2626', bg: '#FEF2F2', darkColor: '#EF4444', darkBg: 'rgba(239,68,68,0.16)'  },
+  todo:        { label: '未着手',   color: '#6F6862', bg: '#EEEAE3', darkColor: '#B8B2AB', darkBg: 'rgba(155,149,144,0.20)' },
+  in_progress: { label: '進行中',   color: '#0779A0', bg: '#E5F8FC', darkColor: '#38D6F0', darkBg: 'rgba(8,145,178,0.22)' },
+  done:        { label: '完了',     color: '#14913F', bg: '#E4FAEE', darkColor: '#34D46A', darkBg: 'rgba(22,163,74,0.22)'   },
+  submitted:   { label: '提出済み', color: '#7233DE', bg: '#F1EDFE', darkColor: '#B368F9', darkBg: 'rgba(124,58,237,0.22)' },
+  overdue:     { label: '期限切れ', color: '#D42222', bg: '#FDECEC', darkColor: '#F26565', darkBg: 'rgba(239,68,68,0.20)'  },
 }
 
 export const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done', 'submitted']

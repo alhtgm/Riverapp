@@ -57,9 +57,9 @@ export default function TemplateLibrary({ onClose }: Props) {
     padding: '10px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none',
     width: '100%', fontFamily: 'inherit', letterSpacing: '-0.01em',
   }
-  const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: 5, display: 'block' }
+  const label: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: 5, display: 'block' }
   const primaryBtn = (disabled = false): React.CSSProperties => ({
-    background: disabled ? 'var(--text-tertiary)' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+    background: disabled ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
     color: '#fff', border: 'none', borderRadius: 9, padding: '11px 18px', fontSize: 14, fontWeight: 600,
     cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', letterSpacing: '-0.01em',
   })
@@ -273,7 +273,7 @@ export default function TemplateLibrary({ onClose }: Props) {
                     <div style={{ padding: 15, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                         <div style={{ flex: 1, fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1.3 }}>{t.title}</div>
-                        {update && <span style={{ background: '#DC2626', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>更新あり</span>}
+                        {update && <span style={{ background: 'var(--danger)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>更新あり</span>}
                         {!update && t.imported && <span style={{ background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>取り込み済</span>}
                       </div>
                       {metaChips(t).length > 0 && (
@@ -319,7 +319,7 @@ export default function TemplateLibrary({ onClose }: Props) {
 
           {update && (
             <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 4 }}>このテンプレートに更新があります</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 4 }}>このテンプレートに更新があります</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 10 }}>
                 適用すると変更・追加が反映されます。<b>あなたの進捗（ステータス）やメモはそのまま保持</b>されます。
               </div>
@@ -354,7 +354,7 @@ export default function TemplateLibrary({ onClose }: Props) {
           {mine ? (
             <>
               <button onClick={() => openEdit(t)} style={{ ...ghostBtn }}>編集して更新を公開</button>
-              <button onClick={() => handleDelete(t.id)} disabled={busy} style={{ ...ghostBtn, color: '#DC2626' }}>削除</button>
+              <button onClick={() => handleDelete(t.id)} disabled={busy} style={{ ...ghostBtn, color: 'var(--danger)' }}>削除</button>
               <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>自分が公開したテンプレート</div>
             </>
           ) : t.imported ? (

@@ -49,9 +49,9 @@ export default function ColorPicker({ value, onChange, onClose, position }: Prop
       }}
     >
       <div style={{
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: 700,
-        color: 'var(--text-disabled)',
+        color: 'var(--text-tertiary)',
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
         marginBottom: 8,

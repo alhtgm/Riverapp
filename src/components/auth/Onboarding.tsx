@@ -74,14 +74,14 @@ export default function Onboarding() {
     display: 'block',
     fontSize: 13,
     fontWeight: 600,
-    color: '#78716C',
+    color: '#544E48',
     letterSpacing: '-0.01em',
     marginBottom: 6,
   }
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.target.style.borderColor = '#ef946c'
-      e.target.style.boxShadow = '0 0 0 3px rgba(8,145,178,0.12)'
+      e.target.style.borderColor = '#E06E42'
+      e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.18)'
       e.target.style.background = '#FFFFFF'
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
@@ -91,7 +91,7 @@ export default function Onboarding() {
     },
   }
   const primaryBtn = (disabled: boolean): React.CSSProperties => ({
-    background: disabled ? '#A8A29E' : 'linear-gradient(135deg, #ef946c 0%, #d4794f 100%)',
+    background: disabled ? '#7D766E' : 'linear-gradient(135deg, #E06E42 0%, #C2582F 100%)',
     color: '#FFFFFF',
     border: 'none',
     borderRadius: 10,
@@ -100,7 +100,7 @@ export default function Onboarding() {
     fontWeight: 600,
     cursor: disabled ? 'not-allowed' : 'pointer',
     letterSpacing: '-0.02em',
-    boxShadow: disabled ? 'none' : '0 4px 12px rgba(239,148,108,0.35)',
+    boxShadow: disabled ? 'none' : '0 4px 12px rgba(224,110,66,0.35)',
     transition: 'all 0.15s',
     marginTop: 4,
     fontFamily: 'inherit',
@@ -117,7 +117,7 @@ export default function Onboarding() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: 600, height: 600, background: 'radial-gradient(circle, rgba(239,148,108,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: 600, height: 600, background: 'radial-gradient(circle, rgba(224,110,66,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-10%', right: '-5%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(112,135,127,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       <div style={{
@@ -142,7 +142,7 @@ export default function Onboarding() {
             {(['school', 'name'] as Step[]).map(s => (
               <div key={s} style={{
                 height: 4, flex: 1, borderRadius: 2,
-                background: (step === s || (step === 'name' && s === 'school')) ? '#ef946c' : 'rgba(255,255,255,0.2)',
+                background: (step === s || (step === 'name' && s === 'school')) ? '#E06E42' : 'rgba(255,255,255,0.2)',
                 transition: 'background 0.2s',
               }} />
             ))}
@@ -151,7 +151,7 @@ export default function Onboarding() {
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.04em', margin: '0 0 6px', lineHeight: 1.15 }}>
             {step === 'school' ? '学校を登録' : 'コミュニティ表示名'}
           </h1>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.5 }}>
             {step === 'school'
               ? '学校のメールアドレスで所属を判定します'
               : '他の人に表示される名前を決めましょう'}
@@ -173,7 +173,7 @@ export default function Onboarding() {
                   placeholder="you@s.yourschool.ac.jp"
                   {...focusHandlers}
                 />
-                <p style={{ fontSize: 12, color: '#A8A29E', margin: '8px 0 0', lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
                   ログインには使いません。所属する学校の判定だけに使います。
                 </p>
               </div>
@@ -203,7 +203,7 @@ export default function Onboarding() {
                   placeholder="りばー太郎"
                   {...focusHandlers}
                 />
-                <p style={{ fontSize: 12, color: '#A8A29E', margin: '8px 0 0', lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
                   本名やメールアドレスは他の人に表示されません。
                 </p>
               </div>
@@ -216,17 +216,17 @@ export default function Onboarding() {
               <button
                 type="button"
                 onClick={() => { setStep('school'); setError(null) }}
-                style={{ background: 'none', border: 'none', color: '#A8A29E', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
+                style={{ background: 'none', border: 'none', color: '#7D766E', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
               >
                 ← 戻る
               </button>
             </form>
           )}
 
-          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#A8A29E', letterSpacing: '-0.01em' }}>
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#7D766E', letterSpacing: '-0.01em' }}>
             <button
               onClick={() => signOut()}
-              style={{ background: 'none', border: 'none', color: '#ef946c', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}
+              style={{ background: 'none', border: 'none', color: '#E06E42', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}
             >
               ログアウト
             </button>

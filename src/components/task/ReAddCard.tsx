@@ -95,7 +95,7 @@ export default function ReAddCard({ subject, templates, onAdd, onClose }: Props)
                 background: 'transparent', border: '1px solid var(--border-light)', borderRadius: 10,
                 padding: '10px 11px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'rgba(239,148,108,0.35)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'rgba(224,110,66,0.35)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border-light)' }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -106,7 +106,7 @@ export default function ReAddCard({ subject, templates, onAdd, onClose }: Props)
                   次回 {formatDate(t.nextDue)}（{WEEK_JA[parseLocalDate(t.nextDue).getDay()]}）{t.dueTime ? ` ${t.dueTime}` : ''}
                 </div>
               </div>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(239,148,108,0.4)' }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(224,110,66,0.4)' }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
               </div>
             </button>
