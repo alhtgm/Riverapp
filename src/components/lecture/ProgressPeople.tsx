@@ -1,4 +1,4 @@
-import { Avatar } from '../ui/Sheet'
+import { Avatar } from '../ui/kit'
 import { useStore } from '../../store/useStore'
 import { STATUS_CONFIG, type ProgressPerson, type TaskProgress, type TaskStatus } from '../../types'
 

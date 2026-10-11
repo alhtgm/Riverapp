@@ -101,8 +101,11 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
           letterSpacing: '0.1em',
           marginBottom: 5,
           textTransform: 'uppercase',
+          display: 'flex',
+          justifyContent: 'space-between',
         }}>
-          ステータス
+          <span>自分のステータス</span>
+          <span style={{ letterSpacing: '0.04em' }}>参加者の状況</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {STATUS_ORDER.map(s => {

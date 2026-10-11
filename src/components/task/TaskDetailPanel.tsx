@@ -4,6 +4,7 @@ import { STATUS_CONFIG, STATUS_ORDER } from '../../types'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
 import ProgressPeople from '../lecture/ProgressPeople'
+import { Button, Confirm, SectionHeader } from '../ui/kit'
 
 interface Props {
   task: Task | null
@@ -220,15 +221,6 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
     display: 'block',
   }
 
-  const groupStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 700,
-    color: 'var(--accent)',
-    letterSpacing: '0.04em',
-    margin: '4px 0 -8px',
-    paddingBottom: 6,
-    borderBottom: '1px solid var(--border-light)',
-  }
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = 'var(--accent)'
@@ -321,7 +313,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             </div>
           )}
 
-          <p style={groupStyle}>共有（参加者全員に反映）</p>
+          <SectionHeader title="みんなと共有する項目" description="変更すると、この講義の参加者全員に反映されます" />
 
           {/* Title */}
           <div>
@@ -426,11 +418,12 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
           {/* みんなの進捗 */}
           <div>
-            <label style={labelStyle}>みんなの進捗</label>
+            <SectionHeader title="みんなの進捗" description="この課題に参加者がいまどのステータスかを表示しています" />
+            <div style={{ height: 10 }} />
             <ProgressPeople progress={progress[task.id]} />
           </div>
 
-          <p style={groupStyle}>自分だけ</p>
+          <SectionHeader title="自分だけの項目" description="ほかの参加者には影響しません（進捗の人数・名前は参加者に表示されます）" />
 
           {/* Work start (personal) */}
           <div>
@@ -561,71 +554,6 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           background: 'var(--surface-warm)',
           flexShrink: 0,
         }}>
-          {!showDeleteOptions ? (
-            <button
-              onClick={() => setShowDeleteOptions(true)}
-              style={{
-                background: 'transparent',
-                color: 'var(--danger)',
-                border: '1px solid rgba(220,38,38,0.25)',
-                borderRadius: 8,
-                padding: '9px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                letterSpacing: '-0.01em',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-            >
-              削除
-            </button>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, letterSpacing: '-0.01em', fontWeight: 600, lineHeight: 1.5 }}>
-                {task.recurrence_id ? '繰り返し課題の削除範囲:' : 'この課題を削除しますか？'}
-                <br />
-                <span style={{ fontWeight: 400 }}>参加者全員のRiverから消えます。講義の画面の「削除済みの課題」から復元できます。</span>
-              </p>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={handleDeleteThis}
-                  style={{
-                    flex: 1, background: 'var(--danger-bg)', color: 'var(--danger)',
-                    border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8,
-                    padding: '8px', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  {task.recurrence_id ? 'この課題のみ' : '削除する'}
-                </button>
-                {task.recurrence_id && <button
-                  onClick={handleDeleteFromHere}
-                  style={{
-                    flex: 1, background: 'var(--danger-bg)', color: 'var(--danger)',
-                    border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8,
-                    padding: '8px', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  以降すべて
-                </button>}
-              </div>
-              <button
-                onClick={() => setShowDeleteOptions(false)}
-                style={{
-                  background: 'none', border: 'none', color: 'var(--text-tertiary)',
-                  fontSize: 12, cursor: 'pointer', padding: '2px 0',
-                  fontFamily: 'inherit', letterSpacing: '-0.01em',
-                }}
-              >
-                キャンセル
-              </button>
-            </div>
-          )}
-
           {/* 繰り返し課題: 以降すべてに適用トグル */}
           {task.recurrence_id && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
@@ -676,6 +604,31 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           >
             {saving ? '保存中...' : applyToAll ? '以降すべて保存' : '保存'}
           </button>
+
+          {/* 削除（取り消しは講義の画面の「削除済みの課題」から） */}
+          {!showDeleteOptions ? (
+            <Button variant="ghost" size="sm" style={{ color: 'var(--danger)', alignSelf: 'center' }} onClick={() => setShowDeleteOptions(true)}>
+              この課題を削除
+            </Button>
+          ) : task.recurrence_id ? (
+            <div role="alertdialog" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, border: '1px solid rgba(220,38,38,0.3)', background: 'var(--danger-bg)' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>繰り返し課題のどこまでを削除しますか？</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>参加者全員のRiverから消えます。講義の画面の「削除済みの課題」から元に戻せます。</span>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <Button variant="ghost" size="sm" onClick={() => setShowDeleteOptions(false)}>やめる</Button>
+                <Button variant="danger" size="sm" onClick={handleDeleteThis}>この回だけ</Button>
+                <Button variant="danger" size="sm" onClick={handleDeleteFromHere}>この回以降すべて</Button>
+              </div>
+            </div>
+          ) : (
+            <Confirm
+              message="この課題を削除しますか？"
+              detail="参加者全員のRiverから消えます。講義の画面の「削除済みの課題」から元に戻せます。"
+              confirmLabel="削除する"
+              onCancel={() => setShowDeleteOptions(false)}
+              onConfirm={handleDeleteThis}
+            />
+          )}
         </div>
       </div>
     </>

@@ -4,8 +4,9 @@ import { LIMITS } from '../../lib/limits'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
-import Sheet, { Avatar } from '../ui/Sheet'
-import { btn, sectionTitle, inputStyle, emptyText, listRow } from '../ui/styles'
+import Sheet from '../ui/Sheet'
+import { Avatar, Badge, Button, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
+import { inputStyle } from '../ui/styles'
 import { VISIBILITY_LABEL, formatDate, type AppNotification, type LectureVisibility, type UserSummary } from '../../types'
 
 export type SocialTab = 'notifications' | 'friends' | 'parties' | 'account'
@@ -18,12 +19,36 @@ interface Props {
   onOpenLecture: (lectureId: string) => void
 }
 
+const SUBTITLE: Record<SocialTab, string> = {
+  notifications: 'フレンドや講義の新しい動きをお知らせします',
+  friends: 'ユーザーIDでつながった人と、講義や進捗を見せ合えます',
+  parties: '身内のグループ。メンバー同士で講義を共有できます',
+  account: 'ほかの人に表示される名前とユーザーIDの設定です',
+}
+
 function timeAgo(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000
   if (diff < 60) return 'たった今'
   if (diff < 3600) return `${Math.floor(diff / 60)}分前`
   if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`
   return `${Math.floor(diff / 86400)}日前`
+}
+
+function HandleInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div style={{ position: 'relative', flex: 1 }}>
+      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value.replace(/^@/, ''))}
+        placeholder={placeholder}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        style={{ ...inputStyle, paddingLeft: 28, minHeight: 38 }}
+      />
+    </div>
+  )
 }
 
 export default function SocialPanel({ initialTab = 'notifications', onClose, onOpenProfile, onOpenParty, onOpenLecture }: Props) {
@@ -54,6 +79,7 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
   }
 
   const name = (id: unknown) => userLabel(users, typeof id === 'string' ? id : null)
+  const handleOf = (id: string) => (users[id]?.handle ? `@${users[id]?.handle}` : undefined)
   const lectureTitle = (n: AppNotification) =>
     String(n.payload.title ?? subjects.find(s => s.id === n.payload.lecture_id)?.name ?? '講義')
 
@@ -73,303 +99,246 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
     }
   }
 
-  const onNotificationClick = (n: AppNotification) => {
+  const notificationAction = (n: AppNotification): { label: string; run: () => void } | null => {
     const p = n.payload
     switch (n.type) {
-      case 'friend_request': if (typeof p.requester_id === 'string') onOpenProfile(p.requester_id); break
-      case 'friend_accepted': if (typeof p.addressee_id === 'string') onOpenProfile(p.addressee_id); break
-      case 'party_invite': setTab('parties'); break
-      case 'lecture_apply_request':
-      case 'task_due_changed':
-      case 'lecture_visibility_changed':
-      case 'lecture_apply_response':
-        if (typeof p.lecture_id === 'string' && subjects.some(s => s.id === p.lecture_id)) onOpenLecture(p.lecture_id)
-        break
+      case 'friend_request': return { label: '確認する', run: () => setTab('friends') }
+      case 'friend_accepted': return typeof p.addressee_id === 'string' ? { label: 'プロフィール', run: () => onOpenProfile(p.addressee_id as string) } : null
+      case 'party_invite': return { label: '確認する', run: () => setTab('parties') }
+      default:
+        return typeof p.lecture_id === 'string' && subjects.some(s => s.id === p.lecture_id)
+          ? { label: '講義を開く', run: () => onOpenLecture(p.lecture_id as string) }
+          : null
     }
   }
 
-  const tabs: { key: SocialTab; label: string; badge: number }[] = [
-    { key: 'notifications', label: '通知', badge: notifications.filter(n => !n.read_at).length },
-    { key: 'friends', label: 'フレンド', badge: incoming.length },
-    { key: 'parties', label: 'パーティー', badge: invites.length },
-    { key: 'account', label: 'アカウント', badge: 0 },
-  ]
-
-  const userRow = (id: string, actions: React.ReactNode) => (
-    <div key={id} style={listRow}>
-      <button
-        onClick={() => onOpenProfile(id)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-      >
-        <Avatar name={name(id)} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name(id)}</span>
-        {users[id]?.handle && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>@{users[id]?.handle}</span>}
-      </button>
-      {actions}
-    </div>
+  const userItem = (id: string, trailing?: React.ReactNode) => (
+    <ListItem
+      key={id}
+      leading={<Avatar name={name(id)} size={34} />}
+      title={name(id)}
+      subtitle={handleOf(id)}
+      onClick={() => onOpenProfile(id)}
+      trailing={trailing}
+    />
   )
 
   return (
-    <Sheet title="つながり" onClose={onClose} width={820} height={760}>
-      <div role="tablist" style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 10, padding: 3 }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              flex: 1, border: 'none', borderRadius: 8, padding: '7px 6px', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-              background: tab === t.key ? 'var(--surface)' : 'transparent',
-              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-              boxShadow: tab === t.key ? 'var(--shadow-xs)' : 'none',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            }}
-          >
-            {t.label}
-            {t.badge > 0 && (
-              <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 9999, fontSize: 10, padding: '0 6px', lineHeight: '16px' }}>{t.badge}</span>
-            )}
-          </button>
-        ))}
-      </div>
+    <Sheet title="つながり" subtitle={SUBTITLE[tab]} onClose={onClose} width={820} height={760}>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'notifications', label: '通知', badge: notifications.filter(n => !n.read_at).length },
+          { key: 'friends', label: 'フレンド', badge: incoming.length },
+          { key: 'parties', label: 'パーティー', badge: invites.length },
+          { key: 'account', label: 'アカウント' },
+        ]}
+      />
 
       {tab === 'notifications' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {notifications.length === 0 && <p style={emptyText}>通知はありません</p>}
-          {notifications.map(n => (
-            <button
-              key={n.id}
-              onClick={() => onNotificationClick(n)}
-              style={{
-                ...listRow, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
-                background: n.read_at ? 'var(--surface-warm)' : 'var(--accent-bg)',
-                borderColor: n.read_at ? 'var(--border-light)' : 'var(--accent-muted)',
-              }}
-            >
-              <span style={{ flex: 1, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{notificationText(n)}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
-            </button>
-          ))}
-        </div>
+        <Section title="お知らせ" description="ボタンを押すと関係する画面に移動します">
+          {notifications.length === 0 ? (
+            <EmptyState title="通知はありません" description="フレンド申請や、参加している講義の締切変更などがここに届きます。" />
+          ) : (
+            <List>
+              {notifications.map(n => {
+                const action = notificationAction(n)
+                return (
+                  <ListItem
+                    key={n.id}
+                    highlight={!n.read_at}
+                    title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{notificationText(n)}</span>}
+                    subtitle={timeAgo(n.created_at)}
+                    trailing={action && <Button size="sm" onClick={action.run}>{action.label}</Button>}
+                  />
+                )
+              })}
+            </List>
+          )}
+        </Section>
       )}
 
       {tab === 'friends' && (
         <>
-          <div>
-            <p style={sectionTitle}>ユーザーIDで探す</p>
+          <Section title="フレンドを探す" description="なりすまし防止のため、ユーザーIDの完全一致でのみ検索できます">
             <form
-              style={{ display: 'flex', gap: 6 }}
+              style={{ display: 'flex', gap: 8 }}
               onSubmit={e => {
                 e.preventDefault()
-                void run(async () => {
-                  const found = await social.searchByHandle(query)
-                  setSearchResult(found ?? 'none')
-                })
+                void run(async () => setSearchResult((await social.searchByHandle(query)) ?? 'none'))
               }}
             >
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
-                <input
-                  value={query}
-                  onChange={e => { setQuery(e.target.value); setSearchResult(null) }}
-                  placeholder="river_taro"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  style={{ ...inputStyle, paddingLeft: 26 }}
-                />
-              </div>
-              <button type="submit" style={btn('primary')} disabled={busy || !query.trim()}>検索</button>
+              <HandleInput value={query} onChange={v => { setQuery(v); setSearchResult(null) }} placeholder="相手のユーザーID" />
+              <Button type="submit" variant="primary" disabled={!query.trim()} loading={busy}>検索</Button>
             </form>
-            <p style={{ ...emptyText, fontSize: 11 }}>なりすまし防止のため、ユーザーIDの完全一致でのみ検索できます。</p>
-            {searchResult === 'none' && <p style={emptyText}>見つかりませんでした</p>}
-            {searchResult && searchResult !== 'none' && userRow(searchResult.id, (
-              <button style={btn('secondary', true)} onClick={() => onOpenProfile(searchResult.id)}>プロフィール</button>
-            ))}
-          </div>
+            {searchResult === 'none' && <EmptyState compact title="見つかりませんでした" description="ユーザーIDのつづりを確認してください。" />}
+            {searchResult && searchResult !== 'none' && userItem(searchResult.id, <Button size="sm" onClick={() => onOpenProfile(searchResult.id)}>プロフィールを見る</Button>)}
+          </Section>
 
           {incoming.length > 0 && (
-            <div>
-              <p style={sectionTitle}>届いた申請</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {incoming.map(r => userRow(r.requester_id, (
-                  <span style={{ display: 'inline-flex', gap: 4 }}>
-                    <button style={btn('primary', true)} disabled={busy} onClick={() => run(async () => { await social.acceptFriendRequest(r.id); showToast('フレンドになりました') })}>承認</button>
-                    <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await social.removeFriendRequest(r.id); showToast('申請を拒否しました') })}>拒否</button>
-                  </span>
+            <Section title="届いた申請" count={incoming.length} description="承認するとフレンドになります">
+              <List>
+                {incoming.map(r => userItem(r.requester_id, (
+                  <>
+                    <Button size="sm" disabled={busy} onClick={() => run(async () => { await social.removeFriendRequest(r.id); showToast('申請を拒否しました') })}>拒否</Button>
+                    <Button size="sm" variant="primary" disabled={busy} onClick={() => run(async () => { await social.acceptFriendRequest(r.id); showToast('フレンドになりました') })}>承認</Button>
+                  </>
                 )))}
-              </div>
-            </div>
+              </List>
+            </Section>
           )}
 
           {outgoing.length > 0 && (
-            <div>
-              <p style={sectionTitle}>送った申請</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {outgoing.map(r => userRow(r.addressee_id, (
-                  <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await social.removeFriendRequest(r.id); showToast('申請を取り下げました') })}>取り下げ</button>
+            <Section title="送った申請" count={outgoing.length} description="相手が承認するとフレンドになります">
+              <List>
+                {outgoing.map(r => userItem(r.addressee_id, (
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(async () => { await social.removeFriendRequest(r.id); showToast('申請を取り下げました') })}>取り下げ</Button>
                 )))}
-              </div>
-            </div>
+              </List>
+            </Section>
           )}
 
-          <div>
-            <p style={sectionTitle}>フレンド（{friends.length}人）</p>
+          <Section title="フレンド" count={friends.length} description="押すとプロフィールと見える講義を確認できます">
             {friends.length === 0 ? (
-              <p style={emptyText}>まだフレンドがいません。ユーザーIDで探して申請しましょう</p>
+              <EmptyState title="まだフレンドがいません" description="上の検索欄に相手のユーザーIDを入れて、フレンド申請を送りましょう。" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {friends.map(f => userRow(f.userId, null))}
-              </div>
+              <List>{friends.map(f => userItem(f.userId, <Badge>フレンド</Badge>))}</List>
             )}
-          </div>
+          </Section>
         </>
       )}
 
       {tab === 'parties' && (
         <>
           {invites.length > 0 && (
-            <div>
-              <p style={sectionTitle}>届いた招待</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Section title="届いた招待" count={invites.length} description="参加するとメンバー同士で講義を共有できます">
+              <List>
                 {invites.map(inv => (
-                  <div key={inv.id} style={listRow}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.party_name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{name(inv.inviter_id)}さんから・{inv.member_count}人</div>
-                    </div>
-                    <button style={btn('primary', true)} disabled={busy} onClick={() => run(async () => { await social.respondPartyInvite(inv.id, true); showToast(`「${inv.party_name}」に参加しました`) })}>参加</button>
-                    <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await social.respondPartyInvite(inv.id, false) })}>断る</button>
-                  </div>
+                  <ListItem
+                    key={inv.id}
+                    title={inv.party_name}
+                    subtitle={`${name(inv.inviter_id)}さんから・メンバー${inv.member_count}人`}
+                    trailing={
+                      <>
+                        <Button size="sm" disabled={busy} onClick={() => run(async () => { await social.respondPartyInvite(inv.id, false) })}>断る</Button>
+                        <Button size="sm" variant="primary" disabled={busy} onClick={() => run(async () => { await social.respondPartyInvite(inv.id, true); showToast(`「${inv.party_name}」に参加しました`) })}>参加する</Button>
+                      </>
+                    }
+                  />
                 ))}
-              </div>
-            </div>
+              </List>
+            </Section>
           )}
 
-          <div>
-            <p style={sectionTitle}>所属しているパーティー（{parties.length}/{LIMITS.userMaxParties}）</p>
+          <Section
+            title="所属しているパーティー"
+            count={parties.length}
+            description={`押すとメンバーや共有中の講義を確認できます（最大${LIMITS.userMaxParties}個まで）`}
+          >
             {parties.length === 0 ? (
-              <p style={emptyText}>まだパーティーに所属していません</p>
+              <EmptyState title="まだパーティーに所属していません" description="下の「パーティーを作る」か、もらった招待コードで参加しましょう。" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <List>
                 {parties.map(p => (
-                  <button
+                  <ListItem
                     key={p.id}
+                    title={p.name}
+                    subtitle={`メンバー ${p.member_count}/${LIMITS.partyMaxMembers}人`}
                     onClick={() => onOpenParty(p.id)}
-                    style={{ ...listRow, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
-                  >
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{p.name}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{p.member_count}人 ›</span>
-                  </button>
+                    trailing={<span style={{ color: 'var(--text-tertiary)', fontSize: 18 }}>›</span>}
+                  />
                 ))}
-              </div>
+              </List>
             )}
-          </div>
+          </Section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            <form
-              onSubmit={e => {
-                e.preventDefault()
-                void run(async () => {
-                  const party = await social.createParty(partyName)
-                  setPartyName('')
-                  showToast('パーティーを作りました')
-                  onOpenParty(party.id)
-                })
-              }}
-            >
-              <p style={sectionTitle}>パーティーを作る</p>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input value={partyName} onChange={e => setPartyName(e.target.value)} maxLength={40} placeholder="パーティー名" style={inputStyle} />
-                <button type="submit" style={btn('primary')} disabled={busy || !partyName.trim()}>作成</button>
-              </div>
-            </form>
-            <form
-              onSubmit={e => {
-                e.preventDefault()
-                void run(async () => {
-                  const party = await social.redeemInviteCode(code)
-                  setCode('')
-                  showToast(`「${party.name}」に参加しました`)
-                  onOpenParty(party.id)
-                })
-              }}
-            >
-              <p style={sectionTitle}>招待コードで参加</p>
-              <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            <Section title="パーティーを作る" description="作ったあと、フレンドを招待したり招待コードを発行できます">
+              <form
+                style={{ display: 'flex', gap: 8 }}
+                onSubmit={e => {
+                  e.preventDefault()
+                  void run(async () => {
+                    const party = await social.createParty(partyName)
+                    setPartyName('')
+                    showToast('パーティーを作りました')
+                    onOpenParty(party.id)
+                  })
+                }}
+              >
+                <input value={partyName} onChange={e => setPartyName(e.target.value)} maxLength={40} placeholder="例：ゼミ仲間" style={{ ...inputStyle, minHeight: 38 }} />
+                <Button type="submit" variant="primary" disabled={!partyName.trim()} loading={busy}>作成</Button>
+              </form>
+            </Section>
+            <Section title="招待コードで参加" description="メンバーからもらった8文字のコードを入力します">
+              <form
+                style={{ display: 'flex', gap: 8 }}
+                onSubmit={e => {
+                  e.preventDefault()
+                  void run(async () => {
+                    const party = await social.redeemInviteCode(code)
+                    setCode('')
+                    showToast(`「${party.name}」に参加しました`)
+                    onOpenParty(party.id)
+                  })
+                }}
+              >
                 <input
                   value={code}
                   onChange={e => setCode(e.target.value.toUpperCase())}
                   maxLength={8}
-                  placeholder="8文字のコード"
+                  placeholder="ABCD2345"
                   autoCapitalize="characters"
-                  style={{ ...inputStyle, letterSpacing: '0.1em' }}
+                  style={{ ...inputStyle, minHeight: 38, letterSpacing: '0.12em', fontWeight: 700 }}
                 />
-                <button type="submit" style={btn('primary')} disabled={busy || !code.trim()}>参加</button>
-              </div>
-            </form>
+                <Button type="submit" disabled={!code.trim()} loading={busy}>参加</Button>
+              </form>
+            </Section>
           </div>
         </>
       )}
 
       {tab === 'account' && (
         <>
-          <form
-            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-            onSubmit={e => {
-              e.preventDefault()
-              void run(async () => {
-                await updateMyProfile({ handle, display_name: displayName })
-                const me = useStore.getState().profile
-                if (me) {
-                  useSocialStore.setState(st => ({
-                    users: { ...st.users, [me.id]: { id: me.id, handle: me.handle, display_name: me.display_name } },
-                  }))
-                }
-                showToast('プロフィールを保存しました')
-              })
-            }}
-          >
-            <div>
-              <label style={sectionTitle}>表示名</label>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} required style={inputStyle} />
-            </div>
-            <div>
-              <label style={sectionTitle}>ユーザーID</label>
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
-                <input
-                  value={handle}
-                  onChange={e => setHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                  minLength={3}
-                  maxLength={20}
-                  required
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  style={{ ...inputStyle, paddingLeft: 26 }}
-                />
-              </div>
-              <p style={{ ...emptyText, fontSize: 11 }}>英数字とアンダースコアで3〜20文字。フレンドに伝えると検索してもらえます。</p>
-            </div>
-            <div>
-              <button type="submit" style={btn('primary')} disabled={busy}>保存</button>
-            </div>
-          </form>
+          <Section title="プロフィール" description="フレンドや講義の参加者に表示されます">
+            <form
+              style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 440 }}
+              onSubmit={e => {
+                e.preventDefault()
+                void run(async () => {
+                  await updateMyProfile({ handle, display_name: displayName })
+                  const me = useStore.getState().profile
+                  if (me) {
+                    useSocialStore.setState(st => ({
+                      users: { ...st.users, [me.id]: { id: me.id, handle: me.handle, display_name: me.display_name } },
+                    }))
+                  }
+                  showToast('プロフィールを保存しました')
+                })
+              }}
+            >
+              <Field label="表示名" required help="本名でなくてもかまいません">
+                <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} required style={{ ...inputStyle, minHeight: 38 }} />
+              </Field>
+              <Field label="ユーザーID" required help="英数字とアンダースコアで3〜20文字。フレンドに伝えると検索してもらえます">
+                <HandleInput value={handle} onChange={v => setHandle(v.replace(/[^a-zA-Z0-9_]/g, ''))} />
+              </Field>
+              <div><Button type="submit" variant="primary" loading={busy}>保存する</Button></div>
+            </form>
+          </Section>
 
-          <div>
-            <p style={sectionTitle}>ブロック中のユーザー</p>
+          <Section title="ブロック中のユーザー" count={blockedIds.length} description="ブロックした相手からは申請や招待が届かず、互いのプロフィールも見えません">
             {blockedIds.length === 0 ? (
-              <p style={emptyText}>ブロックしているユーザーはいません</p>
+              <EmptyState compact title="ブロックしているユーザーはいません" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {blockedIds.map(id => userRow(id, (
-                  <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await social.unblock(id); showToast('ブロックを解除しました') })}>解除</button>
+              <List>
+                {blockedIds.map(id => userItem(id, (
+                  <Button size="sm" disabled={busy} onClick={() => run(async () => { await social.unblock(id); showToast('ブロックを解除しました') })}>解除</Button>
                 )))}
-              </div>
+              </List>
             )}
-          </div>
+          </Section>
         </>
       )}
     </Sheet>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { parseLocalDate, type LectureSummary } from '../../types'
 import { emptyText } from '../ui/styles'
+import { EmptyState } from '../ui/kit'
 import JoinButton from './JoinButton'
 import LectureCard from './LectureCard'
 
@@ -10,6 +11,8 @@ interface Props {
   onChanged: () => void
   onOpenLecture: (lectureId: string) => void
   emptyMessage: string
+  /** カードを開いて課題と進捗を表示できるようにする（既定: する） */
+  expandable?: boolean
 }
 
 interface TaskPreview {
@@ -40,7 +43,7 @@ function DueLabel({ date, time }: { date: string; time: string | null }) {
 }
 
 /** 講義の一覧（プロフィール・パーティーのホーム画面）。カードを開くと課題と進捗を表示する */
-export default function LectureList({ lectures, onChanged, onOpenLecture, emptyMessage }: Props) {
+export default function LectureList({ lectures, onChanged, onOpenLecture, emptyMessage, expandable = true }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [tasks, setTasks] = useState<Record<string, TaskPreview[]>>({})
   const [counts, setCounts] = useState<Record<string, { inProgress: number; done: number }>>({})
@@ -68,7 +71,7 @@ export default function LectureList({ lectures, onChanged, onOpenLecture, emptyM
     setCounts(c => ({ ...c, ...next }))
   }
 
-  if (lectures.length === 0) return <p style={emptyText}>{emptyMessage}</p>
+  if (lectures.length === 0) return <EmptyState title={emptyMessage} />
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 10, alignItems: 'start' }}>
@@ -80,7 +83,7 @@ export default function LectureList({ lectures, onChanged, onOpenLecture, emptyM
             lecture={l}
             action={<JoinButton lecture={l} onChanged={onChanged} onOpenLecture={onOpenLecture} />}
             expanded={openId === l.id}
-            onToggle={() => void toggle(l.id)}
+            onToggle={expandable ? () => void toggle(l.id) : undefined}
           >
             {!list ? (
               <p style={emptyText}>読み込み中...</p>

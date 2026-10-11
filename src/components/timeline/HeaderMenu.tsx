@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
-import { Avatar } from '../ui/Sheet'
+import { Avatar } from '../ui/kit'
 import type { SocialTab } from '../social/SocialPanel'
 
 interface Props {

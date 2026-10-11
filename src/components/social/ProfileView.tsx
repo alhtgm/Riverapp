@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { toMessage } from '../../lib/errors'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
-import Sheet, { Avatar } from '../ui/Sheet'
-import { btn, sectionTitle, inputStyle } from '../ui/styles'
+import Sheet from '../ui/Sheet'
+import { Avatar, Badge, Button, Card, Confirm, Notice, Section } from '../ui/kit'
+import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import type { LectureSummary } from '../../types'
 
@@ -51,86 +52,61 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
 
   const name = user?.display_name ?? 'ユーザー'
 
+  // 関係に応じて「いちばん押してほしい操作」を1つだけ primary にする
+  const relation = isMe ? null : isBlocked ? 'ブロック中' : friend ? 'フレンド' : inReq ? '申請が届いています' : outReq ? '申請中' : null
+  const mainActions = isMe ? (
+    onEditProfile && <Button onClick={onEditProfile}>表示名・ユーザーIDを編集</Button>
+  ) : isBlocked ? (
+    <Button disabled={busy} onClick={() => run(async () => { await unblock(userId); showToast('ブロックを解除しました') })}>ブロックを解除</Button>
+  ) : inReq ? (
+    <>
+      <Button disabled={busy} onClick={() => run(async () => { await removeFriendRequest(inReq.id); showToast('申請を拒否しました') })}>拒否</Button>
+      <Button variant="primary" disabled={busy} onClick={() => run(async () => { await acceptFriendRequest(inReq.id); showToast('フレンドになりました') })}>申請を承認</Button>
+    </>
+  ) : outReq ? (
+    <Button disabled={busy} onClick={() => run(async () => { await removeFriendRequest(outReq.id); showToast('申請を取り下げました') })}>申請を取り下げる</Button>
+  ) : !friend ? (
+    <Button variant="primary" disabled={busy} onClick={() => run(async () => {
+      const r = await sendFriendRequest(userId)
+      showToast(r === 'accepted' ? 'フレンドになりました' : 'フレンド申請を送りました')
+    })}>
+      フレンド申請を送る
+    </Button>
+  ) : null
+
   return (
-    <Sheet title={isMe ? '自分のプロフィール' : 'プロフィール'} onClose={onClose} zIndex={320} width={760}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Avatar name={name} size={48} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{name}</div>
-          {user?.handle && <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{user.handle}</div>}
-          {friend && <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginTop: 2 }}>フレンド</div>}
+    <Sheet
+      title={isMe ? '自分のプロフィール' : 'プロフィール'}
+      subtitle={isMe ? 'ほかの人には、公開範囲に応じて講義だけが表示されます' : undefined}
+      onClose={onClose}
+      zIndex={320}
+      width={760}
+    >
+      <Card tone="muted" padding={16}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <Avatar name={name} size={56} />
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              {user?.handle && <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{user.handle}</span>}
+              {relation && <Badge tone={friend ? 'accent' : isBlocked ? 'danger' : 'neutral'}>{relation}</Badge>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{mainActions}</div>
         </div>
-      </div>
-
-      {isMe && onEditProfile && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button style={btn('secondary', true)} onClick={onEditProfile}>表示名・ユーザーIDを編集</button>
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>ほかの人には、公開範囲に応じて講義だけが表示されます</span>
-        </div>
-      )}
-
-      {!isMe && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {isBlocked ? (
-            <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await unblock(userId); showToast('ブロックを解除しました') })}>
-              ブロックを解除
-            </button>
-          ) : (
-            <>
-              {friend && confirm !== 'unfriend' && (
-                <button style={btn('secondary', true)} onClick={() => setConfirm('unfriend')}>フレンドを解除</button>
-              )}
-              {friend && confirm === 'unfriend' && (
-                <>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', alignSelf: 'center' }}>解除しますか？（相手には通知されません）</span>
-                  <button style={btn('danger', true)} disabled={busy} onClick={() => run(async () => { await removeFriendRequest(friend.requestId); setConfirm(null); showToast('フレンドを解除しました') })}>解除する</button>
-                  <button style={btn('ghost', true)} onClick={() => setConfirm(null)}>やめる</button>
-                </>
-              )}
-              {inReq && (
-                <>
-                  <button style={btn('primary', true)} disabled={busy} onClick={() => run(async () => { await acceptFriendRequest(inReq.id); showToast('フレンドになりました') })}>申請を承認</button>
-                  <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await removeFriendRequest(inReq.id); showToast('申請を拒否しました') })}>拒否</button>
-                </>
-              )}
-              {outReq && (
-                <button style={btn('secondary', true)} disabled={busy} onClick={() => run(async () => { await removeFriendRequest(outReq.id); showToast('申請を取り下げました') })}>
-                  申請中（取り下げる）
-                </button>
-              )}
-              {!friend && !inReq && !outReq && (
-                <button style={btn('primary', true)} disabled={busy} onClick={() => run(async () => {
-                  const r = await sendFriendRequest(userId)
-                  showToast(r === 'accepted' ? 'フレンドになりました' : 'フレンド申請を送りました')
-                })}>
-                  フレンド申請
-                </button>
-              )}
-              {confirm !== 'block' ? (
-                <button style={{ ...btn('ghost', true), color: 'var(--danger)' }} onClick={() => setConfirm('block')}>ブロック</button>
-              ) : (
-                <>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', alignSelf: 'center' }}>ブロックするとフレンドも解除されます</span>
-                  <button style={btn('danger', true)} disabled={busy} onClick={() => run(async () => { await block(userId); setConfirm(null); showToast('ブロックしました') })}>ブロックする</button>
-                  <button style={btn('ghost', true)} onClick={() => setConfirm(null)}>やめる</button>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      </Card>
 
       {friend && parties.length > 0 && (
-        <div>
-          <p style={sectionTitle}>パーティーに招待</p>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <select value={inviteParty} onChange={e => setInviteParty(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-              <option value="">パーティーを選択</option>
-              {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        <Section title="パーティーに招待" description="招待すると相手に通知が届き、承諾するとメンバーになります">
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select value={inviteParty} onChange={e => setInviteParty(e.target.value)} style={{ ...inputStyle, flex: 1, minHeight: 38 }}>
+              <option value="">パーティーを選んでください</option>
+              {parties.map(p => <option key={p.id} value={p.id}>{p.name}（{p.member_count}人）</option>)}
             </select>
-            <button
-              style={btn('primary')}
-              disabled={!inviteParty || busy}
+            <Button
+              variant="primary"
+              disabled={!inviteParty}
+              loading={busy}
               onClick={() => run(async () => {
                 const { error } = await supabase.rpc('invite_to_party', { p_party_id: inviteParty, p_invitee_id: userId })
                 if (error) throw error
@@ -138,15 +114,20 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
                 showToast('招待を送りました')
               })}
             >
-              招待
-            </button>
+              招待する
+            </Button>
           </div>
-        </div>
+        </Section>
       )}
 
-      {!isBlocked && (
-        <div>
-          <p style={sectionTitle}>{isMe ? '参加している講義' : 'あなたから見える講義'}</p>
+      {isBlocked ? (
+        <Notice tone="warning">この人をブロックしています。ブロック中は講義などが表示されません。</Notice>
+      ) : (
+        <Section
+          title={isMe ? '参加している講義' : 'あなたから見える講義'}
+          count={lectures?.length}
+          description={isMe ? '「参加中」を押すと講義の画面を開きます' : '気になる講義があれば、参加または参加申請ができます'}
+        >
           {lectures === null ? (
             <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
           ) : (
@@ -154,10 +135,40 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
               lectures={lectures}
               onChanged={loadLectures}
               onOpenLecture={onOpenLecture}
-              emptyMessage="表示できる講義はありません"
+              emptyMessage={isMe ? 'まだ講義に参加していません' : '表示できる講義はありません'}
+              expandable={false}
             />
           )}
-        </div>
+        </Section>
+      )}
+
+      {!isMe && !isBlocked && (
+        <Section title="その他の操作">
+          {confirm === 'unfriend' && friend ? (
+            <Confirm
+              message="フレンドを解除しますか？"
+              detail="相手には通知されません。もう一度フレンドになるには申請が必要です。"
+              confirmLabel="解除する"
+              busy={busy}
+              onCancel={() => setConfirm(null)}
+              onConfirm={() => run(async () => { await removeFriendRequest(friend.requestId); setConfirm(null); showToast('フレンドを解除しました') })}
+            />
+          ) : confirm === 'block' ? (
+            <Confirm
+              message={`${name}さんをブロックしますか？`}
+              detail="フレンドは解除され、互いのプロフィールが見えなくなります。相手には通知されません。"
+              confirmLabel="ブロックする"
+              busy={busy}
+              onCancel={() => setConfirm(null)}
+              onConfirm={() => run(async () => { await block(userId); setConfirm(null); showToast('ブロックしました') })}
+            />
+          ) : (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {friend && <Button size="sm" variant="ghost" onClick={() => setConfirm('unfriend')}>フレンドを解除</Button>}
+              <Button size="sm" variant="ghost" style={{ color: 'var(--danger)' }} onClick={() => setConfirm('block')}>ブロック</Button>
+            </div>
+          )}
+        </Section>
       )}
     </Sheet>
   )

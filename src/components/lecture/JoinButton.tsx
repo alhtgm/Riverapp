@@ -4,7 +4,7 @@ import { toMessage } from '../../lib/errors'
 import { pickLectureColor } from '../../lib/colors'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
-import { btn } from '../ui/styles'
+import { Button } from '../ui/kit'
 import type { LectureSummary } from '../../types'
 
 interface Props {
@@ -43,21 +43,17 @@ export default function JoinButton({ lecture, onChanged, onOpenLecture }: Props)
       return null
 
     case 'participant':
-      return (
-        <button type="button" style={btn('secondary', true)} onClick={() => onOpenLecture(lecture.id)}>
-          参加中
-        </button>
-      )
+      return <Button size="sm" onClick={() => onOpenLecture(lecture.id)}>参加中 ›</Button>
 
     case 'pending':
       if (confirmCancel) {
         return (
           <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>取り下げますか？</span>
-            <button
-          type="button"
-              style={btn('danger', true)}
-              disabled={busy}
+            <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(false)}>やめる</Button>
+            <Button
+              size="sm"
+              variant="danger"
+              loading={busy}
               onClick={() => run(async () => {
                 const { error } = await supabase
                   .from('lecture_apply_requests')
@@ -70,59 +66,42 @@ export default function JoinButton({ lecture, onChanged, onOpenLecture }: Props)
                 onChanged()
               })}
             >
-              取り下げる
-            </button>
-            <button type="button" style={btn('ghost', true)} onClick={() => setConfirmCancel(false)}>やめる</button>
+              申請を取り下げる
+            </Button>
           </span>
         )
       }
       return (
-        <button
-          type="button"
-          style={{ ...btn('secondary', true), color: 'var(--text-tertiary)' }}
-          onClick={() => setConfirmCancel(true)}
-          title="押すと申請を取り下げられます"
-        >
+        <Button size="sm" onClick={() => setConfirmCancel(true)} title="押すと申請を取り下げられます" style={{ color: 'var(--text-tertiary)' }}>
           申請中
-        </button>
+        </Button>
       )
 
     default:
-      if (lecture.apply_open) {
-        return (
-          <button
-          type="button"
-            style={btn('primary', true)}
-            disabled={busy}
-            onClick={() => run(async () => {
+      return (
+        <Button
+          size="sm"
+          variant="primary"
+          loading={busy}
+          onClick={() => run(async () => {
+            if (lecture.apply_open) {
               const { error } = await supabase.rpc('request_join_lecture', { p_lecture_id: lecture.id })
               if (error) throw error
-              showToast('参加申請を送りました')
-              onChanged()
-            })}
-          >
-            参加申請
-          </button>
-        )
-      }
-      return (
-        <button
-          type="button"
-          style={btn('primary', true)}
-          disabled={busy}
-          onClick={() => run(async () => {
-            const { error } = await supabase.rpc('join_lecture', {
-              p_lecture_id: lecture.id,
-              p_color: pickLectureColor(subjectCount),
-            })
-            if (error) throw error
-            showToast(`「${lecture.title}」に参加しました`)
-            await fetchAll()
+              showToast('参加申請を送りました。参加者が承認すると参加できます')
+            } else {
+              const { error } = await supabase.rpc('join_lecture', {
+                p_lecture_id: lecture.id,
+                p_color: pickLectureColor(subjectCount),
+              })
+              if (error) throw error
+              showToast(`「${lecture.title}」に参加しました。課題がタイムラインに追加されます`)
+              await fetchAll()
+            }
             onChanged()
           })}
         >
-          参加する
-        </button>
+          {lecture.apply_open ? '参加申請' : '参加する'}
+        </Button>
       )
   }
 }

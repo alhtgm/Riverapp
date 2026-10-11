@@ -4,7 +4,8 @@ import { toMessage } from '../../lib/errors'
 import { pickLectureColor } from '../../lib/colors'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
-import { btn, inputStyle } from '../ui/styles'
+import { inputStyle } from '../ui/styles'
+import { Button, Field, Notice, SectionHeader } from '../ui/kit'
 import JoinButton from './JoinButton'
 import LectureCard from './LectureCard'
 import { TERM_LABEL, type LectureSummary, type LectureTerm } from '../../types'
@@ -84,32 +85,39 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
   }
 
   return (
-    <div style={{ marginTop: 8, padding: 12, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-warm)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <input
-        value={title}
-        onChange={e => { setTitle(e.target.value); setCandidates(null) }}
-        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void submit() } }}
-        placeholder="講義名（必須）"
-        autoFocus
-        style={inputStyle}
-      />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+    <div style={{ marginTop: 8, padding: 14, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-warm)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <SectionHeader title="新しい講義を作る" description="同じ講義がすでにあれば、作らずに参加できます" />
+      <Field label="講義名" required>
         <input
-          type="number" min={2000} max={2100} value={year}
-          onChange={e => { setYear(Number(e.target.value)); setCandidates(null) }}
-          aria-label="年度" style={inputStyle}
+          value={title}
+          onChange={e => { setTitle(e.target.value); setCandidates(null) }}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void submit() } }}
+          placeholder="例：情報科学"
+          autoFocus
+          style={inputStyle}
         />
-        <select value={term} onChange={e => { setTerm(e.target.value as LectureTerm); setCandidates(null) }} aria-label="学期" style={inputStyle}>
-          {TERMS.map(t => <option key={t} value={t}>{TERM_LABEL[t]}</option>)}
-        </select>
+      </Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="年度" required>
+          <input
+            type="number" min={2000} max={2100} value={year}
+            onChange={e => { setYear(Number(e.target.value)); setCandidates(null) }}
+            style={inputStyle}
+          />
+        </Field>
+        <Field label="学期" required>
+          <select value={term} onChange={e => { setTerm(e.target.value as LectureTerm); setCandidates(null) }} style={inputStyle}>
+            {TERMS.map(t => <option key={t} value={t}>{TERM_LABEL[t]}</option>)}
+          </select>
+        </Field>
       </div>
-      <input value={professor} onChange={e => setProfessor(e.target.value)} placeholder="担当教員（任意）" style={inputStyle} />
+      <Field label="担当教員">
+        <input value={professor} onChange={e => setProfessor(e.target.value)} placeholder="例：山田先生" style={inputStyle} />
+      </Field>
 
       {candidates && candidates.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
-            似た講義があります。既存の講義に参加しますか？
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Notice tone="warning">似た講義が見つかりました。同じ講義なら、新しく作らずに参加すると課題を共有できます。</Notice>
           {candidates.map(c => (
             <LectureCard
               key={c.id}
@@ -120,20 +128,27 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
         </div>
       )}
 
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-        作成時の公開範囲は「パーティー内」（所属しているすべてのパーティーに表示）です。講義の画面からあとで変更できます。
-      </p>
-      {error && <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{error}</div>}
+      {!candidates && (
+        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+          作成時の公開範囲は「パーティー内」（所属しているすべてのパーティーに表示）です。講義の画面からあとで変更できます。
+        </p>
+      )}
+      {error && <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{error}</span>}
 
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        <button type="button" style={btn('ghost', true)} onClick={onCancel}>キャンセル</button>
-        <button type="button" style={btn('primary', true)} disabled={busy} onClick={() => {
-          if (!candidates) { void submit(); return }
-          setBusy(true)
-          create().catch((e: unknown) => setError(toMessage(e))).finally(() => setBusy(false))
-        }}>
-          {candidates ? '新しく作成する' : '作成'}
-        </button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>キャンセル</Button>
+        <Button
+          variant={candidates ? 'secondary' : 'primary'}
+          size="sm"
+          loading={busy}
+          onClick={() => {
+            if (!candidates) { void submit(); return }
+            setBusy(true)
+            create().catch((e: unknown) => setError(toMessage(e))).finally(() => setBusy(false))
+          }}
+        >
+          {candidates ? 'それでも新しく作る' : '作成'}
+        </Button>
       </div>
     </div>
   )

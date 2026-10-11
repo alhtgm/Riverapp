@@ -4,8 +4,7 @@ import { toMessage } from '../../lib/errors'
 import { LIMITS } from '../../lib/limits'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
-import { Avatar } from '../ui/Sheet'
-import { btn, emptyText, sectionTitle } from '../ui/styles'
+import { Avatar, Badge, Button, Confirm, List, ListItem, Section } from '../ui/kit'
 import type { OpenVote } from '../../types'
 
 interface Props {
@@ -72,82 +71,75 @@ export default function MemberList({ targetType, targetId, members, onOpenProfil
   const excluded = members.filter(m => m.status === 'excluded')
   const voteFor = (userId: string) => votes.find(v => v.target_user_id === userId)
   const groupWord = targetType === 'lecture' ? '参加者' : 'メンバー'
+  const name = (id: string) => userLabel(users, id)
 
-  const renderVoteControls = (userId: string, kind: 'exclude' | 'unexclude') => {
-    if (userId === myId) return null
+  const trailingFor = (userId: string, kind: 'exclude' | 'unexclude') => {
+    if (userId === myId) return <Badge>自分</Badge>
     const v = voteFor(userId)
     if (v) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>
-            {v.kind === 'exclude' ? '除外' : '解除'}投票中 {v.ballots}/{v.needed}
-          </span>
+        <>
+          <Badge tone="danger">{v.kind === 'exclude' ? '除外' : '解除'}投票中 {v.ballots}/{v.needed}票</Badge>
           {v.i_voted
-            ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>賛成済み</span>
-            : <button style={btn('danger', true)} disabled={busy} onClick={() => castBallot(v.id)}>賛成する</button>}
-        </span>
-      )
-    }
-    if (confirmUser?.userId === userId && confirmUser.kind === kind) {
-      return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <button style={btn('danger', true)} disabled={busy} onClick={() => startVote(userId, kind)}>投票を始める</button>
-          <button style={btn('ghost', true)} onClick={() => setConfirmUser(null)}>やめる</button>
-        </span>
+            ? <Badge>賛成済み</Badge>
+            : <Button size="sm" variant="danger" disabled={busy} onClick={() => castBallot(v.id)}>賛成する</Button>}
+        </>
       )
     }
     return (
-      <button
-        style={{ ...btn('ghost', true), color: 'var(--text-tertiary)' }}
-        onClick={() => setConfirmUser({ userId, kind })}
-      >
+      <Button size="sm" variant="ghost" style={{ color: 'var(--text-tertiary)' }} onClick={() => setConfirmUser({ userId, kind })}>
         {kind === 'exclude' ? '除外投票' : '解除投票'}
-      </button>
+      </Button>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>
-        <p style={sectionTitle}>{groupWord}（{active.length}人）</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {active.map(m => (
-            <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
-              <button
-                onClick={() => onOpenProfile(m.userId)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-              >
-                <Avatar name={userLabel(users, m.userId)} />
-                <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {userLabel(users, m.userId)}{m.userId === myId && '（自分）'}
-                </span>
-                {users[m.userId]?.handle && (
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>@{users[m.userId]?.handle}</span>
-                )}
-              </button>
-              {renderVoteControls(m.userId, 'exclude')}
-            </div>
-          ))}
-        </div>
-        {confirmUser?.kind === 'exclude' && (
-          <p style={{ ...emptyText, fontSize: 11 }}>
-            対象の人を除く{groupWord}の過半数が賛成すると除外されます（{LIMITS.exclusionVoteTtlDays}日で失効）。対象の人には投票中であることは表示されません。
-          </p>
+    <>
+      <Section
+        title={groupWord}
+        count={active.length}
+        description={`押すとプロフィールを確認できます。荒らしなどは、対象の人を除く${groupWord}の過半数の賛成で外せます`}
+      >
+        {confirmUser && (
+          <Confirm
+            message={confirmUser.kind === 'exclude'
+              ? `${name(confirmUser.userId)}さんの除外投票を始めますか？`
+              : `${name(confirmUser.userId)}さんの除外を解除する投票を始めますか？`}
+            detail={`あなたの1票が入った状態で始まります。対象の人を除く${groupWord}の過半数が賛成すると成立し、${LIMITS.exclusionVoteTtlDays}日で失効します。対象の人には投票中であることは表示されません。`}
+            confirmLabel="投票を始める"
+            busy={busy}
+            onCancel={() => setConfirmUser(null)}
+            onConfirm={() => startVote(confirmUser.userId, confirmUser.kind)}
+          />
         )}
-      </div>
+        <List>
+          {active.map(m => (
+            <ListItem
+              key={m.userId}
+              leading={<Avatar name={name(m.userId)} size={32} />}
+              title={name(m.userId)}
+              subtitle={users[m.userId]?.handle ? `@${users[m.userId]?.handle}` : undefined}
+              onClick={() => onOpenProfile(m.userId)}
+              trailing={trailingFor(m.userId, 'exclude')}
+            />
+          ))}
+        </List>
+      </Section>
 
       {excluded.length > 0 && (
-        <div>
-          <p style={sectionTitle}>除外された人</p>
-          {excluded.map(m => (
-            <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
-              <Avatar name={userLabel(users, m.userId)} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-secondary)' }}>{userLabel(users, m.userId)}</span>
-              {renderVoteControls(m.userId, 'unexclude')}
-            </div>
-          ))}
-        </div>
+        <Section title="除外された人" count={excluded.length} description="除外された人は参加・申請できません。解除投票が成立すると、また参加できるようになります">
+          <List>
+            {excluded.map(m => (
+              <ListItem
+                key={m.userId}
+                leading={<Avatar name={name(m.userId)} size={32} />}
+                title={name(m.userId)}
+                trailing={trailingFor(m.userId, 'unexclude')}
+              />
+            ))}
+          </List>
+        </Section>
       )}
-    </div>
+    </>
   )
 }

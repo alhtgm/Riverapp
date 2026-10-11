@@ -7,7 +7,8 @@ import {
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
-import { btn, sectionTitle, inputStyle, emptyText, listRow } from '../ui/styles'
+import { Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
+import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import MemberList from './MemberList'
 import type { LectureSummary, PartyInviteCode, PartyMember } from '../../types'
@@ -19,20 +20,24 @@ interface Props {
   onOpenProfile: (userId: string) => void
 }
 
+type Tab = 'lectures' | 'members' | 'invite' | 'settings'
+
 function formatDateTime(iso: string): string {
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
+
+const selectStyle = { ...inputStyle, minHeight: 38 }
 
 export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfile }: Props) {
   const { showToast } = useToast()
   const { parties, friends, users, fetchSocial } = useSocialStore()
   const party = parties.find(p => p.id === partyId)
 
+  const [tab, setTab] = useState<Tab>('lectures')
   const [lectures, setLectures] = useState<LectureSummary[] | null>(null)
   const [members, setMembers] = useState<PartyMember[]>([])
   const [codes, setCodes] = useState<PartyInviteCode[]>([])
-  const [editingName, setEditingName] = useState(false)
   const [name, setName] = useState(party?.name ?? '')
   const [ttl, setTtl] = useState<string>(DEFAULT_INVITE_CODE_TTL)
   const [maxUses, setMaxUses] = useState<number>(DEFAULT_INVITE_CODE_MAX_USES)
@@ -62,7 +67,7 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
   if (!party) {
     return (
       <Sheet title="パーティー" onClose={onClose} zIndex={310}>
-        <p style={emptyText}>このパーティーは表示できません</p>
+        <EmptyState title="このパーティーは表示できません" description="退出したか、パーティーがなくなった可能性があります。" />
       </Sheet>
     )
   }
@@ -73,175 +78,198 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
 
   return (
     <Sheet
-      title={
-        editingName ? (
-          <form
-            style={{ display: 'flex', gap: 6 }}
-            onSubmit={e => {
-              e.preventDefault()
-              void run(async () => {
-                const n = name.trim()
-                if (!n) throw new Error('パーティー名を入力してください')
-                const { error } = await supabase.from('parties').update({ name: n }).eq('id', partyId)
-                if (error) throw error
-                setEditingName(false)
-                await fetchSocial()
-                showToast('パーティー名を変更しました')
-              })
-            }}
-          >
-            <input value={name} onChange={e => setName(e.target.value)} maxLength={40} autoFocus style={{ ...inputStyle, padding: '5px 9px' }} />
-            <button type="submit" style={btn('primary', true)} disabled={busy}>保存</button>
-            <button type="button" style={btn('ghost', true)} onClick={() => { setEditingName(false); setName(party.name) }}>やめる</button>
-          </form>
-        ) : (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {party.name}
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>{activeCount}/{LIMITS.partyMaxMembers}人</span>
-            <button style={btn('ghost', true)} onClick={() => { setName(party.name); setEditingName(true) }}>名前を変更</button>
-          </span>
-        )
-      }
+      title={party.name}
+      subtitle={`メンバー ${activeCount}/${LIMITS.partyMaxMembers}人・全員が対等で、リーダーはいません`}
       onClose={onClose}
       zIndex={310}
       width={800}
+      height={760}
     >
-      <div>
-        <p style={sectionTitle}>メンバーが参加している講義</p>
-        {lectures === null ? (
-          <p style={emptyText}>読み込み中...</p>
-        ) : (
-          <LectureList
-            lectures={lectures}
-            onChanged={load}
-            onOpenLecture={onOpenLecture}
-            emptyMessage="あなたから見える講義はまだありません"
-          />
-        )}
-      </div>
-
-      <MemberList
-        targetType="party"
-        targetId={partyId}
-        members={members.map(m => ({ userId: m.user_id, status: m.status }))}
-        onOpenProfile={onOpenProfile}
-        onChanged={() => { void load(); void fetchSocial() }}
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'lectures', label: '講義' },
+          { key: 'members', label: 'メンバー' },
+          { key: 'invite', label: '招待' },
+          { key: 'settings', label: '設定' },
+        ]}
       />
 
-      <div>
-        <p style={sectionTitle}>フレンドを招待</p>
-        {invitableFriends.length === 0 ? (
-          <p style={emptyText}>招待できるフレンドがいません</p>
-        ) : (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <select value={inviteFriend} onChange={e => setInviteFriend(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-              <option value="">フレンドを選択</option>
-              {invitableFriends.map(f => <option key={f.userId} value={f.userId}>{userLabel(users, f.userId)}</option>)}
-            </select>
-            <button
-              style={btn('primary')}
-              disabled={!inviteFriend || busy}
-              onClick={() => run(async () => {
-                const { error } = await supabase.rpc('invite_to_party', { p_party_id: partyId, p_invitee_id: inviteFriend })
-                if (error) throw error
-                setInviteFriend('')
-                showToast('招待を送りました')
-              })}
-            >
-              招待
-            </button>
-          </div>
-        )}
-      </div>
+      {tab === 'lectures' && (
+        <Section
+          title="メンバーが参加している講義"
+          count={lectures?.length}
+          description="このパーティーに見せている講義の一覧です。参加すると課題があなたのタイムラインに入ります"
+        >
+          {lectures === null ? (
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+          ) : (
+            <LectureList
+              lectures={lectures}
+              onChanged={load}
+              onOpenLecture={onOpenLecture}
+              emptyMessage="まだ共有されている講義はありません"
+            />
+          )}
+        </Section>
+      )}
 
-      <div>
-        <p style={sectionTitle}>招待コード</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>有効期限</label>
-          <select value={ttl} onChange={e => setTtl(e.target.value)} style={{ ...inputStyle, width: 'auto', padding: '6px 9px' }}>
-            {INVITE_CODE_TTLS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>使用回数</label>
-          <select value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} style={{ ...inputStyle, width: 'auto', padding: '6px 9px' }}>
-            {INVITE_CODE_MAX_USES.map(n => <option key={n} value={n}>{n}回</option>)}
-          </select>
-          <button
-            style={btn('primary', true)}
-            disabled={busy}
-            onClick={() => run(async () => {
-              const { error } = await supabase.rpc('create_party_invite_code', { p_party_id: partyId, p_ttl: ttl, p_max_uses: maxUses })
-              if (error) throw error
-              await load()
-              showToast('招待コードを発行しました')
-            })}
-          >
-            発行
-          </button>
-        </div>
-        {codes.length === 0 ? (
-          <p style={emptyText}>有効な招待コードはありません</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {codes.map(c => (
-              <div key={c.id} style={listRow}>
-                <code style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-primary)' }}>{c.code}</code>
-                <span style={{ flex: 1, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  {formatDateTime(c.expires_at)}まで・{c.use_count}/{c.max_uses}回
-                </span>
-                <button
-                  style={btn('secondary', true)}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(c.code).then(
-                      () => showToast('コピーしました'),
-                      () => showToast('コピーできませんでした', 'error'),
-                    )
-                  }}
-                >
-                  コピー
-                </button>
-                <button
-                  style={btn('danger', true)}
-                  disabled={busy}
+      {tab === 'members' && (
+        <MemberList
+          targetType="party"
+          targetId={partyId}
+          members={members.map(m => ({ userId: m.user_id, status: m.status }))}
+          onOpenProfile={onOpenProfile}
+          onChanged={() => { void load(); void fetchSocial() }}
+        />
+      )}
+
+      {tab === 'invite' && (
+        <>
+          <Section title="フレンドを招待" description="相手に通知が届き、承諾するとメンバーになります">
+            {invitableFriends.length === 0 ? (
+              <EmptyState compact title="招待できるフレンドがいません" description="フレンドが全員参加済みか、まだフレンドがいません。下の招待コードも使えます。" />
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select value={inviteFriend} onChange={e => setInviteFriend(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                  <option value="">フレンドを選んでください</option>
+                  {invitableFriends.map(f => <option key={f.userId} value={f.userId}>{userLabel(users, f.userId)}</option>)}
+                </select>
+                <Button
+                  variant="primary"
+                  disabled={!inviteFriend}
+                  loading={busy}
                   onClick={() => run(async () => {
-                    const { error } = await supabase.rpc('revoke_party_invite_code', { p_code_id: c.id })
+                    const { error } = await supabase.rpc('invite_to_party', { p_party_id: partyId, p_invitee_id: inviteFriend })
                     if (error) throw error
-                    await load()
-                    showToast('招待コードを無効にしました')
+                    setInviteFriend('')
+                    showToast('招待を送りました')
                   })}
                 >
-                  無効化
-                </button>
+                  招待する
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            )}
+          </Section>
 
-      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
-        {!confirmLeave ? (
-          <button style={btn('danger')} onClick={() => setConfirmLeave(true)}>パーティーを退出</button>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              退出しますか？{activeCount <= 1 && '最後の1人なので、パーティーはアーカイブされます。'}
-            </span>
-            <button
-              style={btn('danger')}
-              disabled={busy}
-              onClick={() => run(async () => {
-                const { error } = await supabase.rpc('leave_party', { p_party_id: partyId })
-                if (error) throw error
-                await fetchSocial()
-                showToast('パーティーを退出しました')
-                onClose()
-              })}
+          <Section title="招待コード" count={codes.length} description="フレンドでない人も、コードを入力すると参加できます。メンバーなら誰でも発行・無効化できます">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, alignItems: 'end' }}>
+              <Field label="有効期限" required>
+                <select value={ttl} onChange={e => setTtl(e.target.value)} style={selectStyle}>
+                  {INVITE_CODE_TTLS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </Field>
+              <Field label="使える回数" required>
+                <select value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} style={selectStyle}>
+                  {INVITE_CODE_MAX_USES.map(n => <option key={n} value={n}>{n}回</option>)}
+                </select>
+              </Field>
+              <Button
+                variant={invitableFriends.length === 0 ? 'primary' : 'secondary'}
+                loading={busy}
+                onClick={() => run(async () => {
+                  const { error } = await supabase.rpc('create_party_invite_code', { p_party_id: partyId, p_ttl: ttl, p_max_uses: maxUses })
+                  if (error) throw error
+                  await load()
+                  showToast('招待コードを発行しました')
+                })}
+              >
+                コードを発行
+              </Button>
+            </div>
+            {codes.length === 0 ? (
+              <EmptyState compact title="有効な招待コードはありません" />
+            ) : (
+              <List>
+                {codes.map(c => (
+                  <ListItem
+                    key={c.id}
+                    title={<code style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.14em' }}>{c.code}</code>}
+                    subtitle={`${formatDateTime(c.expires_at)}まで・${c.use_count}/${c.max_uses}回使用`}
+                    trailing={
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(c.code).then(
+                              () => showToast('コピーしました'),
+                              () => showToast('コピーできませんでした', 'error'),
+                            )
+                          }}
+                        >
+                          コピー
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          style={{ color: 'var(--danger)' }}
+                          disabled={busy}
+                          onClick={() => run(async () => {
+                            const { error } = await supabase.rpc('revoke_party_invite_code', { p_code_id: c.id })
+                            if (error) throw error
+                            await load()
+                            showToast('招待コードを無効にしました')
+                          })}
+                        >
+                          無効化
+                        </Button>
+                      </>
+                    }
+                  />
+                ))}
+              </List>
+            )}
+          </Section>
+        </>
+      )}
+
+      {tab === 'settings' && (
+        <>
+          <Section title="パーティー名" description="メンバーなら誰でも変更できます。変更は履歴に残ります">
+            <form
+              style={{ display: 'flex', gap: 8, maxWidth: 480 }}
+              onSubmit={e => {
+                e.preventDefault()
+                void run(async () => {
+                  const n = name.trim()
+                  if (!n) throw new Error('パーティー名を入力してください')
+                  const { error } = await supabase.from('parties').update({ name: n }).eq('id', partyId)
+                  if (error) throw error
+                  await fetchSocial()
+                  showToast('パーティー名を変更しました')
+                })
+              }}
             >
-              退出する
-            </button>
-            <button style={btn('ghost')} onClick={() => setConfirmLeave(false)}>やめる</button>
-          </div>
-        )}
-      </div>
+              <input value={name} onChange={e => setName(e.target.value)} maxLength={40} style={{ ...inputStyle, minHeight: 38 }} />
+              <Button type="submit" variant="primary" disabled={name.trim() === party.name} loading={busy}>保存する</Button>
+            </form>
+          </Section>
+
+          <Section title="パーティーを退出" description="いつでも退出できます。もう一度入るには招待が必要です">
+            {confirmLeave ? (
+              <Confirm
+                message={`「${party.name}」を退出しますか？`}
+                detail={activeCount <= 1
+                  ? 'あなたが最後の1人なので、パーティーはなくなります（復活はできません）。'
+                  : 'このパーティーにだけ見せている講義は、あなたから見えなくなることがあります。'}
+                confirmLabel="退出する"
+                busy={busy}
+                onCancel={() => setConfirmLeave(false)}
+                onConfirm={() => run(async () => {
+                  const { error } = await supabase.rpc('leave_party', { p_party_id: partyId })
+                  if (error) throw error
+                  await fetchSocial()
+                  showToast('パーティーを退出しました')
+                  onClose()
+                })}
+              />
+            ) : (
+              <div><Button variant="danger" onClick={() => setConfirmLeave(true)}>退出する</Button></div>
+            )}
+          </Section>
+        </>
+      )}
     </Sheet>
   )
 }

@@ -9,6 +9,8 @@ if (typeof window !== 'undefined') {
 
 interface Props {
   title: ReactNode
+  /** タイトルの下に出す一言の説明 */
+  subtitle?: ReactNode
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
@@ -22,7 +24,7 @@ interface Props {
 }
 
 /** 画面中央のモーダル（スマートフォンでは下からのシート） */
-export default function Sheet({ title, onClose, children, footer, headerExtra, width = 520, height, zIndex = 300 }: Props) {
+export default function Sheet({ title, subtitle, onClose, children, footer, headerExtra, width = 520, height, zIndex = 300 }: Props) {
   // 重ねて開いているときは、Esc で一番上のシートだけを閉じる
   const closeRef = useRef(onClose)
   useEffect(() => { closeRef.current = onClose }, [onClose])
@@ -76,11 +78,12 @@ export default function Sheet({ title, onClose, children, footer, headerExtra, w
           }}
         >
           <div style={{
-            padding: '14px 18px', borderBottom: '1px solid var(--border-light)',
+            padding: '14px 20px', borderBottom: '1px solid var(--border-light)',
             display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-warm)', flexShrink: 0,
           }}>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              {title}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{title}</div>
+              {subtitle && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{subtitle}</div>}
             </div>
             {headerExtra}
             <button onClick={onClose} aria-label="閉じる" style={iconButton}>
@@ -89,7 +92,7 @@ export default function Sheet({ title, onClose, children, footer, headerExtra, w
               </svg>
             </button>
           </div>
-          <div className="river-sheet-body" style={{ padding: 18, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="river-sheet-body" style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
             {children}
           </div>
           {footer && (
@@ -107,33 +110,4 @@ const iconButton: CSSProperties = {
   background: 'var(--bg-secondary)', border: 'none', borderRadius: 6,
   width: 28, height: 28, cursor: 'pointer', color: 'var(--text-secondary)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-}
-
-/** 名前の頭文字アイコン */
-export function Avatar({ name, size = 26 }: { name: string | null; size?: number }) {
-  const ch = (name ?? '?').trim().charAt(0) || '?'
-  let hash = 0
-  for (const c of name ?? '?') hash = (hash * 31 + c.charCodeAt(0)) % 360
-  return (
-    <span
-      title={name ?? undefined}
-      style={{
-        width: size, height: size, borderRadius: '50%', flexShrink: 0,
-        background: `hsl(${hash} 55% 88%)`, color: `hsl(${hash} 45% 32%)`,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: Math.round(size * 0.46), fontWeight: 700, border: '2px solid var(--surface)',
-      }}
-    >
-      {ch}
-    </span>
-  )
-}
-
-export function ErrorText({ message }: { message: string | null }) {
-  if (!message) return null
-  return (
-    <div style={{ padding: '10px 12px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-      {message}
-    </div>
-  )
 }

@@ -5,8 +5,10 @@ import { LECTURE_COLORS } from '../../lib/colors'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
-import Sheet, { Avatar } from '../ui/Sheet'
-import { btn, sectionTitle, inputStyle, emptyText, listRow } from '../ui/styles'
+import Sheet from '../ui/Sheet'
+import { Avatar, Badge, Button, Card, Confirm, EmptyState, Field, List, ListItem, Notice, Section, Tabs } from '../ui/kit'
+import { inputStyle } from '../ui/styles'
+import { LIMITS } from '../../lib/limits'
 import MemberList from '../social/MemberList'
 import ProgressPeople from './ProgressPeople'
 import PartyPicker from './PartyPicker'
@@ -95,6 +97,17 @@ function describe(entry: ActivityLogEntry, name: (id: string | null | undefined)
   }
 }
 
+function StatBox({ label, value, color }: { label: string; value: number; color?: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 14px' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)' }}>{label}</span>
+      <span style={{ fontSize: 20, fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em' }}>{value}</span>
+    </div>
+  )
+}
+
+const selectStyle = { ...inputStyle, minHeight: 38 }
+
 export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Props) {
   const { showToast } = useToast()
   const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress } = useStore()
@@ -182,12 +195,13 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
   if (!lecture) {
     return (
       <Sheet title="講義" onClose={onClose} zIndex={330}>
-        <p style={emptyText}>この講義には参加していません</p>
+        <EmptyState title="この講義には参加していません" description="参加すると、課題・参加者・設定を確認できるようになります。" />
       </Sheet>
     )
   }
 
   const name = (id: string | null | undefined) => userLabel(users, id)
+  const activeCount = participants.filter(p => p.status === 'active').length
   const totals = lectureTasks.reduce(
     (acc, t) => {
       acc.inProgress += progress[t.id]?.in_progress.length ?? 0
@@ -196,150 +210,144 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
     },
     { inProgress: 0, done: 0 },
   )
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'tasks', label: '課題と進捗' },
-    { key: 'members', label: requests.length ? `参加者・申請 (${requests.length})` : '参加者' },
-    { key: 'settings', label: '設定' },
-    { key: 'history', label: '操作履歴' },
-  ]
+  const settingsDirty =
+    title !== lecture.name || year !== lecture.year || term !== lecture.term || (professor || null) !== (lecture.professor || null) ||
+    visibility !== lecture.visibility || (visibility !== 'public' && applyOpen !== lecture.apply_open)
 
   return (
     <Sheet
       title={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: lecture.color, flexShrink: 0 }} />
+          <span style={{ width: 12, height: 12, borderRadius: 4, background: lecture.color, flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lecture.name}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500, flexShrink: 0 }}>
-            {lecture.year}年度 {TERM_LABEL[lecture.term]}
-          </span>
         </span>
       }
+      subtitle={`${lecture.year}年度・${TERM_LABEL[lecture.term]}${lecture.professor ? `・${lecture.professor}` : ''}・${VISIBILITY_LABEL[lecture.visibility]}`}
       onClose={onClose}
       zIndex={330}
-      width={640}
+      width={760}
+      height={780}
     >
-      <div role="tablist" style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 10, padding: 3, overflowX: 'auto' }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              flex: 1, border: 'none', borderRadius: 8, padding: '7px 10px', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-              background: tab === t.key ? 'var(--surface)' : 'transparent',
-              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-              boxShadow: tab === t.key ? 'var(--shadow-xs)' : 'none',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'tasks', label: '課題と進捗' },
+          { key: 'members', label: '参加者', badge: requests.length },
+          { key: 'settings', label: '設定' },
+          { key: 'history', label: '履歴' },
+        ]}
+      />
 
       {tab === 'tasks' && (
         <>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            講義全体：取り組み中 <b>{totals.inProgress}</b>・完了 <b>{totals.done}</b>（参加 {participants.filter(p => p.status === 'active').length}人）
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {lectureTasks.length === 0 && <p style={emptyText}>課題はまだありません</p>}
-            {lectureTasks.map(t => (
-              <div key={t.id} style={{ ...listRow, flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>締切 {formatDate(t.due_date)}{t.due_time ? ` ${t.due_time}` : ''}</span>
-                </div>
-                <ProgressPeople progress={progress[t.id]} />
-              </div>
-            ))}
-          </div>
+          <Card padding={0}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+              <StatBox label="参加者" value={activeCount} />
+              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="取り組み中（のべ）" value={totals.inProgress} color="#0779A0" /></div>
+              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="完了（のべ）" value={totals.done} color="#14913F" /></div>
+            </div>
+          </Card>
 
-          <div>
-            <p style={sectionTitle}>削除済みの課題</p>
-            {deleted.length === 0 ? (
-              <p style={emptyText}>削除済みの課題はありません</p>
+          <Section title="課題" count={lectureTasks.length} description="課題ごとに、参加者がいまどのステータスかを確認できます">
+            {lectureTasks.length === 0 ? (
+              <EmptyState title="課題はまだありません" description="タイムラインの「課題を追加」から追加すると、参加者全員に共有されます。" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {deleted.map(d => (
-                  <div key={d.id} style={listRow}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        締切 {formatDate(d.due_date)}・{name(d.deleted_by)}さんが{formatDateTime(d.deleted_at)}に削除
-                      </div>
+              <List>
+                {lectureTasks.map(t => (
+                  <Card key={t.id} padding={12}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                      <Badge tone="accent">締切 {formatDate(t.due_date)}{t.due_time ? ` ${t.due_time}` : ''}</Badge>
                     </div>
-                    <button
-                      style={btn('secondary', true)}
-                      disabled={busy}
-                      onClick={() => run(async () => {
-                        await restoreTask(d.id)
-                        await loadDeleted()
-                        showToast(`「${d.title}」を復元しました`)
-                      })}
-                    >
-                      復元
-                    </button>
-                  </div>
+                    <ProgressPeople progress={progress[t.id]} />
+                  </Card>
                 ))}
-              </div>
+              </List>
             )}
-          </div>
+          </Section>
+
+          <Section title="削除済みの課題" count={deleted.length} description="誤って消した課題は、参加者なら誰でも元に戻せます">
+            {deleted.length === 0 ? (
+              <EmptyState compact title="削除済みの課題はありません" />
+            ) : (
+              <List>
+                {deleted.map(d => (
+                  <ListItem
+                    key={d.id}
+                    title={d.title}
+                    subtitle={`締切 ${formatDate(d.due_date)}・${name(d.deleted_by)}さんが${formatDateTime(d.deleted_at)}に削除`}
+                    trailing={
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => run(async () => {
+                          await restoreTask(d.id)
+                          await loadDeleted()
+                          showToast(`「${d.title}」を元に戻しました`)
+                        })}
+                      >
+                        元に戻す
+                      </Button>
+                    }
+                  />
+                ))}
+              </List>
+            )}
+          </Section>
         </>
       )}
 
       {tab === 'members' && (
         <>
-          <div>
-            <p style={sectionTitle}>参加申請</p>
+          <Section title="参加申請" count={requests.length} description={`参加者なら誰でも承認・却下できます。${LIMITS.applyRequestTtlDays}日間だれも対応しないと自動で失効します`}>
             {requests.length === 0 ? (
-              <p style={emptyText}>届いている申請はありません</p>
+              <EmptyState compact title="届いている申請はありません" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <List>
                 {requests.map(r => (
-                  <div key={r.id} style={listRow}>
-                    <Avatar name={r.display_name} />
-                    <button
-                      onClick={() => onOpenProfile(r.user_id)}
-                      style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{r.display_name ?? 'ユーザー'}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        {r.handle && `@${r.handle}・`}{formatDateTime(r.created_at)}に申請（{formatDateTime(r.expires_at)}に自動失効）
-                      </div>
-                    </button>
-                    <button
-                      style={btn('primary', true)}
-                      disabled={busy}
-                      onClick={() => run(async () => {
-                        const { error } = await supabase.rpc('respond_join_request', { p_request_id: r.id, p_approve: true })
-                        if (error) throw error
-                        await loadMembers()
-                        void fetchProgress()
-                        showToast('参加を承認しました')
-                      })}
-                    >
-                      承認
-                    </button>
-                    <button
-                      style={btn('secondary', true)}
-                      disabled={busy}
-                      onClick={() => run(async () => {
-                        const { error } = await supabase.rpc('respond_join_request', { p_request_id: r.id, p_approve: false })
-                        if (error) throw error
-                        await loadMembers()
-                        showToast('申請を却下しました')
-                      })}
-                    >
-                      却下
-                    </button>
-                  </div>
+                  <ListItem
+                    key={r.id}
+                    highlight
+                    leading={<Avatar name={r.display_name} size={32} />}
+                    title={r.display_name ?? 'ユーザー'}
+                    subtitle={`${r.handle ? `@${r.handle}・` : ''}${formatDateTime(r.created_at)}に申請`}
+                    onClick={() => onOpenProfile(r.user_id)}
+                    trailing={
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => run(async () => {
+                            const { error } = await supabase.rpc('respond_join_request', { p_request_id: r.id, p_approve: false })
+                            if (error) throw error
+                            await loadMembers()
+                            showToast('申請を却下しました')
+                          })}
+                        >
+                          却下
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={busy}
+                          onClick={() => run(async () => {
+                            const { error } = await supabase.rpc('respond_join_request', { p_request_id: r.id, p_approve: true })
+                            if (error) throw error
+                            await loadMembers()
+                            void fetchProgress()
+                            showToast('参加を承認しました')
+                          })}
+                        >
+                          承認
+                        </Button>
+                      </>
+                    }
+                  />
                 ))}
-              </div>
+              </List>
             )}
-          </div>
+          </Section>
           <MemberList
             targetType="lecture"
             targetId={lectureId}
@@ -352,8 +360,10 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
       {tab === 'settings' && (
         <>
+          <Notice>講義の設定は参加者なら誰でも変更でき、変更は「履歴」に残ります。公開範囲を変えると参加者全員に通知されます。</Notice>
+
           <form
-            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
             onSubmit={e => {
               e.preventDefault()
               void run(async () => {
@@ -367,149 +377,175 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
               })
             }}
           >
-            <p style={{ ...emptyText, padding: 0 }}>設定は参加者なら誰でも変更でき、変更は操作履歴に残ります。</p>
-            <div>
-              <label style={sectionTitle}>講義名</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} required style={inputStyle} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={sectionTitle}>年度</label>
-                <input type="number" min={2000} max={2100} value={year} onChange={e => setYear(Number(e.target.value))} required style={inputStyle} />
+            <Section title="基本情報">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Field label="講義名" required>
+                    <input value={title} onChange={e => setTitle(e.target.value)} required style={selectStyle} />
+                  </Field>
+                </div>
+                <Field label="年度" required>
+                  <input type="number" min={2000} max={2100} value={year} onChange={e => setYear(Number(e.target.value))} required style={selectStyle} />
+                </Field>
+                <Field label="学期" required>
+                  <select value={term} onChange={e => setTerm(e.target.value as LectureTerm)} style={selectStyle}>
+                    {TERMS.map(t => <option key={t} value={t}>{TERM_LABEL[t]}</option>)}
+                  </select>
+                </Field>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Field label="担当教員">
+                    <input value={professor} onChange={e => setProfessor(e.target.value)} placeholder="例：山田先生" style={selectStyle} />
+                  </Field>
+                </div>
               </div>
-              <div>
-                <label style={sectionTitle}>学期</label>
-                <select value={term} onChange={e => setTerm(e.target.value as LectureTerm)} style={inputStyle}>
-                  {TERMS.map(t => <option key={t} value={t}>{TERM_LABEL[t]}</option>)}
-                </select>
+            </Section>
+
+            <Section title="公開範囲" description="この講義を誰に見せるかを選びます。参加者自身はいつでも見えます">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                {VISIBILITIES.map(v => {
+                  const active = visibility === v
+                  return (
+                    <label
+                      key={v}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-light)'}`,
+                        background: active ? 'var(--accent-bg)' : 'var(--surface)',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="radio" name="visibility" checked={active} onChange={() => setVisibility(v)} style={{ margin: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{VISIBILITY_DESC[v]}</span>
+                    </label>
+                  )
+                })}
               </div>
-            </div>
-            <div>
-              <label style={sectionTitle}>担当教員（任意）</label>
-              <input value={professor} onChange={e => setProfessor(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={sectionTitle}>公開範囲</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {VISIBILITIES.map(v => (
-                  <label key={v} style={{ ...listRow, cursor: 'pointer', borderColor: visibility === v ? 'var(--accent)' : 'var(--border-light)' }}>
-                    <input type="radio" name="visibility" checked={visibility === v} onChange={() => setVisibility(v)} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{VISIBILITY_DESC[v]}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            {(visibility === 'party' || visibility === 'friends') && (
-              <div>
-                <label style={sectionTitle}>見せるパーティー</label>
-                {myParties.length === 0 && visibleParties.length === 0 ? (
-                  <p style={{ ...emptyText, padding: 0 }}>所属しているパーティーがありません。メニューの「パーティー」から作るか参加してください。</p>
-                ) : (
-                  <PartyPicker
-                    myParties={myParties}
-                    selectedIds={visibleParties}
-                    busy={busy}
-                    onChange={(partyId, enabled) => {
-                      const name = myParties.find(pt => pt.id === partyId)?.name ?? 'パーティー'
-                      void run(async () => {
-                        const { error } = await supabase.rpc('set_lecture_visible_party', {
-                          p_lecture_id: lectureId, p_party_id: partyId, p_enabled: enabled,
+
+              {(visibility === 'party' || visibility === 'friends') && (
+                <Field group label="見せるパーティー" help="追加・削除はすぐに反映されます。あなたが所属しているパーティーから選べます">
+                  {myParties.length === 0 && visibleParties.length === 0 ? (
+                    <EmptyState compact title="所属しているパーティーがありません" description="メニューの「パーティー」から作るか参加すると、ここで選べるようになります。" />
+                  ) : (
+                    <PartyPicker
+                      myParties={myParties}
+                      selectedIds={visibleParties}
+                      busy={busy}
+                      onChange={(partyId, enabled) => {
+                        const partyName = myParties.find(pt => pt.id === partyId)?.name ?? 'パーティー'
+                        void run(async () => {
+                          const { error } = await supabase.rpc('set_lecture_visible_party', {
+                            p_lecture_id: lectureId, p_party_id: partyId, p_enabled: enabled,
+                          })
+                          if (error) throw error
+                          await loadVisibleParties()
+                          showToast(enabled ? `「${partyName}」に見せるようにしました` : `「${partyName}」に見せないようにしました`)
                         })
-                        if (error) throw error
-                        await loadVisibleParties()
-                        showToast(enabled ? `「${name}」に見せるようにしました` : `「${name}」に見せないようにしました`)
-                      })
-                    }}
+                      }}
+                    />
+                  )}
+                </Field>
+              )}
+
+              {visibility !== 'private' && (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-light)', background: 'var(--surface)', cursor: visibility === 'public' ? 'default' : 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={visibility === 'public' ? true : applyOpen}
+                    disabled={visibility === 'public'}
+                    onChange={e => setApplyOpen(e.target.checked)}
+                    style={{ marginTop: 3 }}
                   />
-                )}
-                <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>パーティーの追加・削除はすぐに反映されます。</p>
-              </div>
-            )}
-            {visibility !== 'private' && <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}>
-              <input
-                type="checkbox"
-                checked={visibility === 'public' ? true : applyOpen}
-                disabled={visibility === 'public'}
-                onChange={e => setApplyOpen(e.target.checked)}
-              />
-              参加申請を必要にする
-              {visibility === 'public' && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>（全体公開の間はオンに固定）</span>}
-            </label>}
-            <div>
-              <button type="submit" style={btn('primary')} disabled={busy}>設定を保存</button>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>参加を承認制にする</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                      {visibility === 'public'
+                        ? '全体公開の間は承認制に固定されます'
+                        : 'オンにすると、参加したい人は申請を送り、参加者の誰かが承認すると参加できます'}
+                    </span>
+                  </span>
+                </label>
+              )}
+            </Section>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', bottom: -20, padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--border-light)' }}>
+              <Button type="submit" variant="primary" disabled={!settingsDirty} loading={busy}>設定を保存</Button>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{settingsDirty ? '保存していない変更があります' : '変更はありません'}</span>
             </div>
           </form>
 
-          <div>
-            <p style={sectionTitle}>自分のタイムラインでの色</p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <Section title="自分のタイムラインでの色" description="あなたの画面にだけ反映されます">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {LECTURE_COLORS.map(c => (
                 <button
                   key={c}
+                  type="button"
                   aria-label={`色 ${c}`}
+                  aria-pressed={lecture.color === c}
                   onClick={() => run(async () => { await updateSubject(lectureId, { color: c }) })}
                   style={{
-                    width: 26, height: 26, borderRadius: 7, background: c, cursor: 'pointer',
+                    width: 32, height: 32, borderRadius: 9, background: c, cursor: 'pointer',
                     border: lecture.color === c ? '3px solid var(--text-primary)' : '2px solid var(--surface)',
                     boxShadow: 'var(--shadow-xs)',
                   }}
                 />
               ))}
             </div>
-          </div>
+          </Section>
 
-          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
-            {!confirmLeave ? (
-              <button style={btn('danger')} onClick={() => setConfirmLeave(true)}>この講義から退出</button>
+          <Section title="この講義から退出" description="退出しても、あなたの進捗やメモは保存され、再参加したときに戻ります">
+            {confirmLeave ? (
+              <Confirm
+                message={`「${lecture.name}」から退出しますか？`}
+                detail={activeCount <= 1
+                  ? 'あなたが最後の1人なので、講義は誰からも見えなくなります。'
+                  : 'この講義の課題は、あなたのタイムラインから消えます。'}
+                confirmLabel="退出する"
+                busy={busy}
+                onCancel={() => setConfirmLeave(false)}
+                onConfirm={() => run(async () => {
+                  await deleteSubject(lectureId)
+                  showToast('講義から退出しました')
+                  onClose()
+                })}
+              />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  退出すると、この講義の課題はあなたのRiverから消えます。進捗やメモは保存され、再参加したときに戻ります。
-                  {participants.filter(p => p.status === 'active').length <= 1 && ' 最後の1人なので、講義はアーカイブされ誰からも見えなくなります。'}
-                </span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    style={btn('danger')}
-                    disabled={busy}
-                    onClick={() => run(async () => {
-                      await deleteSubject(lectureId)
-                      showToast('講義から退出しました')
-                      onClose()
-                    })}
-                  >
-                    退出する
-                  </button>
-                  <button style={btn('ghost')} onClick={() => setConfirmLeave(false)}>やめる</button>
-                </div>
-              </div>
+              <div><Button variant="danger" onClick={() => setConfirmLeave(true)}>退出する</Button></div>
             )}
-          </div>
+          </Section>
         </>
       )}
 
       {tab === 'history' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {history === null && <p style={emptyText}>読み込み中...</p>}
-          {history?.length === 0 && <p style={emptyText}>履歴はまだありません</p>}
-          {history?.map(e => {
-            const d = describe(e, name)
-            if (!d) return null
-            return (
-              <div key={e.id} style={{ display: 'flex', gap: 10, padding: '8px 2px', borderBottom: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, width: 70 }}>{formatDateTime(e.created_at)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-                    <b>{e.actor_id ? name(e.actor_id) : 'システム'}</b>{' '}{d.what}
+        <Section title="操作履歴" description="誰が・いつ・何を変えたかを確認できます">
+          {history === null ? (
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+          ) : history.length === 0 ? (
+            <EmptyState compact title="履歴はまだありません" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {history.map(e => {
+                const d = describe(e, name)
+                if (!d) return null
+                return (
+                  <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 2px', borderBottom: '1px solid var(--border-light)' }}>
+                    <Avatar name={e.actor_id ? name(e.actor_id) : 'システム'} size={28} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                        <b>{e.actor_id ? name(e.actor_id) : 'システム'}</b>{' '}{d.what}
+                      </div>
+                      {d.diffs.map((line, i) => (
+                        <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', wordBreak: 'break-all', marginTop: 2 }}>{line}</div>
+                      ))}
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{formatDateTime(e.created_at)}</div>
+                    </div>
                   </div>
-                  {d.diffs.map((line, i) => (
-                    <div key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{line}</div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                )
+              })}
+            </div>
+          )}
+        </Section>
       )}
     </Sheet>
   )
