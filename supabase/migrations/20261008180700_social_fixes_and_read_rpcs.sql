@@ -936,3 +936,56 @@ as $$
 $$;
 
 grant execute on function get_lecture_apply_requests(uuid) to authenticated;
+
+-- ------------------------------------------------------------
+-- 参加申請の通知に講義名を含める（却下された人は講義を閲覧できない場合があるため）
+-- ------------------------------------------------------------
+create or replace function notify_lecture_apply_request()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into notifications (user_id, type, payload)
+  select lp.user_id, 'lecture_apply_request',
+    jsonb_build_object('lecture_id', new.lecture_id, 'request_id', new.id, 'applicant_id', new.user_id,
+      'title', (select title from lectures where id = new.lecture_id))
+  from lecture_participants lp
+  where lp.lecture_id = new.lecture_id and lp.status = 'active';
+  return new;
+end;
+$$;
+
+create or replace function notify_lecture_apply_response()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status in ('approved', 'rejected') and old.status = 'pending' then
+    insert into notifications (user_id, type, payload)
+    values (new.user_id, 'lecture_apply_response',
+      jsonb_build_object('lecture_id', new.lecture_id, 'request_id', new.id, 'approved', new.status = 'approved',
+        'title', (select title from lectures where id = new.lecture_id)));
+  end if;
+  return new;
+end;
+$$;
+
+-- パーティー招待の通知にパーティー名を含める
+create or replace function notify_party_invite()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into notifications (user_id, type, payload)
+    values (new.invitee_id, 'party_invite',
+      jsonb_build_object('party_id', new.party_id, 'invite_id', new.id, 'inviter_id', new.inviter_id,
+        'party_name', (select name from parties where id = new.party_id)));
+  return new;
+end;
+$$;

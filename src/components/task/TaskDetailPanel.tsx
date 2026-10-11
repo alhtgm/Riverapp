@@ -1,8 +1,9 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { Task, Subject, TaskStatus } from '../../types'
 import { STATUS_CONFIG, STATUS_ORDER } from '../../types'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
+import ProgressPeople from '../lecture/ProgressPeople'
 
 interface Props {
   task: Task | null
@@ -98,7 +99,7 @@ function MarkdownPreview({ text }: { text: string }) {
 }
 
 export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
-  const { updateTask, deleteTask, deleteTasksFromRecurrence, updateTasksFromRecurrence } = useStore()
+  const { updateTask, deleteTask, deleteTasksFromRecurrence, updateTasksFromRecurrence, progress } = useStore()
   const { showToast } = useToast()
   const [title, setTitle] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -107,6 +108,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   const [dueTime, setDueTime] = useState('')
   const [status, setStatus] = useState<TaskStatus>('todo')
   const [memo, setMemo] = useState('')
+  const [description, setDescription] = useState('')
+  const [url, setUrl] = useState('')
   const [memoTab, setMemoTab] = useState<'edit' | 'preview'>('edit')
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -123,6 +126,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
       setDueTime(task.due_time ?? '')
       setStatus(task.status)
       setMemo(task.memo ?? '')
+      setDescription(task.description ?? '')
+      setUrl(task.url ?? '')
       setMemoTab('edit')
       setShowDeleteOptions(false)
       setApplyToAll(false)
@@ -133,17 +138,22 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
   const handleSave = async () => {
     setErrorMsg('')
-    if (!subjectId) { setErrorMsg('科目を選択してください'); return }
+    if (!subjectId) { setErrorMsg('講義を選択してください'); return }
     if (!startDate) { setErrorMsg('開始日を入力してください'); return }
     if (!dueDate) { setErrorMsg('締切日を入力してください'); return }
-    if (startDate > dueDate) { setErrorMsg('締切日は開始日以降に設定してください'); return }
+    if (startDate > dueDate) { setErrorMsg('締切日は作業開始日以降に設定してください'); return }
+    const trimmedUrl = url.trim()
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) { setErrorMsg('関連URLは http:// か https:// で始めてください'); return }
     setSaving(true)
     try {
       if (applyToAll && task.recurrence_id) {
         // 以降すべてに適用（タイトル・ステータス・メモのみ）
-        await updateTasksFromRecurrence(task.recurrence_id, task.start_date, { title, status, memo })
-        // この課題の日程・科目は個別更新
-        await updateTask(task.id, { subject_id: subjectId, start_date: startDate, due_date: dueDate, due_time: dueTime || null })
+        await updateTasksFromRecurrence(task.recurrence_id, task.due_date, { title, status, memo })
+        // この課題の日程・講義・説明は個別更新
+        await updateTask(task.id, {
+          subject_id: subjectId, start_date: startDate, due_date: dueDate, due_time: dueTime || null,
+          description: description.trim() || null, url: trimmedUrl || null,
+        })
         showToast('以降すべての課題を更新しました')
       } else {
         await updateTask(task.id, {
@@ -152,6 +162,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           start_date: startDate,
           due_date: dueDate,
           due_time: dueTime || null,
+          description: description.trim() || null,
+          url: trimmedUrl || null,
           status,
           memo,
         })
@@ -178,7 +190,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
     if (!task.recurrence_id) return
     setErrorMsg('')
     try {
-      await deleteTasksFromRecurrence(task.recurrence_id, task.start_date)
+      await deleteTasksFromRecurrence(task.recurrence_id, task.due_date)
       showToast('課題を削除しました')
       onClose()
     } catch (e: unknown) { setErrorMsg((e as Error).message) }
@@ -206,6 +218,16 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
     textTransform: 'uppercase',
     marginBottom: 6,
     display: 'block',
+  }
+
+  const groupStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--accent)',
+    letterSpacing: '0.04em',
+    margin: '4px 0 -8px',
+    paddingBottom: 6,
+    borderBottom: '1px solid var(--border-light)',
   }
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -299,6 +321,8 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             </div>
           )}
 
+          <p style={groupStyle}>共有（参加者全員に反映）</p>
+
           {/* Title */}
           <div>
             <label style={labelStyle}>タイトル</label>
@@ -314,7 +338,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
           {/* Subject */}
           <div>
-            <label style={labelStyle}>科目</label>
+            <label style={labelStyle}>講義</label>
             <select
               value={subjectId}
               onChange={e => setSubjectId(e.target.value)}
@@ -331,14 +355,13 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           {/* Dates + Times */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>開始日</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-            </div>
-            <div>
               <label style={labelStyle}>締切日</label>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             </div>
           </div>
+          {dueDate !== task.due_date && (
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '-10px 0 0' }}>締切を変更すると、参加者全員に通知されます。</p>
+          )}
 
           {/* Due time */}
           <div>
@@ -366,6 +389,56 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Description (shared) */}
+          <div>
+            <label style={labelStyle}>説明（任意）</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+              placeholder="提出方法や範囲など、参加者と共有したいこと"
+              onFocus={onFocus}
+              onBlur={onBlur}
+            />
+          </div>
+
+          {/* URL (shared) */}
+          <div>
+            <label style={labelStyle}>関連URL（任意）</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="url"
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://"
+                style={inputStyle}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+              {/^https?:\/\//i.test(url.trim()) && (
+                <a href={url.trim()} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--accent)', flexShrink: 0, fontWeight: 600 }}>開く</a>
+              )}
+            </div>
+          </div>
+
+          {/* みんなの進捗 */}
+          <div>
+            <label style={labelStyle}>みんなの進捗</label>
+            <ProgressPeople progress={progress[task.id]} />
+          </div>
+
+          <p style={groupStyle}>自分だけ</p>
+
+          {/* Work start (personal) */}
+          <div>
+            <label style={labelStyle}>作業開始日</label>
+            <input type="date" value={startDate} max={dueDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
+              タイムラインのバーの開始位置です。締切日と同じにすると未設定（締切だけ表示）になります。
+            </p>
           </div>
 
           {/* Status */}
@@ -490,7 +563,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         }}>
           {!showDeleteOptions ? (
             <button
-              onClick={() => task.recurrence_id ? setShowDeleteOptions(true) : handleDeleteThis()}
+              onClick={() => setShowDeleteOptions(true)}
               style={{
                 background: 'transparent',
                 color: 'var(--danger)',
@@ -511,8 +584,10 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             </button>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, letterSpacing: '-0.01em', fontWeight: 600 }}>
-                繰り返し課題の削除範囲:
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, letterSpacing: '-0.01em', fontWeight: 600, lineHeight: 1.5 }}>
+                {task.recurrence_id ? '繰り返し課題の削除範囲:' : 'この課題を削除しますか？'}
+                <br />
+                <span style={{ fontWeight: 400 }}>参加者全員のRiverから消えます。講義の画面の「削除済みの課題」から復元できます。</span>
               </p>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
@@ -524,9 +599,9 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
-                  この課題のみ
+                  {task.recurrence_id ? 'この課題のみ' : '削除する'}
                 </button>
-                <button
+                {task.recurrence_id && <button
                   onClick={handleDeleteFromHere}
                   style={{
                     flex: 1, background: 'var(--danger-bg)', color: 'var(--danger)',
@@ -536,7 +611,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                   }}
                 >
                   以降すべて
-                </button>
+                </button>}
               </div>
               <button
                 onClick={() => setShowDeleteOptions(false)}

@@ -1,9 +1,10 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { Subject } from '../../types'
 import { useStore } from '../../store/useStore'
 import { toDateString, parseLocalDate, formatDate } from '../../types'
 import { useToast } from '../ui/Toast'
 import MiniCalendar from '../ui/MiniCalendar'
+import NewLectureForm from '../lecture/NewLectureForm'
 
 interface Props {
   subjects: Subject[]
@@ -20,8 +21,6 @@ const INTERVALS: IntervalOption[] = [
   { label: '3週ごと', weeks: 3 },
   { label: '4週ごと', weeks: 4 },
 ]
-
-const COLORS = ['#E16259', 'var(--accent)', '#16A34A', '#7C3AED', '#D97706', '#DB2777', '#0284C7', '#4F46E5']
 
 const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -51,7 +50,7 @@ function offsetFromToday(dateStr: string): number {
 }
 
 export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
-  const { addTask, addRecurringTasks, addSubject } = useStore()
+  const { addTask, addRecurringTasks } = useStore()
   const { showToast } = useToast()
   const [mode, setMode] = useState<Mode>('single')
   const [title, setTitle] = useState('')
@@ -65,7 +64,6 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const [count, setCount] = useState(5)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [newSubjectName, setNewSubjectName] = useState('')
   const [showNewSubject, setShowNewSubject] = useState(false)
   /** 締切日を「その他」（カレンダー直接指定）で編集中か */
   const [showCustomDue, setShowCustomDue] = useState(false)
@@ -86,20 +84,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     return `${formatDate(startDate)} 〜 ${toDateString(lastDue).split('-').map((v, i) => i === 0 ? '' : i === 1 ? `${Number(v)}月` : `${Number(v)}日`).join('')}、全${count}回`
   }
 
-  const handleAddSubject = async () => {
-    const name = newSubjectName.trim()
-    if (!name) return
-    const autoColor = COLORS[subjects.length % COLORS.length]
-    await addSubject(name, autoColor)
-    setNewSubjectName('')
-    setShowNewSubject(false)
-    showToast(`科目「${name}」を追加しました`)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg('')
-    if (!subjectId) { setErrorMsg('科目を選択してください'); return }
+    if (!subjectId) { setErrorMsg('講義を選択してください'); return }
     if (!startDate) { setErrorMsg('開始日を入力してください'); return }
     if (effectiveMode === 'single' && !dueDate) { setErrorMsg('締切日を入力してください'); return }
     if (effectiveMode === 'single' && startDate > dueDate) { setErrorMsg('締切日は開始日以降に設定してください'); return }
@@ -110,10 +98,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
       if (effectiveMode === 'single') {
         await addTask({
           subject_id: subjectId,
-          recurrence_id: null,
           row_id: null,
-          source_template_id: null,
-          source_item_id: null,
           title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,
@@ -124,7 +109,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
         showToast('課題を追加しました')
       } else {
         await addRecurringTasks(
-          { subject_id: subjectId, title: effectiveTitle, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
+          { title: effectiveTitle, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
           subjectId
         )
         showToast(`繰り返し課題を${count}件追加しました`)
@@ -324,7 +309,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
           {/* Subject */}
           <div>
-            <label style={labelStyle}>科目</label>
+            <label style={labelStyle}>講義</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <select
                 value={subjectId}
@@ -341,7 +326,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {subjects.length === 0 && <option value="">科目がありません</option>}
+                {subjects.length === 0 && <option value="">講義がありません（「+ 講義」から作成）</option>}
               </select>
               {(
                 <button
@@ -364,50 +349,20 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                     flexShrink: 0,
                   }}
                 >
-                  + 科目
+                  + 講義
                 </button>
               )}
             </div>
 
-            {/* Simplified inline subject add — no color picker, Enter to save */}
             {showNewSubject && (
-              <div style={{
-                marginTop: 8,
-                display: 'flex',
-                gap: 6,
-              }}>
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={e => setNewSubjectName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubject() } }}
-                  style={{ ...inputStyle, flex: 1 }}
-                  placeholder="科目名を入力してEnter"
-                  autoFocus
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSubject}
-                  style={{
-                    background: 'var(--accent)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '0 14px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    flexShrink: 0,
-                    height: 38,
-                  }}
-                >
-                  追加
-                </button>
-              </div>
+              <NewLectureForm
+                onReady={id => { setSubjectId(id); setShowNewSubject(false) }}
+                onCancel={() => setShowNewSubject(false)}
+              />
             )}
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 0', lineHeight: 1.5 }}>
+              課題名・締切は講義の参加者全員に共有されます。開始日・ステータス・メモはあなただけのものです。
+            </p>
           </div>
 
           {effectiveMode === 'single' ? (

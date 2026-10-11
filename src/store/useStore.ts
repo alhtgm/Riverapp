@@ -1,12 +1,119 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import type { Subject, Task, Recurrence, TaskStatus, Profile, Template, TemplateMeta, TemplateItem, TemplateItemDraft } from '../types'
-import { toDateString } from '../types'
+import type {
+  Subject, Task, Recurrence, Profile, TaskProgress, LectureTerm, LectureVisibility,
+  SharedTaskField, PersonalTaskField,
+} from '../types'
+import { toDateString, parseLocalDate } from '../types'
+import { toMessage } from '../lib/errors'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
+interface LectureRow {
+  id: string
+  title: string
+  year: number
+  term: LectureTerm
+  professor: string | null
+  visibility: LectureVisibility
+  apply_open: boolean
+  created_at: string
+}
+
+interface LectureTaskRow {
+  id: string
+  lecture_id: string
+  recurrence_id: string | null
+  title: string
+  due_date: string
+  due_time: string | null
+  description: string | null
+  url: string | null
+  created_at: string
+}
+
+interface TaskStateRow {
+  task_id: string
+  status: Task['status']
+  work_start_date: string | null
+  memo: string | null
+  row_id: string | null
+}
+
+export interface LectureInput {
+  title: string
+  year: number
+  term: LectureTerm
+  professor?: string | null
+}
+
+export type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
+
+type TaskInput = Pick<Task, 'subject_id' | 'title' | 'start_date' | 'due_date' | 'due_time' | 'status' | 'memo' | 'row_id'> &
+  Partial<Pick<Task, 'description' | 'url'>>
+
+type TaskUpdates = Partial<Pick<Task, SharedTaskField | PersonalTaskField>>
+
+const SHARED_FIELDS: SharedTaskField[] = ['title', 'due_date', 'due_time', 'description', 'url', 'subject_id']
+
+/** Supabase のエラーを画面表示用の Error にして投げる */
+function fail(error: unknown): never {
+  throw new Error(toMessage(error))
+}
+
+function toSubject(lecture: LectureRow, color: string, order: number): Subject {
+  return {
+    id: lecture.id,
+    name: lecture.title,
+    color,
+    order,
+    year: lecture.year,
+    term: lecture.term,
+    professor: lecture.professor,
+    visibility: lecture.visibility,
+    apply_open: lecture.apply_open,
+    created_at: lecture.created_at,
+  }
+}
+
+function toTask(t: LectureTaskRow, st: TaskStateRow | undefined): Task {
+  // 作業予定の開始が未設定、または締切より後になっている場合は締切日だけを表示する
+  const workStart = st?.work_start_date && st.work_start_date <= t.due_date ? st.work_start_date : null
+  return {
+    id: t.id,
+    subject_id: t.lecture_id,
+    recurrence_id: t.recurrence_id,
+    row_id: st?.row_id ?? null,
+    title: t.title,
+    start_date: workStart ?? t.due_date,
+    due_date: t.due_date,
+    due_time: t.due_time,
+    status: st?.status ?? 'todo',
+    memo: st?.memo ?? null,
+    description: t.description,
+    url: t.url,
+    has_work_period: workStart !== null,
+    created_at: t.created_at,
+  }
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = parseLocalDate(dateStr)
+  d.setDate(d.getDate() + days)
+  return toDateString(d)
+}
+
+async function requireUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('ログインが必要です')
+  return user.id
+}
+
 interface AppState {
+  userId: string | null
   subjects: Subject[]
   tasks: Task[]
+  /** 課題ごとの「取り組み中」「完了」の人（7章） */
+  progress: Record<string, TaskProgress>
   loading: boolean
   error: string | null
 
@@ -15,57 +122,49 @@ interface AppState {
   profileLoaded: boolean
   schoolName: string | null
   fetchProfile: () => Promise<void>
-  completeOnboarding: (schoolEmail: string, displayName: string) => Promise<void>
-
-  // Templates (学校スコープ共有)
-  templates: Template[]
-  fetchTemplates: () => Promise<void>
-  getTemplateItems: (templateId: string) => Promise<TemplateItem[]>
-  importTemplate: (templateId: string) => Promise<void>
-  createTemplateFromSubject: (subjectId: string, meta?: TemplateMeta) => Promise<void>
-  updateTemplate: (templateId: string, meta: TemplateMeta & { title?: string }, items: TemplateItemDraft[]) => Promise<void>
-  applyTemplateUpdate: (templateId: string) => Promise<{ added: number; changed: number; removed: number }>
-  dismissTemplateUpdate: (templateId: string) => Promise<void>
-  deleteTemplate: (templateId: string) => Promise<void>
+  completeOnboarding: (schoolEmail: string, displayName: string, handle: string) => Promise<void>
+  updateMyProfile: (updates: { handle?: string; display_name?: string }) => Promise<void>
 
   // Theme
   isDark: boolean
   toggleTheme: () => void
 
   fetchAll: () => Promise<void>
+  fetchProgress: () => Promise<void>
   signOut: () => Promise<void>
 
-  // Subject
-  addSubject: (name: string, color: string) => Promise<void>
+  // Subject（= 参加中の講義）
+  addSubject: (input: LectureInput, color: string) => Promise<Subject>
   updateSubject: (id: string, updates: Partial<Pick<Subject, 'name' | 'color' | 'order'>>) => Promise<void>
+  updateLectureSettings: (id: string, settings: LectureSettings) => Promise<void>
+  /** 講義から退出する（課題は自分のRiverから消え、進捗は保持される） */
   deleteSubject: (id: string) => Promise<void>
 
   // Task
-  addTask: (task: Omit<Task, 'id' | 'user_id' | 'created_at'>) => Promise<void>
-  addRecurringTasks: (
-    recurrence: Omit<Recurrence, 'id' | 'user_id' | 'created_at'>,
-    subjectId: string
-  ) => Promise<void>
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'status' | 'start_date' | 'due_date' | 'due_time' | 'memo' | 'subject_id'>>) => Promise<void>
+  addTask: (task: TaskInput) => Promise<void>
+  addRecurringTasks: (recurrence: Recurrence, subjectId: string) => Promise<void>
+  updateTask: (id: string, updates: TaskUpdates) => Promise<void>
   updateTasksFromRecurrence: (
     recurrenceId: string,
-    fromDate: string,
+    fromDueDate: string,
     updates: Partial<Pick<Task, 'title' | 'status' | 'memo'>>
   ) => Promise<void>
   deleteTask: (id: string) => Promise<void>
-  deleteTasksFromRecurrence: (recurrenceId: string, fromDate: string) => Promise<void>
+  deleteTasksFromRecurrence: (recurrenceId: string, fromDueDate: string) => Promise<void>
+  restoreTask: (id: string) => Promise<void>
 }
 
 export const useStore = create<AppState>((set, get) => ({
+  userId: null,
   subjects: [],
   tasks: [],
+  progress: {},
   loading: false,
   error: null,
 
   profile: null,
   profileLoaded: false,
   schoolName: null,
-  templates: [],
 
   isDark: getStoredTheme() === 'dark',
   toggleTheme: () => {
@@ -77,7 +176,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchProfile: async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      set({ profile: null, profileLoaded: true })
+      set({ profile: null, profileLoaded: true, userId: null })
       return
     }
     const { data, error } = await supabase
@@ -90,25 +189,28 @@ export const useStore = create<AppState>((set, get) => ({
       return
     }
     if (!data) {
-      set({ profile: null, schoolName: null, profileLoaded: true })
+      set({ profile: null, schoolName: null, profileLoaded: true, userId: user.id })
       return
     }
     const row = { ...(data as Record<string, unknown>) }
     const sf = row.schools as { name?: string } | { name?: string }[] | null | undefined
     const sName = Array.isArray(sf) ? (sf[0]?.name ?? null) : (sf?.name ?? null)
     delete row.schools
-    set({ profile: row as unknown as Profile, schoolName: sName, profileLoaded: true })
+    set({ profile: row as unknown as Profile, schoolName: sName, profileLoaded: true, userId: user.id })
   },
 
-  completeOnboarding: async (schoolEmail, displayName) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('ログインが必要です')
+  completeOnboarding: async (schoolEmail, displayName, handle) => {
+    const userId = await requireUserId()
 
     const email = schoolEmail.trim().toLowerCase()
     const name = displayName.trim()
+    const h = handle.trim().replace(/^@/, '')
     const domain = email.split('@')[1] ?? ''
     if (!domain) throw new Error('メールアドレスの形式が正しくありません')
     if (!name) throw new Error('表示名を入力してください')
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(h)) {
+      throw new Error('ユーザーIDは英数字とアンダースコアで3〜20文字にしてください')
+    }
 
     // ドメインを許可リストと照合して学校を特定
     const { data: domainRow, error: domainErr } = await supabase
@@ -116,7 +218,7 @@ export const useStore = create<AppState>((set, get) => ({
       .select('school_id, schools(name)')
       .eq('domain', domain)
       .maybeSingle()
-    if (domainErr) throw domainErr
+    if (domainErr) fail(domainErr)
     if (!domainRow) {
       throw new Error(`未対応の学校ドメインです（${domain}）`)
     }
@@ -126,461 +228,174 @@ export const useStore = create<AppState>((set, get) => ({
     const { data, error } = await supabase
       .from('profiles')
       .insert({
-        id: user.id,
+        id: userId,
         school_email: email,
         school_id: domainRow.school_id,
         display_name: name,
+        handle: h,
       })
       .select()
       .single()
-    if (error) throw error
-    set({ profile: data, schoolName, profileLoaded: true })
+    if (error) fail(error)
+    set({ profile: data, schoolName, profileLoaded: true, userId })
   },
 
-  fetchTemplates: async () => {
-    // RLS で自分の学校のテンプレートだけ返る。件数は埋め込みで取得
-    const [tmplRes, importsRes] = await Promise.all([
-      supabase
-        .from('templates')
-        .select('*, template_items(count)')
-        .order('created_at', { ascending: false }),
-      // 自分の取り込み状況（RLS で自分の行のみ）
-      supabase.from('template_imports').select('template_id, applied_version'),
-    ])
-    if (tmplRes.error) {
-      set({ error: tmplRes.error.message })
-      return
-    }
-    const importMap = new Map<string, number>()
-    for (const row of importsRes.data ?? []) {
-      importMap.set(row.template_id as string, (row.applied_version as number) ?? 1)
-    }
-    const templates: Template[] = (tmplRes.data ?? []).map((row: Record<string, unknown>) => {
-      const items = row.template_items as { count: number }[] | undefined
-      const id = row.id as string
-      const imported = importMap.has(id)
-      return {
-        id,
-        school_id: row.school_id as string,
-        created_by: (row.created_by as string) ?? null,
-        title: row.title as string,
-        color: row.color as string,
-        description: (row.description as string) ?? null,
-        professor: (row.professor as string) ?? null,
-        department: (row.department as string) ?? null,
-        schedule: (row.schedule as string) ?? null,
-        import_count: (row.import_count as number) ?? 0,
-        version: (row.version as number) ?? 1,
-        created_at: row.created_at as string,
-        creator_name: (row.creator_name as string) ?? null,
-        item_count: items?.[0]?.count ?? 0,
-        imported,
-        applied_version: imported ? importMap.get(id)! : null,
+  updateMyProfile: async (updates) => {
+    const userId = await requireUserId()
+    const payload: Record<string, string> = {}
+    if (updates.handle !== undefined) {
+      const h = updates.handle.trim().replace(/^@/, '')
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(h)) {
+        throw new Error('ユーザーIDは英数字とアンダースコアで3〜20文字にしてください')
       }
-    })
-    set({ templates })
-  },
-
-  getTemplateItems: async (templateId) => {
-    const { data, error } = await supabase
-      .from('template_items')
-      .select('*')
-      .eq('template_id', templateId)
-      .order('sort_order')
-    if (error) throw error
-    return (data ?? []) as TemplateItem[]
-  },
-
-  importTemplate: async (templateId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('ログインが必要です')
-
-    // テンプレート本体と課題を取得
-    const tmpl = get().templates.find(t => t.id === templateId)
-    const { data: items, error: itemsErr } = await supabase
-      .from('template_items')
-      .select('*')
-      .eq('template_id', templateId)
-      .order('sort_order')
-    if (itemsErr) throw itemsErr
-
-    const title = tmpl?.title ?? '取り込んだ講義'
-    const color = tmpl?.color ?? '#0891B2'
-
-    // 取り込み先の科目を新規作成
-    const maxOrder = Math.max(0, ...get().subjects.map(s => s.order))
-    const { data: subject, error: subErr } = await supabase
-      .from('subjects')
-      .insert({ user_id: user.id, name: title, color, order: maxOrder + 1 })
-      .select()
-      .single()
-    if (subErr) throw subErr
-
-    // 課題を自分のタスクとしてコピー（進捗は自分で管理。source_item_id で項目に紐付け）
-    const newTasks = (items ?? []).map(it => ({
-      user_id: user.id,
-      subject_id: subject.id,
-      recurrence_id: null,
-      row_id: null,
-      source_template_id: templateId,
-      source_item_id: it.id,
-      title: it.title,
-      start_date: it.start_date,
-      due_date: it.due_date,
-      due_time: it.due_time,
-      status: 'todo' as TaskStatus,
-      memo: null,
-    }))
-
-    let insertedTasks: Task[] = []
-    if (newTasks.length > 0) {
-      const { data: tasksData, error: tasksErr } = await supabase
-        .from('tasks')
-        .insert(newTasks)
-        .select()
-      if (tasksErr) throw tasksErr
-      insertedTasks = tasksData
+      payload.handle = h
     }
-
-    // 取り込み記録（ユニーク人数。同じ人の2回目以降は加算されない）
-    await supabase.rpc('import_template_once', { p_template_id: templateId })
-
-    set(s => ({
-      subjects: [...s.subjects, subject],
-      tasks: [...s.tasks, ...insertedTasks],
-    }))
-    // 正確なユニーク人数を反映するため再取得
-    await get().fetchTemplates()
-  },
-
-  createTemplateFromSubject: async (subjectId, meta) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('ログインが必要です')
-    const profile = get().profile
-    if (!profile?.school_id) throw new Error('学校が設定されていません')
-
-    const subject = get().subjects.find(s => s.id === subjectId)
-    if (!subject) throw new Error('科目が見つかりません')
-    const subjectTasks = get().tasks.filter(t => t.subject_id === subjectId)
-    if (subjectTasks.length === 0) throw new Error('この科目には課題がありません')
-
-    const clean = (v?: string) => {
-      const s = v?.trim()
-      return s ? s : null
+    if (updates.display_name !== undefined) {
+      const n = updates.display_name.trim()
+      if (!n) throw new Error('表示名を入力してください')
+      payload.display_name = n
     }
-
-    // テンプレート本体
-    const { data: tmpl, error: tmplErr } = await supabase
-      .from('templates')
-      .insert({
-        school_id: profile.school_id,
-        created_by: user.id,
-        creator_name: profile.display_name,
-        title: subject.name,
-        color: subject.color,
-        description: clean(meta?.description),
-        professor: clean(meta?.professor),
-        department: clean(meta?.department),
-        schedule: clean(meta?.schedule),
-      })
-      .select()
-      .single()
-    if (tmplErr) throw tmplErr
-
-    // 課題を items としてコピー
-    const items = subjectTasks
-      .slice()
-      .sort((a, b) => (a.start_date < b.start_date ? -1 : 1))
-      .map((t, i) => ({
-        template_id: tmpl.id,
-        title: t.title,
-        start_date: t.start_date,
-        due_date: t.due_date,
-        due_time: t.due_time,
-        sort_order: i,
-      }))
-    const { error: itemsErr } = await supabase.from('template_items').insert(items)
-    if (itemsErr) throw itemsErr
-
-    await get().fetchTemplates()
-  },
-
-  updateTemplate: async (templateId, meta, items) => {
-    const clean = (v?: string) => {
-      const s = v?.trim()
-      return s ? s : null
-    }
-    // 既存項目の id 集合（残っているものだけ保持し、消えたものは削除）
-    const existing = await get().getTemplateItems(templateId)
-    const keptIds = new Set(items.filter(i => i.id).map(i => i.id as string))
-    const toDelete = existing.filter(e => !keptIds.has(e.id)).map(e => e.id)
-
-    // 既存項目は id を保って更新（取り込み側の紐付けを壊さない）
-    const updates = items
-      .filter(i => i.id)
-      .map((i, idx) =>
-        supabase.from('template_items').update({
-          title: i.title,
-          start_date: i.start_date,
-          due_date: i.due_date,
-          due_time: i.due_time,
-          sort_order: idx,
-        }).eq('id', i.id!)
-      )
-    // 新規項目は挿入
-    const inserts = items
-      .map((i, idx) => ({ i, idx }))
-      .filter(({ i }) => !i.id)
-      .map(({ i, idx }) => ({
-        template_id: templateId,
-        title: i.title,
-        start_date: i.start_date,
-        due_date: i.due_date,
-        due_time: i.due_time,
-        sort_order: idx,
-      }))
-
-    for (const u of updates) { const { error } = await u; if (error) throw error }
-    if (inserts.length > 0) {
-      const { error } = await supabase.from('template_items').insert(inserts)
-      if (error) throw error
-    }
-    if (toDelete.length > 0) {
-      const { error } = await supabase.from('template_items').delete().in('id', toDelete)
-      if (error) throw error
-    }
-
-    // メタ情報を更新し、バージョンを上げる（取り込み側に「更新あり」が出る）
-    const current = get().templates.find(t => t.id === templateId)
-    const nextVersion = (current?.version ?? 1) + 1
-    const metaUpdate: Record<string, unknown> = {
-      description: clean(meta.description),
-      professor: clean(meta.professor),
-      department: clean(meta.department),
-      schedule: clean(meta.schedule),
-      version: nextVersion,
-    }
-    if (meta.title !== undefined) metaUpdate.title = meta.title.trim() || current?.title
-    const { error: tmplErr } = await supabase.from('templates').update(metaUpdate).eq('id', templateId)
-    if (tmplErr) throw tmplErr
-
-    await get().fetchTemplates()
-  },
-
-  applyTemplateUpdate: async (templateId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('ログインが必要です')
-
-    const tmpl = get().templates.find(t => t.id === templateId)
-    const currentItems = await get().getTemplateItems(templateId)
-    const myTasks = get().tasks.filter(t => t.source_template_id === templateId)
-
-    // 取り込み先の科目を決定（無ければ作成）
-    let subjectId = myTasks[0]?.subject_id
-    let createdSubject: Subject | null = null
-    if (!subjectId) {
-      const maxOrder = Math.max(0, ...get().subjects.map(s => s.order))
-      const { data: subject, error: subErr } = await supabase
-        .from('subjects')
-        .insert({ user_id: user.id, name: tmpl?.title ?? '講義', color: tmpl?.color ?? '#0891B2', order: maxOrder + 1 })
-        .select().single()
-      if (subErr) throw subErr
-      createdSubject = subject
-      subjectId = subject.id
-    }
-
-    const byItemId = new Map<string, Task>()
-    for (const t of myTasks) if (t.source_item_id) byItemId.set(t.source_item_id, t)
-    const usedTaskIds = new Set<string>()
-
-    const differs = (t: Task, i: TemplateItem) =>
-      t.title !== i.title || t.start_date !== i.start_date || t.due_date !== i.due_date || t.due_time !== i.due_time
-
-    let added = 0, changed = 0
-    const updatedTasks: Task[] = []
-    const insertRows: Record<string, unknown>[] = []
-
-    for (const item of currentItems) {
-      let task = byItemId.get(item.id)
-      // 旧データ（source_item_id 無し）はタイトル一致でひも付けを引き継ぐ
-      if (!task) {
-        task = myTasks.find(t => !t.source_item_id && t.title === item.title && !usedTaskIds.has(t.id))
-      }
-      if (task) {
-        usedTaskIds.add(task.id)
-        if (differs(task, item) || task.source_item_id !== item.id) {
-          const { data, error } = await supabase
-            .from('tasks')
-            .update({
-              title: item.title,
-              start_date: item.start_date,
-              due_date: item.due_date,
-              due_time: item.due_time,
-              source_item_id: item.id,
-            })
-            .eq('id', task.id)
-            .select().single()
-          if (error) throw error
-          updatedTasks.push(data)
-          if (differs(task, item)) changed++
-        }
-      } else {
-        insertRows.push({
-          user_id: user.id,
-          subject_id: subjectId,
-          recurrence_id: null,
-          row_id: null,
-          source_template_id: templateId,
-          source_item_id: item.id,
-          title: item.title,
-          start_date: item.start_date,
-          due_date: item.due_date,
-          due_time: item.due_time,
-          status: 'todo',
-          memo: null,
-        })
-        added++
-      }
-    }
-
-    // テンプレートから削除された項目に対応するタスクを削除（source_item_id がある＝テンプレ由来のみ）
-    const currentItemIds = new Set(currentItems.map(i => i.id))
-    const removeTasks = myTasks.filter(
-      t => t.source_item_id && !currentItemIds.has(t.source_item_id) && !usedTaskIds.has(t.id)
-    )
-    const removed = removeTasks.length
-
-    let insertedTasks: Task[] = []
-    if (insertRows.length > 0) {
-      const { data, error } = await supabase.from('tasks').insert(insertRows).select()
-      if (error) throw error
-      insertedTasks = data
-    }
-    if (removeTasks.length > 0) {
-      const { error } = await supabase.from('tasks').delete().in('id', removeTasks.map(t => t.id))
-      if (error) throw error
-    }
-
-    // 適用済みバージョンを更新
-    await supabase
-      .from('template_imports')
-      .update({ applied_version: tmpl?.version ?? 1 })
-      .eq('template_id', templateId)
-      .eq('user_id', user.id)
-
-    // ストア更新
-    const updatedMap = new Map(updatedTasks.map(t => [t.id, t]))
-    const removedIds = new Set(removeTasks.map(t => t.id))
-    set(s => ({
-      subjects: createdSubject ? [...s.subjects, createdSubject] : s.subjects,
-      tasks: [
-        ...s.tasks.filter(t => !removedIds.has(t.id)).map(t => updatedMap.get(t.id) ?? t),
-        ...insertedTasks,
-      ],
-    }))
-    await get().fetchTemplates()
-    return { added, changed, removed }
-  },
-
-  dismissTemplateUpdate: async (templateId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('ログインが必要です')
-    const tmpl = get().templates.find(t => t.id === templateId)
-    await supabase
-      .from('template_imports')
-      .update({ applied_version: tmpl?.version ?? 1 })
-      .eq('template_id', templateId)
-      .eq('user_id', user.id)
-    set(s => ({
-      templates: s.templates.map(t =>
-        t.id === templateId ? { ...t, applied_version: t.version } : t
-      ),
-    }))
-  },
-
-  deleteTemplate: async (templateId) => {
-    const { error } = await supabase.from('templates').delete().eq('id', templateId)
-    if (error) throw error
-    set(s => ({ templates: s.templates.filter(t => t.id !== templateId) }))
+    const { data, error } = await supabase.from('profiles').update(payload).eq('id', userId).select().single()
+    if (error) fail(error)
+    set(s => ({ profile: s.profile ? { ...s.profile, ...data } : data }))
   },
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ profile: null, profileLoaded: false, schoolName: null, subjects: [], tasks: [], templates: [] })
+    set({ profile: null, profileLoaded: false, schoolName: null, subjects: [], tasks: [], progress: {}, userId: null })
   },
 
   fetchAll: async () => {
     set({ loading: true, error: null })
     try {
-      const [subRes, taskRes] = await Promise.all([
-        supabase.from('subjects').select('*').order('"order"'),
-        supabase.from('tasks').select('*').order('start_date'),
-      ])
-      if (subRes.error) throw subRes.error
-      if (taskRes.error) throw taskRes.error
+      const userId = await requireUserId()
 
-      const allTasks: Task[] = taskRes.data
+      const { data: parts, error: partErr } = await supabase
+        .from('lecture_participants')
+        .select('color, order, lectures(*)')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('order')
+      if (partErr) fail(partErr)
 
-      // Auto-cleanup: delete rows where the last task's due_date is > 30 days ago
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const cutoff = new Date(today)
+      const subjects: Subject[] = []
+      for (const p of parts ?? []) {
+        const raw = (p as Record<string, unknown>).lectures as LectureRow | LectureRow[] | null
+        const lecture = Array.isArray(raw) ? raw[0] : raw
+        if (!lecture) continue
+        subjects.push(toSubject(lecture, p.color as string, p.order as number))
+      }
+
+      const lectureIds = subjects.map(s => s.id)
+      let tasks: Task[] = []
+      if (lectureIds.length > 0) {
+        const [taskRes, stateRes] = await Promise.all([
+          supabase
+            .from('lecture_tasks')
+            .select('id, lecture_id, recurrence_id, title, due_date, due_time, description, url, created_at')
+            .in('lecture_id', lectureIds)
+            .is('deleted_at', null)
+            .order('due_date'),
+          supabase
+            .from('task_user_state')
+            .select('task_id, status, work_start_date, memo, row_id')
+            .eq('user_id', userId),
+        ])
+        if (taskRes.error) fail(taskRes.error)
+        if (stateRes.error) fail(stateRes.error)
+        const stateMap = new Map<string, TaskStateRow>()
+        for (const st of (stateRes.data ?? []) as TaskStateRow[]) stateMap.set(st.task_id, st)
+        tasks = ((taskRes.data ?? []) as LectureTaskRow[]).map(t => toTask(t, stateMap.get(t.id)))
+      }
+
+      // 締切から30日以上たった行は表示しない（共有課題なので削除はしない）
+      const cutoff = new Date()
+      cutoff.setHours(0, 0, 0, 0)
       cutoff.setDate(cutoff.getDate() - 30)
       const cutoffStr = toDateString(cutoff)
-
-      const rowGroups = new Map<string, Task[]>()
-      for (const t of allTasks) {
+      const rowLastDue = new Map<string, string>()
+      for (const t of tasks) {
         const key = t.recurrence_id ?? t.id
-        const arr = rowGroups.get(key) ?? []
-        arr.push(t)
-        rowGroups.set(key, arr)
+        const cur = rowLastDue.get(key) ?? ''
+        if (t.due_date > cur) rowLastDue.set(key, t.due_date)
       }
-      const toDelete: string[] = []
-      for (const [, rowTasks] of rowGroups) {
-        const lastDue = rowTasks.reduce((max, t) => (t.due_date > max ? t.due_date : max), '')
-        if (lastDue < cutoffStr) {
-          toDelete.push(...rowTasks.map(t => t.id))
-        }
-      }
-      let finalTasks = allTasks
-      if (toDelete.length > 0) {
-        await supabase.from('tasks').delete().in('id', toDelete)
-        finalTasks = allTasks.filter(t => !toDelete.includes(t.id))
-      }
+      const visibleTasks = tasks.filter(t => (rowLastDue.get(t.recurrence_id ?? t.id) ?? '') >= cutoffStr)
 
-      set({ subjects: subRes.data, tasks: finalTasks, loading: false })
+      set({ subjects, tasks: visibleTasks, loading: false, userId })
+      void get().fetchProgress()
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false })
     }
   },
 
-  addSubject: async (name, color) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const maxOrder = Math.max(0, ...get().subjects.map(s => s.order))
-    const { data, error } = await supabase
-      .from('subjects')
-      .insert({ user_id: user.id, name, color, order: maxOrder + 1 })
-      .select()
-      .single()
-    if (error) throw error
-    set(s => ({ subjects: [...s.subjects, data] }))
+  fetchProgress: async () => {
+    const lectureIds = get().subjects.map(s => s.id)
+    if (lectureIds.length === 0) {
+      set({ progress: {} })
+      return
+    }
+    const { data, error } = await supabase.rpc('get_lectures_progress', { p_lecture_ids: lectureIds })
+    if (error) return // 進捗表示は補助情報なので、失敗してもタイムラインは表示する
+    const progress: Record<string, TaskProgress> = {}
+    for (const row of (data ?? []) as { task_id: string; status: string; user_id: string | null; display_name: string | null }[]) {
+      const p = progress[row.task_id] ?? (progress[row.task_id] = { inProgress: [], done: [] })
+      const person = { userId: row.user_id, name: row.display_name }
+      if (row.status === 'in_progress') p.inProgress.push(person)
+      else p.done.push(person)
+    }
+    set({ progress })
+  },
+
+  addSubject: async (input, color) => {
+    const { data, error } = await supabase.rpc('create_lecture', {
+      p_title: input.title.trim(),
+      p_year: input.year,
+      p_term: input.term,
+      p_professor: input.professor?.trim() || null,
+      p_visibility: 'party',
+      p_color: color,
+    })
+    if (error) fail(error)
+    const lecture = data as LectureRow
+    const order = Math.max(0, ...get().subjects.map(s => s.order)) + 1
+    // create_lecture は並び順 0 で作るので、末尾に回す
+    await supabase.rpc('update_my_lecture_prefs', { p_lecture_id: lecture.id, p_order: order })
+    const subject = toSubject(lecture, color, order)
+    set(s => ({ subjects: [...s.subjects, subject] }))
+    return subject
   },
 
   updateSubject: async (id, updates) => {
-    const { data, error } = await supabase
-      .from('subjects')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    set(s => ({ subjects: s.subjects.map(sub => sub.id === id ? data : sub) }))
+    if (updates.color !== undefined || updates.order !== undefined) {
+      const { error } = await supabase.rpc('update_my_lecture_prefs', {
+        p_lecture_id: id,
+        p_color: updates.color ?? null,
+        p_order: updates.order ?? null,
+      })
+      if (error) fail(error)
+    }
+    if (updates.name !== undefined) {
+      const { error } = await supabase.from('lectures').update({ title: updates.name.trim() }).eq('id', id)
+      if (error) fail(error)
+    }
+    set(s => ({ subjects: s.subjects.map(sub => (sub.id === id ? { ...sub, ...updates } : sub)) }))
+  },
+
+  updateLectureSettings: async (id, settings) => {
+    const payload: LectureSettings = { ...settings }
+    if (payload.title !== undefined) payload.title = payload.title.trim()
+    if (payload.professor !== undefined) payload.professor = payload.professor?.trim() || null
+    const { data, error } = await supabase.from('lectures').update(payload).eq('id', id).select().single()
+    if (error) fail(error)
+    const lecture = data as LectureRow
+    set(s => ({
+      subjects: s.subjects.map(sub => (sub.id === id ? toSubject(lecture, sub.color, sub.order) : sub)),
+    }))
   },
 
   deleteSubject: async (id) => {
-    const { error } = await supabase.from('subjects').delete().eq('id', id)
-    if (error) throw error
+    const { error } = await supabase.rpc('leave_lecture', { p_lecture_id: id })
+    if (error) fail(error)
     set(s => ({
       subjects: s.subjects.filter(sub => sub.id !== id),
       tasks: s.tasks.filter(t => t.subject_id !== id),
@@ -588,100 +403,168 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addTask: async (task) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = await requireUserId()
     const { data, error } = await supabase
-      .from('tasks')
-      .insert({ ...task, user_id: user.id })
-      .select()
+      .from('lecture_tasks')
+      .insert({
+        lecture_id: task.subject_id,
+        title: task.title,
+        due_date: task.due_date,
+        due_time: task.due_time,
+        description: task.description ?? null,
+        url: task.url ?? null,
+        created_by: userId,
+      })
+      .select('id, lecture_id, recurrence_id, title, due_date, due_time, description, url, created_at')
       .single()
-    if (error) throw error
-    set(s => ({ tasks: [...s.tasks, data] }))
+    if (error) fail(error)
+
+    // 追加した本人の作業予定・進捗・メモ（他の参加者は未設定から始まる）
+    const state: TaskStateRow = {
+      task_id: data.id,
+      status: task.status,
+      work_start_date: task.start_date < task.due_date ? task.start_date : null,
+      memo: task.memo,
+      row_id: task.row_id,
+    }
+    const { error: stErr } = await supabase
+      .from('task_user_state')
+      .update({ status: state.status, work_start_date: state.work_start_date, memo: state.memo, row_id: state.row_id })
+      .eq('task_id', data.id)
+      .eq('user_id', userId)
+    if (stErr) fail(stErr)
+
+    set(s => ({ tasks: [...s.tasks, toTask(data as LectureTaskRow, state)] }))
   },
 
   addRecurringTasks: async (recurrence, subjectId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = await requireUserId()
+    const { data, error } = await supabase.rpc('add_lecture_recurring_tasks', {
+      p_lecture_id: subjectId,
+      p_title: recurrence.title,
+      p_start_from: recurrence.start_from,
+      p_interval_weeks: recurrence.interval_weeks,
+      p_duration_days: recurrence.duration_days,
+      p_count: recurrence.count,
+    })
+    if (error) fail(error)
+    const rows = (data ?? []) as LectureTaskRow[]
 
-    // Create recurrence rule
-    const { data: recData, error: recErr } = await supabase
-      .from('recurrences')
-      .insert({ ...recurrence, user_id: user.id, subject_id: subjectId })
-      .select()
-      .single()
-    if (recErr) throw recErr
+    // 追加した本人は、各回の発生日を作業予定の開始にする
+    const states: TaskStateRow[] = rows.map(r => ({
+      task_id: r.id,
+      status: 'todo',
+      work_start_date: addDays(r.due_date, -recurrence.duration_days),
+      memo: null,
+      row_id: null,
+    }))
+    const results = await Promise.all(
+      states.map(st =>
+        supabase
+          .from('task_user_state')
+          .update({ work_start_date: st.work_start_date })
+          .eq('task_id', st.task_id)
+          .eq('user_id', userId)
+      )
+    )
+    const stErr = results.find(r => r.error)?.error
+    if (stErr) fail(stErr)
 
-    // Generate tasks
-    const tasks = []
-    const [y, m, d] = recurrence.start_from.split('-').map(Number)
-    for (let i = 0; i < recurrence.count; i++) {
-      const startDate = new Date(y, m - 1, d + i * recurrence.interval_weeks * 7)
-      const dueDate = new Date(startDate)
-      dueDate.setDate(dueDate.getDate() + recurrence.duration_days)
-      tasks.push({
-        user_id: user.id,
-        subject_id: subjectId,
-        recurrence_id: recData.id,
-        title: recurrence.title,
-        start_date: toDateString(startDate),
-        due_date: toDateString(dueDate),
-        status: 'todo' as TaskStatus,
-        memo: null,
-      })
-    }
-
-    const { data: tasksData, error: tasksErr } = await supabase
-      .from('tasks')
-      .insert(tasks)
-      .select()
-    if (tasksErr) throw tasksErr
-    set(s => ({ tasks: [...s.tasks, ...tasksData] }))
+    set(s => ({ tasks: [...s.tasks, ...rows.map((r, i) => toTask(r, states[i]))] }))
   },
 
   updateTask: async (id, updates) => {
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    if (error) throw error
-    set(s => ({ tasks: s.tasks.map(t => t.id === id ? data : t) }))
+    const userId = await requireUserId()
+    const current = get().tasks.find(t => t.id === id)
+
+    const shared: Record<string, unknown> = {}
+    for (const f of SHARED_FIELDS) {
+      if (updates[f] !== undefined) shared[f === 'subject_id' ? 'lecture_id' : f] = updates[f]
+    }
+    if (Object.keys(shared).length > 0) {
+      shared.updated_at = new Date().toISOString()
+      const { error } = await supabase.from('lecture_tasks').update(shared).eq('id', id)
+      if (error) fail(error)
+    }
+
+    const personal: Record<string, unknown> = {}
+    if (updates.status !== undefined) personal.status = updates.status
+    if (updates.memo !== undefined) personal.memo = updates.memo
+    if (updates.row_id !== undefined) personal.row_id = updates.row_id
+    if (updates.start_date !== undefined) {
+      const due = updates.due_date ?? current?.due_date
+      // 開始日が締切日と同じなら「作業予定期間は未設定」として扱う
+      personal.work_start_date = due && updates.start_date < due ? updates.start_date : null
+    }
+    if (Object.keys(personal).length > 0) {
+      personal.updated_at = new Date().toISOString()
+      const { error } = await supabase.from('task_user_state').update(personal).eq('task_id', id).eq('user_id', userId)
+      if (error) fail(error)
+    }
+
+    set(s => ({
+      tasks: s.tasks.map(t => {
+        if (t.id !== id) return t
+        const next = { ...t, ...updates }
+        if (next.start_date > next.due_date) next.start_date = next.due_date
+        next.has_work_period = next.start_date < next.due_date
+        return next
+      }),
+    }))
+    if (updates.status !== undefined) void get().fetchProgress()
+  },
+
+  updateTasksFromRecurrence: async (recurrenceId, fromDueDate, updates) => {
+    const userId = await requireUserId()
+    const targets = get().tasks.filter(t => t.recurrence_id === recurrenceId && t.due_date >= fromDueDate)
+    const ids = targets.map(t => t.id)
+    if (ids.length === 0) return
+
+    if (updates.title !== undefined) {
+      const { error } = await supabase
+        .from('lecture_tasks')
+        .update({ title: updates.title, updated_at: new Date().toISOString() })
+        .in('id', ids)
+      if (error) fail(error)
+    }
+    const personal: Record<string, unknown> = {}
+    if (updates.status !== undefined) personal.status = updates.status
+    if (updates.memo !== undefined) personal.memo = updates.memo
+    if (Object.keys(personal).length > 0) {
+      const { error } = await supabase.from('task_user_state').update(personal).in('task_id', ids).eq('user_id', userId)
+      if (error) fail(error)
+    }
+    const idSet = new Set(ids)
+    set(s => ({ tasks: s.tasks.map(t => (idSet.has(t.id) ? { ...t, ...updates } : t)) }))
+    if (updates.status !== undefined) void get().fetchProgress()
   },
 
   deleteTask: async (id) => {
-    const { error } = await supabase.from('tasks').delete().eq('id', id)
-    if (error) throw error
+    const userId = await requireUserId()
+    const { error } = await supabase
+      .from('lecture_tasks')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .eq('id', id)
+    if (error) fail(error)
     set(s => ({ tasks: s.tasks.filter(t => t.id !== id) }))
   },
 
-  updateTasksFromRecurrence: async (recurrenceId, fromDate, updates) => {
+  deleteTasksFromRecurrence: async (recurrenceId, fromDueDate) => {
+    const userId = await requireUserId()
+    const ids = get().tasks.filter(t => t.recurrence_id === recurrenceId && t.due_date >= fromDueDate).map(t => t.id)
+    if (ids.length === 0) return
     const { error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('recurrence_id', recurrenceId)
-      .gte('start_date', fromDate)
-    if (error) throw error
-    set(s => ({
-      tasks: s.tasks.map(t =>
-        t.recurrence_id === recurrenceId && t.start_date >= fromDate
-          ? { ...t, ...updates }
-          : t
-      ),
-    }))
+      .from('lecture_tasks')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .in('id', ids)
+    if (error) fail(error)
+    const idSet = new Set(ids)
+    set(s => ({ tasks: s.tasks.filter(t => !idSet.has(t.id)) }))
   },
 
-  deleteTasksFromRecurrence: async (recurrenceId, fromDate) => {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('recurrence_id', recurrenceId)
-      .gte('start_date', fromDate)
-    if (error) throw error
-    set(s => ({
-      tasks: s.tasks.filter(
-        t => !(t.recurrence_id === recurrenceId && t.start_date >= fromDate)
-      ),
-    }))
+  restoreTask: async (id) => {
+    const { error } = await supabase.from('lecture_tasks').update({ deleted_at: null, deleted_by: null }).eq('id', id)
+    if (error) fail(error)
+    await get().fetchAll()
   },
 }))

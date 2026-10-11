@@ -1,4 +1,4 @@
-﻿export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'submitted'
+export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'submitted'
 
 export interface School {
   id: string
@@ -12,98 +12,197 @@ export interface Profile {
   school_email_verified: boolean
   school_id: string | null
   display_name: string
+  handle: string | null
   created_at: string
 }
 
+export type LectureTerm = 'spring' | 'fall' | 'full_year' | 'other'
+export type LectureVisibility = 'party' | 'friends' | 'public'
+
+export const TERM_LABEL: Record<LectureTerm, string> = {
+  spring: '前期',
+  fall: '後期',
+  full_year: '通年',
+  other: 'その他',
+}
+
+export const VISIBILITY_LABEL: Record<LectureVisibility, string> = {
+  party: 'パーティー内',
+  friends: 'フレンドまで',
+  public: '全体',
+}
+
+export const VISIBILITY_DESC: Record<LectureVisibility, string> = {
+  party: '参加者のいずれかと同じパーティーの人',
+  friends: '上記 ＋ 参加者のいずれかのフレンド',
+  public: '誰でも（参加申請はオンに固定）',
+}
+
+/**
+ * タイムライン上の「科目」= 自分が参加している講義。
+ * color / order は自分専用の表示設定（lecture_participants）。
+ */
 export interface Subject {
-  id: string
-  user_id: string
+  id: string // lecture_id
   name: string
   color: string
   order: number
+  year: number
+  term: LectureTerm
+  professor: string | null
+  visibility: LectureVisibility
+  apply_open: boolean
   created_at: string
 }
 
 export interface Recurrence {
-  id: string
-  user_id: string
-  subject_id: string
   title: string
   start_from: string // YYYY-MM-DD
   interval_weeks: number
   duration_days: number
   count: number
-  created_at: string
 }
 
+/**
+ * タイムライン上の課題 = 講義の共有課題（lecture_tasks）＋ 自分の個人項目（task_user_state）。
+ * 共有: title / due_date / due_time / description / url
+ * 個人: status / start_date（作業予定の開始。未設定なら締切日と同じ）/ memo / row_id
+ */
 export interface Task {
   id: string
-  user_id: string
-  subject_id: string
+  subject_id: string // lecture_id
   recurrence_id: string | null
   row_id: string | null
-  source_template_id: string | null
-  source_item_id: string | null
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
   due_time: string | null // HH:MM (optional)
   status: TaskStatus
   memo: string | null
-  created_at: string
-}
-
-export interface Template {
-  id: string
-  school_id: string
-  created_by: string | null
-  title: string
-  color: string
   description: string | null
-  professor: string | null
-  department: string | null
-  schedule: string | null
-  import_count: number
-  version: number
+  url: string | null
+  /** 作業予定期間を本人が設定済みか（false なら締切だけが表示される） */
+  has_work_period: boolean
   created_at: string
-  // join で付与（一覧表示用）
-  item_count?: number
-  creator_name?: string | null
-  // クライアント側で付与（自分の取り込み状況）
-  imported?: boolean
-  applied_version?: number | null
 }
 
-export interface TemplateMeta {
-  description?: string
-  professor?: string
-  department?: string
-  schedule?: string
-}
+export type SharedTaskField = 'title' | 'due_date' | 'due_time' | 'description' | 'url' | 'subject_id'
+export type PersonalTaskField = 'status' | 'start_date' | 'memo' | 'row_id'
 
-export interface TemplateItem {
+// ---- フレンド・パーティー ----
+
+export interface UserSummary {
   id: string
-  template_id: string
-  title: string
-  start_date: string // YYYY-MM-DD
-  due_date: string   // YYYY-MM-DD
-  due_time: string | null
-  sort_order: number
+  handle: string | null
+  display_name: string
+}
+
+export interface FriendRequest {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: 'pending' | 'accepted'
   created_at: string
 }
 
-/** テンプレート編集フォームで扱う項目（id があれば既存、なければ新規） */
-export interface TemplateItemDraft {
-  id?: string
-  title: string
-  start_date: string
-  due_date: string
-  due_time: string | null
+export interface Party {
+  id: string
+  name: string
+  created_at: string
 }
 
-/** テンプレートに更新があるか（version > applied_version） */
-export function hasTemplateUpdate(t: Template): boolean {
-  return !!t.imported && (t.applied_version ?? 0) < t.version
+export interface PartyMember {
+  party_id: string
+  user_id: string
+  status: 'active' | 'left' | 'excluded'
+  joined_at: string
+}
+
+export interface PartyInvite {
+  id: string
+  party_id: string
+  party_name: string
+  member_count: number
+  inviter_id: string
+  created_at: string
+}
+
+export interface PartyInviteCode {
+  id: string
+  party_id: string
+  code: string
+  created_by: string | null
+  expires_at: string
+  max_uses: number
+  use_count: number
+  revoked_at: string | null
+  created_at: string
+}
+
+export type JoinStatus = 'participant' | 'pending' | 'excluded' | 'none'
+
+export interface LectureSummary {
+  id: string
+  title: string
+  year: number
+  term: LectureTerm
+  professor: string | null
+  visibility: LectureVisibility
+  apply_open: boolean
+  participant_count: number
+  party_member_count: number | null
+  my_status: JoinStatus
+}
+
+export interface LectureParticipant {
+  lecture_id: string
+  user_id: string
+  status: 'active' | 'left' | 'excluded'
+  joined_at: string
+}
+
+export interface ApplyRequest {
+  id: string
+  user_id: string
+  display_name: string | null
+  handle: string | null
+  created_at: string
+  expires_at: string
+}
+
+export interface OpenVote {
+  id: string
+  target_user_id: string
+  kind: 'exclude' | 'unexclude'
+  ballots: number
+  needed: number
+  i_voted: boolean
+  expires_at: string
+}
+
+export interface ActivityLogEntry {
+  id: string
+  target_type: string
+  target_id: string
+  action: string
+  actor_id: string | null
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface AppNotification {
+  id: string
+  type: string
+  payload: Record<string, unknown>
+  read_at: string | null
+  created_at: string
+}
+
+/** 課題ごとの進捗（取り組み中・完了の人） */
+export interface TaskProgress {
+  inProgress: { userId: string | null; name: string | null }[]
+  done: { userId: string | null; name: string | null }[]
 }
 
 export const STATUS_CONFIG: Record<

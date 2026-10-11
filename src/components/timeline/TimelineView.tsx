@@ -1,13 +1,17 @@
-﻿import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
-import TemplateLibrary from '../template/TemplateLibrary'
+import SocialPanel, { type SocialTab } from '../social/SocialPanel'
+import ProfileView from '../social/ProfileView'
+import PartyHome from '../social/PartyHome'
+import LectureScreen from '../lecture/LectureScreen'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ReAddCard, { type ReAddTemplate } from '../task/ReAddCard'
 import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
+import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 
 const COL_WIDTH_DESKTOP = 44
@@ -158,14 +162,21 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme, schoolName } = useStore()
+  const { subjects, tasks, fetchAll, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme, schoolName } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
-  const [showTemplates, setShowTemplates] = useState(false)
+  /** つながり（通知・フレンド・パーティー）パネル。開いているタブ */
+  const [socialTab, setSocialTab] = useState<SocialTab | null>(null)
+  const [profileUserId, setProfileUserId] = useState<string | null>(null)
+  const [partyId, setPartyId] = useState<string | null>(null)
+  const [lectureId, setLectureId] = useState<string | null>(null)
+  const fetchSocial = useSocialStore(s => s.fetchSocial)
+  const socialBadge = useSocialStore(s =>
+    s.notifications.filter(n => !n.read_at).length + s.incoming.length + s.invites.length
+  )
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
-  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null)
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
@@ -200,6 +211,13 @@ export default function TimelineView() {
   })()
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // 通知・申請のバッジを定期的に更新する（アプリ内通知のみ。9章）
+  useEffect(() => {
+    void fetchSocial()
+    const id = window.setInterval(() => { void fetchSocial() }, 60_000)
+    return () => window.clearInterval(id)
+  }, [fetchSocial])
 
   // 再追加カードのトリガー: 初回ロード時に期限切れをチェック、以降は完了への遷移を検知
   useEffect(() => {
@@ -352,16 +370,6 @@ export default function TimelineView() {
     })
   }, [])
 
-  const handleDeleteSubject = async (id: string) => {
-    try {
-      await deleteSubject(id)
-      setDeletingSubjectId(null)
-      showToast('科目を削除しました')
-    } catch (e: unknown) {
-      showToast((e as Error).message, 'error')
-    }
-  }
-
   const isFiltering = selectedStatuses.size > 0
 
   /** A row matches focus if any of its tasks overlaps with [today, today+30]
@@ -431,10 +439,7 @@ export default function TimelineView() {
     try {
       await addTask({
         subject_id: reAdd.subjectId,
-        recurrence_id: null,
         row_id: null,
-        source_template_id: null,
-        source_item_id: null,
         title: t.title,
         start_date: todayStr,
         due_date: t.nextDue,
@@ -531,11 +536,11 @@ export default function TimelineView() {
           </span>
         </div>
 
-        {/* Template library button */}
+        {/* つながり（通知・フレンド・パーティー） */}
         <button
-          onClick={() => setShowTemplates(true)}
-          aria-label="テンプレート"
-          title="テンプレート"
+          onClick={() => setSocialTab('notifications')}
+          aria-label={socialBadge > 0 ? `つながり（新着${socialBadge}件）` : 'つながり'}
+          title="通知・フレンド・パーティー"
           style={{
             background: 'rgba(255,255,255,0.07)',
             color: 'rgba(255,255,255,0.85)',
@@ -552,17 +557,28 @@ export default function TimelineView() {
             gap: 5,
             flexShrink: 0,
             fontFamily: 'inherit',
+            position: 'relative',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
         >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-            <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-            <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-            <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.4"/>
+            <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
-          {!isMobile && 'テンプレート'}
+          {!isMobile && 'つながり'}
+          {socialBadge > 0 && (
+            <span style={{
+              position: 'absolute', top: -5, right: -5, minWidth: 17, height: 17, borderRadius: 9999,
+              background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
+              boxShadow: '0 0 0 2px #2f2963',
+            }}>
+              {socialBadge > 99 ? '99+' : socialBadge}
+            </span>
+          )}
         </button>
 
         {/* Add task button */}
@@ -1043,7 +1059,6 @@ export default function TimelineView() {
           ) : (
             grouped.map(({ subject, subjectRows }) => {
               const collapsed = collapsedIds.has(subject.id)
-              const isDeletingThis = deletingSubjectId === subject.id
               const isHovered = hoveredSubjectId === subject.id
 
               return (
@@ -1153,7 +1168,7 @@ export default function TimelineView() {
                       </div>
 
                       {/* Add button */}
-                      {!isDeletingThis && (
+                      {(
                         <button
                           onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
                           aria-label={`${subject.name}に課題を追加`}
@@ -1185,55 +1200,41 @@ export default function TimelineView() {
                         </button>
                       )}
 
-                      {/* Delete button */}
-                      {!isDeletingThis && (
-                        <button
-                          onClick={e => { e.stopPropagation(); setDeletingSubjectId(subject.id) }}
-                          aria-label={`${subject.name}を削除`}
-                          title="この科目を削除"
-                          style={{
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--border)',
-                            cursor: 'pointer',
-                            padding: 0,
-                            width: 28,
-                            height: 28,
-                            marginLeft: 4,
-                            marginRight: 6,
-                            borderRadius: 8,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            color: 'var(--text-tertiary)',
-                            opacity: isHovered ? 1 : 0.72,
-                            transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-bg)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.35)'; e.currentTarget.style.color = 'var(--danger)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-                          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
-                          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
-                            <path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 5.5v4M7.5 5.5v4M3 3.5l.5 7h6l.5-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      )}
-
-                      {/* Inline delete confirm */}
-                      {isDeletingThis && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px 0 4px', flexShrink: 0 }}>
-                          <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>削除しますか?</span>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDeleteSubject(subject.id) }}
-                            style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                          >削除</button>
-                          <button
-                            onClick={e => { e.stopPropagation(); setDeletingSubjectId(null) }}
-                            style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                          >キャンセル</button>
-                        </div>
-                      )}
+                      {/* 講義の画面（設定・参加者・進捗・履歴・退出） */}
+                      <button
+                        onClick={e => { e.stopPropagation(); setLectureId(subject.id) }}
+                        aria-label={`${subject.name}の講義画面を開く`}
+                        title="講義の画面（設定・参加者・進捗・履歴）"
+                        style={{
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          width: 28,
+                          height: 28,
+                          marginLeft: 4,
+                          marginRight: 6,
+                          borderRadius: 8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          color: 'var(--text-tertiary)',
+                          opacity: isHovered ? 1 : 0.72,
+                          transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)'; e.currentTarget.style.color = 'var(--accent)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
+                        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.4"/>
+                          <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                          <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.3"/>
+                          <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      </button>
                     </div>
 
                     {/* 完了率バー — absolute right */}
@@ -1462,8 +1463,36 @@ export default function TimelineView() {
         />
       )}
 
-      {showTemplates && (
-        <TemplateLibrary onClose={() => setShowTemplates(false)} />
+      {socialTab && (
+        <SocialPanel
+          initialTab={socialTab}
+          onClose={() => setSocialTab(null)}
+          onOpenProfile={setProfileUserId}
+          onOpenParty={setPartyId}
+          onOpenLecture={setLectureId}
+        />
+      )}
+      {partyId && (
+        <PartyHome
+          partyId={partyId}
+          onClose={() => setPartyId(null)}
+          onOpenLecture={setLectureId}
+          onOpenProfile={setProfileUserId}
+        />
+      )}
+      {profileUserId && (
+        <ProfileView
+          userId={profileUserId}
+          onClose={() => setProfileUserId(null)}
+          onOpenLecture={setLectureId}
+        />
+      )}
+      {lectureId && (
+        <LectureScreen
+          lectureId={lectureId}
+          onClose={() => setLectureId(null)}
+          onOpenProfile={setProfileUserId}
+        />
       )}
 
       {quickMenu && (

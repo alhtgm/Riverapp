@@ -12,6 +12,7 @@ export default function Onboarding() {
   const [schoolEmail, setSchoolEmail] = useState('')
   const [schoolName, setSchoolName] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
+  const [handle, setHandle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +50,7 @@ export default function Onboarding() {
     setLoading(true)
     setError(null)
     try {
-      await completeOnboarding(schoolEmail, displayName)
+      await completeOnboarding(schoolEmail, displayName, handle)
       // 完了後は profile がセットされ、App 側がタイムラインへ切り替える
     } catch (e: unknown) {
       setError((e as Error).message)
@@ -205,6 +206,29 @@ export default function Onboarding() {
                 />
                 <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
                   本名やメールアドレスは他の人に表示されません。
+                </p>
+              </div>
+              <div>
+                <label style={labelBase}>ユーザーID</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#7D766E', fontSize: 14 }}>@</span>
+                  <input
+                    type="text"
+                    value={handle}
+                    onChange={e => setHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                    required
+                    minLength={3}
+                    maxLength={20}
+                    style={{ ...inputBase, paddingLeft: 28 }}
+                    placeholder="river_taro"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    {...focusHandlers}
+                  />
+                </div>
+                <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  英数字とアンダースコアで3〜20文字。フレンドはこのIDの完全一致で検索します。
                 </p>
               </div>
 
