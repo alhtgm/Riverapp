@@ -1,4 +1,11 @@
-import { useEffect, type ReactNode, type CSSProperties } from 'react'
+import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
+
+const openSheets: (() => void)[] = []
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && openSheets.length > 0) openSheets[openSheets.length - 1]()
+  })
+}
 
 interface Props {
   title: ReactNode
@@ -14,17 +21,24 @@ interface Props {
 
 /** 画面中央のモーダル（スマートフォンでは下からのシート） */
 export default function Sheet({ title, onClose, children, footer, headerExtra, width = 520, zIndex = 300 }: Props) {
+  // 重ねて開いているときは、Esc で一番上のシートだけを閉じる
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    const entry = () => closeRef.current()
+    openSheets.push(entry)
+    return () => {
+      const i = openSheets.lastIndexOf(entry)
+      if (i >= 0) openSheets.splice(i, 1)
+    }
+  }, [])
 
   return (
     <>
       <style>{`
         @keyframes sheetFade { from { opacity: 0 } to { opacity: 1 } }
         @keyframes sheetUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        .river-sheet-body > * { flex-shrink: 0; }
         .river-sheet { width: min(${width}px, calc(100vw - 32px)); max-height: min(86svh, 760px); border-radius: 14px; }
         @media (max-width: 639px) {
           .river-sheet-wrap { align-items: flex-end !important; padding: 0 !important; }
@@ -68,7 +82,7 @@ export default function Sheet({ title, onClose, children, footer, headerExtra, w
               </svg>
             </button>
           </div>
-          <div style={{ padding: 18, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="river-sheet-body" style={{ padding: 18, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
             {children}
           </div>
           {footer && (
