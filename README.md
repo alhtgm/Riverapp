@@ -29,6 +29,7 @@ npx supabase db reset       # マイグレーションを当て直す
 
 - `../spec-friends-party.md` — フレンド・パーティー機能の仕様
 - `docs/ui-template.md` — UI テンプレート（分かりやすさ優先のルールと部品）
+- `docs/release-friends-party.md` — v1.1.0 の本番反映手順
 - `docs/account-requirements.md` — アカウント機能の当初の要件（一部は改訂済み。冒頭の注記を参照）
 
 ## ディレクトリ
