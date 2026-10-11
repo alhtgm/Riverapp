@@ -31,7 +31,7 @@ interface DeletedTask {
 type Tab = 'tasks' | 'members' | 'settings' | 'history'
 
 const TERMS: LectureTerm[] = ['spring', 'fall', 'full_year', 'other']
-const VISIBILITIES: LectureVisibility[] = ['party', 'friends', 'public']
+const VISIBILITIES: LectureVisibility[] = ['private', 'party', 'friends', 'public']
 
 const FIELD_LABEL: Record<string, string> = {
   title: '名前', year: '年度', term: '学期', professor: '担当教員', visibility: '公開範囲',
@@ -81,6 +81,8 @@ function describe(entry: ActivityLogEntry, name: (id: string | null | undefined)
     case 'apply_request': return { what: '参加を申請', diffs: [] }
     case 'apply_approve': return { what: `${name(after.request_user_id as string)}さんの参加申請を承認`, diffs: [] }
     case 'apply_reject': return { what: `${name(after.request_user_id as string)}さんの参加申請を却下`, diffs: [] }
+    case 'visible_party_add': return { what: `パーティー「${String(after.party_name ?? '')}」に見せるようにした`, diffs: [] }
+    case 'visible_party_remove': return { what: `パーティー「${String(before.party_name ?? '')}」に見せないようにした`, diffs: [] }
     case 'exclusion_vote_start': return { what: `${kindWord}投票を開始`, diffs: [] }
     case 'exclusion_vote_pass': return { what: `${kindWord}投票が成立`, diffs: [] }
     case 'exclusion_vote_expire': return { what: `${kindWord}投票が失効`, diffs: [] }
@@ -95,7 +97,7 @@ function describe(entry: ActivityLogEntry, name: (id: string | null | undefined)
 export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Props) {
   const { showToast } = useToast()
   const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress } = useStore()
-  const { users, ensureUsers } = useSocialStore()
+  const { users, ensureUsers, parties: myParties } = useSocialStore()
   const lecture = subjects.find(s => s.id === lectureId)
   const lectureTasks = tasks.filter(t => t.subject_id === lectureId).sort((a, b) => a.due_date.localeCompare(b.due_date))
 
@@ -105,6 +107,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
   const [deleted, setDeleted] = useState<DeletedTask[]>([])
   const [history, setHistory] = useState<ActivityLogEntry[] | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  const [visibleParties, setVisibleParties] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
   // 設定フォーム
@@ -122,6 +125,11 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
     ])
     setParticipants((partRes.data ?? []) as LectureParticipant[])
     setRequests((reqRes.data ?? []) as ApplyRequest[])
+  }, [lectureId])
+
+  const loadVisibleParties = useCallback(async () => {
+    const { data } = await supabase.from('lecture_visible_parties').select('party_id').eq('lecture_id', lectureId)
+    setVisibleParties(((data ?? []) as { party_id: string }[]).map(r => r.party_id))
   }, [lectureId])
 
   const loadDeleted = useCallback(async () => {
@@ -162,7 +170,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
   useEffect(() => {
     if (tab === 'tasks') void loadDeleted()
     if (tab === 'history') void loadHistory()
-  }, [tab, loadDeleted, loadHistory])
+    if (tab === 'settings') void loadVisibleParties()
+  }, [tab, loadDeleted, loadHistory, loadVisibleParties])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -180,8 +189,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
   const name = (id: string | null | undefined) => userLabel(users, id)
   const totals = lectureTasks.reduce(
     (acc, t) => {
-      acc.inProgress += progress[t.id]?.inProgress.length ?? 0
-      acc.done += progress[t.id]?.done.length ?? 0
+      acc.inProgress += progress[t.id]?.in_progress.length ?? 0
+      acc.done += (progress[t.id]?.done.length ?? 0) + (progress[t.id]?.submitted.length ?? 0)
       return acc
     },
     { inProgress: 0, done: 0 },
@@ -390,7 +399,47 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                 ))}
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}>
+            {(visibility === 'party' || visibility === 'friends') && (
+              <div>
+                <label style={sectionTitle}>見せるパーティー</label>
+                {myParties.length === 0 ? (
+                  <p style={{ ...emptyText, padding: 0 }}>所属しているパーティーがありません。「つながり」からパーティーを作るか参加してください。</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {myParties.map(pt => (
+                      <label key={pt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={visibleParties.includes(pt.id)}
+                          disabled={busy}
+                          onChange={e => {
+                            const enabled = e.target.checked
+                            void run(async () => {
+                              const { error } = await supabase.rpc('set_lecture_visible_party', {
+                                p_lecture_id: lectureId, p_party_id: pt.id, p_enabled: enabled,
+                              })
+                              if (error) throw error
+                              await loadVisibleParties()
+                              showToast(enabled ? `「${pt.name}」に見せるようにしました` : `「${pt.name}」に見せないようにしました`)
+                            })
+                          }}
+                        />
+                        {pt.name}
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{pt.member_count}人</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {(() => {
+                  const others = visibleParties.filter(id => !myParties.some(pt => pt.id === id)).length
+                  return others > 0 ? (
+                    <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>ほかの参加者が選んだパーティー {others}件にも見せています</p>
+                  ) : null
+                })()}
+                <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>チェックの変更はすぐに反映されます。</p>
+              </div>
+            )}
+            {visibility !== 'private' && <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}>
               <input
                 type="checkbox"
                 checked={visibility === 'public' ? true : applyOpen}
@@ -399,7 +448,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
               />
               参加申請を必要にする
               {visibility === 'public' && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>（全体公開の間はオンに固定）</span>}
-            </label>
+            </label>}
             <div>
               <button type="submit" style={btn('primary')} disabled={busy}>設定を保存</button>
             </div>

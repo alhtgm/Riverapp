@@ -7,6 +7,7 @@ import SocialPanel, { type SocialTab } from '../social/SocialPanel'
 import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
+import HeaderMenu from './HeaderMenu'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ReAddCard, { type ReAddTemplate } from '../task/ReAddCard'
 import ColorPicker from '../ui/ColorPicker'
@@ -162,7 +163,7 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, updateSubject, signOut, updateTask, addTask, loading, isDark, toggleTheme, schoolName } = useStore()
+  const { subjects, tasks, fetchAll, updateSubject, updateTask, addTask, loading, isDark, toggleTheme, schoolName, userId } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -172,9 +173,6 @@ export default function TimelineView() {
   const [partyId, setPartyId] = useState<string | null>(null)
   const [lectureId, setLectureId] = useState<string | null>(null)
   const fetchSocial = useSocialStore(s => s.fetchSocial)
-  const socialBadge = useSocialStore(s =>
-    s.notifications.filter(n => !n.read_at).length + s.incoming.length + s.invites.length
-  )
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
@@ -536,51 +534,6 @@ export default function TimelineView() {
           </span>
         </div>
 
-        {/* つながり（通知・フレンド・パーティー） */}
-        <button
-          onClick={() => setSocialTab('notifications')}
-          aria-label={socialBadge > 0 ? `つながり（新着${socialBadge}件）` : 'つながり'}
-          title="通知・フレンド・パーティー"
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            color: 'rgba(255,255,255,0.85)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 8,
-            padding: isMobile ? '7px 8px' : '7px 13px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            letterSpacing: '-0.02em',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            flexShrink: 0,
-            fontFamily: 'inherit',
-            position: 'relative',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.4"/>
-            <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-          </svg>
-          {!isMobile && 'つながり'}
-          {socialBadge > 0 && (
-            <span style={{
-              position: 'absolute', top: -5, right: -5, minWidth: 17, height: 17, borderRadius: 9999,
-              background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
-              boxShadow: '0 0 0 2px #2f2963',
-            }}>
-              {socialBadge > 99 ? '99+' : socialBadge}
-            </span>
-          )}
-        </button>
-
         {/* Add task button */}
         <button
           onClick={() => setAddModalSubjectId('')}
@@ -619,72 +572,11 @@ export default function TimelineView() {
           {!isMobile && '課題を追加'}
         </button>
 
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleTheme}
-          aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-          title={isDark ? 'ライトモード [D]' : 'ダークモード [D]'}
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 10px',
-            fontSize: 15,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            lineHeight: 1,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
-        >
-          <img
-            src={isDark ? '/sun.png' : '/moon.png'}
-            width={17}
-            height={17}
-            alt={isDark ? 'ライトモード' : 'ダークモード'}
-            style={{ display: 'block', filter: 'brightness(0) invert(1)', opacity: 0.75 }}
-          />
-        </button>
-
-        {/* Logout */}
-        <button
-          onClick={() => signOut()}
-          aria-label="ログアウト"
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 11px',
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            fontFamily: 'inherit',
-            letterSpacing: '-0.01em',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.14)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.07)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-          }}
-        >
-          {isMobile ? (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          ) : 'ログアウト'}
-        </button>
+        {/* 通知 + ハンバーガーメニュー（フレンド・パーティー・アカウント・テーマ・ログアウト） */}
+        <HeaderMenu
+          onOpenSocial={setSocialTab}
+          onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
+        />
       </header>
 
       {/* ---- Filter bar ---- */}
@@ -1485,6 +1377,7 @@ export default function TimelineView() {
           userId={profileUserId}
           onClose={() => setProfileUserId(null)}
           onOpenLecture={setLectureId}
+          onEditProfile={() => { setProfileUserId(null); setSocialTab('account') }}
         />
       )}
       {lectureId && (

@@ -17,7 +17,7 @@ export interface Profile {
 }
 
 export type LectureTerm = 'spring' | 'fall' | 'full_year' | 'other'
-export type LectureVisibility = 'party' | 'friends' | 'public'
+export type LectureVisibility = 'private' | 'party' | 'friends' | 'public'
 
 export const TERM_LABEL: Record<LectureTerm, string> = {
   spring: '前期',
@@ -27,14 +27,16 @@ export const TERM_LABEL: Record<LectureTerm, string> = {
 }
 
 export const VISIBILITY_LABEL: Record<LectureVisibility, string> = {
+  private: '公開しない',
   party: 'パーティー内',
   friends: 'フレンドまで',
   public: '全体',
 }
 
 export const VISIBILITY_DESC: Record<LectureVisibility, string> = {
-  party: '参加者のいずれかと同じパーティーの人',
-  friends: '上記 ＋ 参加者のいずれかのフレンド',
+  private: '参加者だけ',
+  party: '選んだパーティーのメンバーだけ',
+  friends: '選んだパーティー ＋ 参加者のいずれかのフレンド',
   public: '誰でも（参加申請はオンに固定）',
 }
 
@@ -199,10 +201,17 @@ export interface AppNotification {
   created_at: string
 }
 
-/** 課題ごとの進捗（取り組み中・完了の人） */
-export interface TaskProgress {
-  inProgress: { userId: string | null; name: string | null }[]
-  done: { userId: string | null; name: string | null }[]
+export interface ProgressPerson {
+  userId: string | null
+  /** 参加者以外が見る場合や、ブロック関係にある相手は null（人数だけ数える） */
+  name: string | null
+}
+
+/** 課題ごとの進捗（ステータスごとの人） */
+export type TaskProgress = Record<TaskStatus, ProgressPerson[]>
+
+export function emptyProgress(): TaskProgress {
+  return { todo: [], in_progress: [], done: [], submitted: [] }
 }
 
 export const STATUS_CONFIG: Record<

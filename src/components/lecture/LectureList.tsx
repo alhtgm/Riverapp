@@ -42,7 +42,7 @@ export default function LectureList({ lectures, onChanged, onOpenLecture, emptyM
     for (const row of (progRes.data ?? []) as { task_id: string; status: string }[]) {
       const c = next[row.task_id] ?? (next[row.task_id] = { inProgress: 0, done: 0 })
       if (row.status === 'in_progress') c.inProgress++
-      else c.done++
+      else if (row.status === 'done' || row.status === 'submitted') c.done++
     }
     setCounts(c => ({ ...c, ...next }))
   }

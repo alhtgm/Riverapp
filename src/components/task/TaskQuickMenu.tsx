@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, STATUS_ORDER, isOverdue, formatDate } from '../../types'
 import { useStore } from '../../store/useStore'
+import { PeopleRow } from '../lecture/ProgressPeople'
 
 interface Props {
   task: Task
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }: Props) {
-  const { updateTask, isDark } = useStore()
+  const { updateTask, isDark, progress } = useStore()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -30,8 +31,8 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
     }
   }, [onClose])
 
-  const menuWidth = 228
-  const menuHeight = 210
+  const menuWidth = 300
+  const menuHeight = 260
   const x = Math.min(position.x, window.innerWidth - menuWidth - 8)
   const y = position.y + 12 + menuHeight > window.innerHeight
     ? position.y - menuHeight - 8
@@ -153,12 +154,17 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? btnColor : 'var(--text-secondary)',
                   letterSpacing: '-0.01em',
-                  flex: 1,
+                  width: 64,
+                  flexShrink: 0,
                 }}>
                   {cfg.label}
                 </span>
+                {/* この講義の参加者のうち、このステータスにいる人 */}
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                  <PeopleRow people={progress[task.id]?.[s] ?? []} size={18} />
+                </span>
                 {isActive && (
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
                     <path d="M2 6l3 3 5-5" stroke={btnColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}

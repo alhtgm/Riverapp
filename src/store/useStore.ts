@@ -4,7 +4,7 @@ import type {
   Subject, Task, Recurrence, Profile, TaskProgress, LectureTerm, LectureVisibility,
   SharedTaskField, PersonalTaskField,
 } from '../types'
-import { toDateString, parseLocalDate } from '../types'
+import { toDateString, parseLocalDate, emptyProgress } from '../types'
 import { toMessage } from '../lib/errors'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
 
@@ -338,10 +338,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (error) return // 進捗表示は補助情報なので、失敗してもタイムラインは表示する
     const progress: Record<string, TaskProgress> = {}
     for (const row of (data ?? []) as { task_id: string; status: string; user_id: string | null; display_name: string | null }[]) {
-      const p = progress[row.task_id] ?? (progress[row.task_id] = { inProgress: [], done: [] })
-      const person = { userId: row.user_id, name: row.display_name }
-      if (row.status === 'in_progress') p.inProgress.push(person)
-      else p.done.push(person)
+      const p = progress[row.task_id] ?? (progress[row.task_id] = emptyProgress())
+      const status = row.status as Task['status']
+      if (p[status]) p[status].push({ userId: row.user_id, name: row.display_name })
     }
     set({ progress })
   },

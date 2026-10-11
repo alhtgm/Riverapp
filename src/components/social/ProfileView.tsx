@@ -12,9 +12,11 @@ interface Props {
   userId: string
   onClose: () => void
   onOpenLecture: (lectureId: string) => void
+  /** 自分のプロフィールのとき「編集」から開く */
+  onEditProfile?: () => void
 }
 
-export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
+export default function ProfileView({ userId, onClose, onOpenLecture, onEditProfile }: Props) {
   const { showToast } = useToast()
   const {
     myId, users, friends, incoming, outgoing, blockedIds, parties,
@@ -50,7 +52,7 @@ export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
   const name = user?.display_name ?? 'ユーザー'
 
   return (
-    <Sheet title="プロフィール" onClose={onClose} zIndex={320}>
+    <Sheet title={isMe ? '自分のプロフィール' : 'プロフィール'} onClose={onClose} zIndex={320}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Avatar name={name} size={48} />
         <div style={{ minWidth: 0 }}>
@@ -59,6 +61,13 @@ export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
           {friend && <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginTop: 2 }}>フレンド</div>}
         </div>
       </div>
+
+      {isMe && onEditProfile && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button style={btn('secondary', true)} onClick={onEditProfile}>表示名・ユーザーIDを編集</button>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>ほかの人には、公開範囲に応じて講義だけが表示されます</span>
+        </div>
+      )}
 
       {!isMe && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
