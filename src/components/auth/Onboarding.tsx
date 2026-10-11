@@ -1,55 +1,22 @@
 import { useState } from 'react'
-import { supabase } from '../../lib/supabase'
 import { useStore } from '../../store/useStore'
 
-type Step = 'school' | 'name'
-
+/** 初回ログイン時のプロフィール作成（表示名とユーザーID）。大学の登録はあとからアカウント設定で任意に行う */
 export default function Onboarding() {
   const completeOnboarding = useStore(s => s.completeOnboarding)
   const signOut = useStore(s => s.signOut)
 
-  const [step, setStep] = useState<Step>('school')
-  const [schoolEmail, setSchoolEmail] = useState('')
-  const [schoolName, setSchoolName] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
+  const [handle, setHandle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Step 2: 学校メアドのドメインを許可リストと照合
-  const handleSchoolSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      const email = schoolEmail.trim().toLowerCase()
-      const domain = email.split('@')[1] ?? ''
-      if (!domain) throw new Error('メールアドレスの形式が正しくありません')
-
-      const { data, error } = await supabase
-        .from('school_domains')
-        .select('school_id, schools(name)')
-        .eq('domain', domain)
-        .maybeSingle()
-      if (error) throw error
-      if (!data) throw new Error(`未対応の学校ドメインです（${domain}）`)
-
-      // @ts-expect-error supabase の join 結果はネスト型
-      setSchoolName(data.schools?.name ?? null)
-      setStep('name')
-    } catch (e: unknown) {
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Step 3: 表示名を決めて profiles を作成
-  const handleNameSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    try {
-      await completeOnboarding(schoolEmail, displayName)
+      await completeOnboarding(displayName, handle)
       // 完了後は profile がセットされ、App 側がタイムラインへ切り替える
     } catch (e: unknown) {
       setError((e as Error).message)
@@ -137,60 +104,17 @@ export default function Onboarding() {
             <span style={{ fontSize: 20, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.04em' }}>River</span>
           </div>
 
-          {/* Step indicator */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {(['school', 'name'] as Step[]).map(s => (
-              <div key={s} style={{
-                height: 4, flex: 1, borderRadius: 2,
-                background: (step === s || (step === 'name' && s === 'school')) ? '#E06E42' : 'rgba(255,255,255,0.2)',
-                transition: 'background 0.2s',
-              }} />
-            ))}
-          </div>
-
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.04em', margin: '0 0 6px', lineHeight: 1.15 }}>
-            {step === 'school' ? '学校を登録' : 'コミュニティ表示名'}
+            プロフィールを作成
           </h1>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.5 }}>
-            {step === 'school'
-              ? '学校のメールアドレスで所属を判定します'
-              : '他の人に表示される名前を決めましょう'}
+            フレンドや講義の参加者に表示される名前とIDを決めましょう
           </p>
         </div>
 
         {/* Body */}
         <div style={{ padding: '28px 36px 32px' }}>
-          {step === 'school' ? (
-            <form onSubmit={handleSchoolSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={labelBase}>学校のメールアドレス</label>
-                <input
-                  type="email"
-                  value={schoolEmail}
-                  onChange={e => setSchoolEmail(e.target.value)}
-                  required
-                  style={inputBase}
-                  placeholder="you@s.yourschool.ac.jp"
-                  {...focusHandlers}
-                />
-                <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
-                  ログインには使いません。所属する学校の判定だけに使います。
-                </p>
-              </div>
-
-              {error && <ErrorBox message={error} />}
-
-              <button type="submit" disabled={loading} style={primaryBtn(loading)}>
-                {loading ? '確認中...' : '次へ'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleNameSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {schoolName && (
-                <div style={{ background: '#ECFDF5', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#16A34A', letterSpacing: '-0.01em' }}>
-                  所属: {schoolName}
-                </div>
-              )}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={labelBase}>表示名</label>
                 <input
@@ -207,21 +131,39 @@ export default function Onboarding() {
                   本名やメールアドレスは他の人に表示されません。
                 </p>
               </div>
+              <div>
+                <label style={labelBase}>ユーザーID</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#7D766E', fontSize: 14 }}>@</span>
+                  <input
+                    type="text"
+                    value={handle}
+                    onChange={e => setHandle(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                    required
+                    minLength={3}
+                    maxLength={20}
+                    style={{ ...inputBase, paddingLeft: 28 }}
+                    placeholder="river_taro"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    {...focusHandlers}
+                  />
+                </div>
+                <p style={{ fontSize: 12, color: '#7D766E', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  英数字とアンダースコアで3〜20文字。フレンドはこのIDの完全一致で検索します。
+                </p>
+              </div>
+              <p style={{ fontSize: 12, color: '#7D766E', margin: 0, lineHeight: 1.5 }}>
+                大学の登録は任意です。あとから「アカウント設定」で登録できます。
+              </p>
 
               {error && <ErrorBox message={error} />}
 
               <button type="submit" disabled={loading} style={primaryBtn(loading)}>
                 {loading ? '作成中...' : 'はじめる'}
               </button>
-              <button
-                type="button"
-                onClick={() => { setStep('school'); setError(null) }}
-                style={{ background: 'none', border: 'none', color: '#7D766E', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
-              >
-                ← 戻る
-              </button>
             </form>
-          )}
 
           <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#7D766E', letterSpacing: '-0.01em' }}>
             <button

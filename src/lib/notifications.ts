@@ -34,7 +34,7 @@ export async function requestAndNotify(tasks: Task[]): Promise<void> {
     new Notification(`River — 今日の締め切り: ${dueToday.length}件`, {
       body: dueToday.slice(0, 4).map(t => `・${t.title}`).join('\n'),
       tag: 'river-today',
-      icon: '/icon-192.png',
+      icon: '/river-icon.png',
     })
   }
 
@@ -43,13 +43,8 @@ export async function requestAndNotify(tasks: Task[]): Promise<void> {
       new Notification(`River — 明日の締め切り: ${dueTomorrow.length}件`, {
         body: dueTomorrow.slice(0, 4).map(t => `・${t.title}`).join('\n'),
         tag: 'river-tomorrow',
-        icon: '/icon-192.png',
+        icon: '/river-icon.png',
       })
     }, 2500)
   }
-}
-
-export function getNotifPermission(): NotificationPermission {
-  if (!('Notification' in window)) return 'denied'
-  return Notification.permission
 }

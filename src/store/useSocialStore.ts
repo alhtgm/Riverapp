@@ -1,0 +1,203 @@
+import { create } from 'zustand'
+import { supabase } from '../lib/supabase'
+import { toMessage } from '../lib/errors'
+import type { AppNotification, FriendRequest, Party, PartyInvite, UserSummary } from '../types'
+
+export interface PartyWithCount extends Party {
+  member_count: number
+}
+
+function fail(error: unknown): never {
+  throw new Error(toMessage(error))
+}
+
+interface SocialState {
+  loaded: boolean
+  myId: string | null
+  /** 承認済みのフレンド（request id 付き。解除はこの id の行を削除する） */
+  friends: { requestId: string; userId: string }[]
+  incoming: FriendRequest[]
+  outgoing: FriendRequest[]
+  blockedIds: string[]
+  parties: PartyWithCount[]
+  invites: PartyInvite[]
+  notifications: AppNotification[]
+  /** 表示名・@handle のキャッシュ */
+  users: Record<string, UserSummary>
+
+  fetchSocial: () => Promise<void>
+  ensureUsers: (ids: (string | null | undefined)[]) => Promise<void>
+  searchByHandle: (handle: string) => Promise<UserSummary | null>
+
+  sendFriendRequest: (userId: string) => Promise<'sent' | 'accepted' | 'already'>
+  acceptFriendRequest: (requestId: string) => Promise<void>
+  /** 申請の拒否・取り下げ、フレンド解除（いずれも行削除。相手には通知しない） */
+  removeFriendRequest: (requestId: string) => Promise<void>
+  block: (userId: string) => Promise<void>
+  unblock: (userId: string) => Promise<void>
+
+  createParty: (name: string) => Promise<Party>
+  redeemInviteCode: (code: string) => Promise<Party>
+  respondPartyInvite: (inviteId: string, accept: boolean) => Promise<void>
+
+  markAllNotificationsRead: () => Promise<void>
+}
+
+export const useSocialStore = create<SocialState>((set, get) => ({
+  loaded: false,
+  myId: null,
+  friends: [],
+  incoming: [],
+  outgoing: [],
+  blockedIds: [],
+  parties: [],
+  invites: [],
+  notifications: [],
+  users: {},
+
+  fetchSocial: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const myId = user.id
+
+    // 期限切れの申請・投票を失効させる（pg_cron を使わない代わりに画面表示時に実行）
+    void supabase.rpc('expire_stale_requests_and_votes')
+
+    const [frRes, blockRes, partyRes, memberRes, inviteRes, notifRes] = await Promise.all([
+      supabase.from('friend_requests').select('*'),
+      supabase.from('blocks').select('blocked_id'),
+      supabase.from('parties').select('id, name, created_at').is('archived_at', null).order('created_at'),
+      supabase.from('party_members').select('party_id, user_id').eq('status', 'active'),
+      supabase.rpc('get_my_party_invites'),
+      supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
+    ])
+
+    const requests = (frRes.data ?? []) as FriendRequest[]
+    const friends = requests
+      .filter(r => r.status === 'accepted')
+      .map(r => ({ requestId: r.id, userId: r.requester_id === myId ? r.addressee_id : r.requester_id }))
+    const incoming = requests.filter(r => r.status === 'pending' && r.addressee_id === myId)
+    const outgoing = requests.filter(r => r.status === 'pending' && r.requester_id === myId)
+    const blockedIds = ((blockRes.data ?? []) as { blocked_id: string }[]).map(b => b.blocked_id)
+
+    const members = (memberRes.data ?? []) as { party_id: string; user_id: string }[]
+    // party_members は「自分が active なパーティー」の行だけが見える
+    const myPartyIds = new Set(members.filter(m => m.user_id === myId).map(m => m.party_id))
+    const parties: PartyWithCount[] = ((partyRes.data ?? []) as Party[])
+      .filter(p => myPartyIds.has(p.id))
+      .map(p => ({ ...p, member_count: members.filter(m => m.party_id === p.id).length }))
+
+    const invites = (inviteRes.data ?? []) as PartyInvite[]
+    const notifications = (notifRes.data ?? []) as AppNotification[]
+
+    set({ loaded: true, myId, friends, incoming, outgoing, blockedIds, parties, invites, notifications })
+
+    // 名前表示に必要なユーザー情報をまとめて取得
+    const ids = new Set<string>([myId])
+    friends.forEach(f => ids.add(f.userId))
+    incoming.forEach(r => ids.add(r.requester_id))
+    outgoing.forEach(r => ids.add(r.addressee_id))
+    blockedIds.forEach(id => ids.add(id))
+    invites.forEach(i => ids.add(i.inviter_id))
+    for (const n of notifications) {
+      for (const k of ['requester_id', 'addressee_id', 'inviter_id', 'applicant_id']) {
+        const v = n.payload[k]
+        if (typeof v === 'string') ids.add(v)
+      }
+    }
+    await get().ensureUsers([...ids])
+  },
+
+  ensureUsers: async (ids) => {
+    const known = get().users
+    const missing = [...new Set(ids.filter((id): id is string => !!id && !known[id]))]
+    if (missing.length === 0) return
+    const { data, error } = await supabase.rpc('get_profiles', { p_ids: missing })
+    if (error) return
+    const next = { ...get().users }
+    for (const u of (data ?? []) as UserSummary[]) next[u.id] = u
+    set({ users: next })
+  },
+
+  searchByHandle: async (handle) => {
+    const h = handle.trim().replace(/^@/, '')
+    if (!h) return null
+    const { data, error } = await supabase.rpc('search_profile_by_handle', { p_handle: h })
+    if (error) fail(error)
+    const found = ((data ?? []) as UserSummary[])[0] ?? null
+    if (found) set(s => ({ users: { ...s.users, [found.id]: found } }))
+    return found
+  },
+
+  sendFriendRequest: async (userId) => {
+    const { data, error } = await supabase.rpc('send_friend_request', { p_addressee_id: userId })
+    if (error) fail(error)
+    await get().fetchSocial()
+    return data as 'sent' | 'accepted' | 'already'
+  },
+
+  acceptFriendRequest: async (requestId) => {
+    const { error } = await supabase.rpc('accept_friend_request', { p_request_id: requestId })
+    if (error) fail(error)
+    await get().fetchSocial()
+  },
+
+  removeFriendRequest: async (requestId) => {
+    const { error } = await supabase.from('friend_requests').delete().eq('id', requestId)
+    if (error) fail(error)
+    await get().fetchSocial()
+  },
+
+  block: async (userId) => {
+    const myId = get().myId
+    if (!myId) throw new Error('ログインが必要です')
+    const { error } = await supabase.from('blocks').insert({ blocker_id: myId, blocked_id: userId })
+    if (error && !String(error.message).includes('duplicate')) fail(error)
+    await get().fetchSocial()
+  },
+
+  unblock: async (userId) => {
+    const { error } = await supabase.from('blocks').delete().eq('blocked_id', userId)
+    if (error) fail(error)
+    await get().fetchSocial()
+  },
+
+  createParty: async (name) => {
+    const n = name.trim()
+    if (!n) throw new Error('パーティー名を入力してください')
+    const { data, error } = await supabase.rpc('create_party', { p_name: n })
+    if (error) fail(error)
+    await get().fetchSocial()
+    return data as Party
+  },
+
+  redeemInviteCode: async (code) => {
+    const c = code.trim().toUpperCase()
+    if (!c) throw new Error('招待コードを入力してください')
+    const { data, error } = await supabase.rpc('redeem_party_invite_code', { p_code: c })
+    if (error) fail(error)
+    await get().fetchSocial()
+    return data as Party
+  },
+
+  respondPartyInvite: async (inviteId, accept) => {
+    const { error } = await supabase.rpc('respond_party_invite', { p_invite_id: inviteId, p_accept: accept })
+    if (error) fail(error)
+    await get().fetchSocial()
+  },
+
+  markAllNotificationsRead: async () => {
+    const unread = get().notifications.filter(n => !n.read_at).map(n => n.id)
+    if (unread.length === 0) return
+    const now = new Date().toISOString()
+    set(s => ({ notifications: s.notifications.map(n => (n.read_at ? n : { ...n, read_at: now })) }))
+    await supabase.from('notifications').update({ read_at: now }).in('id', unread)
+  },
+}))
+
+/** 表示名（@handle）を返す。不明なら「ユーザー」 */
+export function userLabel(users: Record<string, UserSummary>, id: string | null | undefined): string {
+  if (!id) return 'ユーザー'
+  const u = users[id]
+  return u ? u.display_name : 'ユーザー'
+}
