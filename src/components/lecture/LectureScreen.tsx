@@ -9,6 +9,7 @@ import Sheet, { Avatar } from '../ui/Sheet'
 import { btn, sectionTitle, inputStyle, emptyText, listRow } from '../ui/styles'
 import MemberList from '../social/MemberList'
 import ProgressPeople from './ProgressPeople'
+import PartyPicker from './PartyPicker'
 import {
   TERM_LABEL, VISIBILITY_LABEL, VISIBILITY_DESC, formatDate,
   type ActivityLogEntry, type ApplyRequest, type LectureParticipant, type LectureTerm, type LectureVisibility,
@@ -402,41 +403,27 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
             {(visibility === 'party' || visibility === 'friends') && (
               <div>
                 <label style={sectionTitle}>見せるパーティー</label>
-                {myParties.length === 0 ? (
-                  <p style={{ ...emptyText, padding: 0 }}>所属しているパーティーがありません。「つながり」からパーティーを作るか参加してください。</p>
+                {myParties.length === 0 && visibleParties.length === 0 ? (
+                  <p style={{ ...emptyText, padding: 0 }}>所属しているパーティーがありません。メニューの「パーティー」から作るか参加してください。</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {myParties.map(pt => (
-                      <label key={pt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={visibleParties.includes(pt.id)}
-                          disabled={busy}
-                          onChange={e => {
-                            const enabled = e.target.checked
-                            void run(async () => {
-                              const { error } = await supabase.rpc('set_lecture_visible_party', {
-                                p_lecture_id: lectureId, p_party_id: pt.id, p_enabled: enabled,
-                              })
-                              if (error) throw error
-                              await loadVisibleParties()
-                              showToast(enabled ? `「${pt.name}」に見せるようにしました` : `「${pt.name}」に見せないようにしました`)
-                            })
-                          }}
-                        />
-                        {pt.name}
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{pt.member_count}人</span>
-                      </label>
-                    ))}
-                  </div>
+                  <PartyPicker
+                    myParties={myParties}
+                    selectedIds={visibleParties}
+                    busy={busy}
+                    onChange={(partyId, enabled) => {
+                      const name = myParties.find(pt => pt.id === partyId)?.name ?? 'パーティー'
+                      void run(async () => {
+                        const { error } = await supabase.rpc('set_lecture_visible_party', {
+                          p_lecture_id: lectureId, p_party_id: partyId, p_enabled: enabled,
+                        })
+                        if (error) throw error
+                        await loadVisibleParties()
+                        showToast(enabled ? `「${name}」に見せるようにしました` : `「${name}」に見せないようにしました`)
+                      })
+                    }}
+                  />
                 )}
-                {(() => {
-                  const others = visibleParties.filter(id => !myParties.some(pt => pt.id === id)).length
-                  return others > 0 ? (
-                    <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>ほかの参加者が選んだパーティー {others}件にも見せています</p>
-                  ) : null
-                })()}
-                <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>チェックの変更はすぐに反映されます。</p>
+                <p style={{ ...emptyText, padding: '4px 0 0', fontSize: 11 }}>パーティーの追加・削除はすぐに反映されます。</p>
               </div>
             )}
             {visibility !== 'private' && <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}>

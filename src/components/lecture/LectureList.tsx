@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { TERM_LABEL, VISIBILITY_LABEL, formatDate, type LectureSummary } from '../../types'
-import { emptyText, listRow } from '../ui/styles'
+import { parseLocalDate, type LectureSummary } from '../../types'
+import { emptyText } from '../ui/styles'
 import JoinButton from './JoinButton'
+import LectureCard from './LectureCard'
 
 interface Props {
   lectures: LectureSummary[]
@@ -18,7 +19,27 @@ interface TaskPreview {
   due_time: string | null
 }
 
-/** 講義の一覧（プロフィール・パーティーのホーム画面）。行を開くと課題と進捗を表示する */
+const DOW = ['日', '月', '火', '水', '木', '金', '土']
+
+/** 締切日を「10/16 金」のような小さな日付ラベルにする */
+function DueLabel({ date, time }: { date: string; time: string | null }) {
+  const d = parseLocalDate(date)
+  return (
+    <span style={{
+      display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      width: 46, flexShrink: 0, padding: '3px 0', borderRadius: 8, background: 'var(--bg-secondary)',
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+        {d.getMonth() + 1}/{d.getDate()}
+      </span>
+      <span style={{ fontSize: 9, color: 'var(--text-tertiary)', lineHeight: 1.2 }}>
+        {DOW[d.getDay()]}{time ? ` ${time}` : ''}
+      </span>
+    </span>
+  )
+}
+
+/** 講義の一覧（プロフィール・パーティーのホーム画面）。カードを開くと課題と進捗を表示する */
 export default function LectureList({ lectures, onChanged, onOpenLecture, emptyMessage }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [tasks, setTasks] = useState<Record<string, TaskPreview[]>>({})
@@ -50,53 +71,39 @@ export default function LectureList({ lectures, onChanged, onOpenLecture, emptyM
   if (lectures.length === 0) return <p style={emptyText}>{emptyMessage}</p>
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 10, alignItems: 'start' }}>
       {lectures.map(l => {
-        const open = openId === l.id
+        const list = tasks[l.id]
         return (
-          <div key={l.id} style={{ ...listRow, flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                onClick={() => toggle(l.id)}
-                aria-expanded={open}
-                style={{
-                  flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0,
-                  cursor: 'pointer', fontFamily: 'inherit', color: 'inherit',
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <span style={{ display: 'inline-block', width: 12, color: 'var(--text-tertiary)', fontSize: 10 }}>{open ? '▾' : '▸'}</span>
-                  {l.title}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, paddingLeft: 12, display: 'flex', flexWrap: 'wrap', gap: '0 8px' }}>
-                  <span>{l.year}年度 {TERM_LABEL[l.term]}</span>
-                  {l.professor && <span>{l.professor}</span>}
-                  <span>参加 {l.participant_count}人{l.party_member_count !== null && `（うちメンバー ${l.party_member_count}人）`}</span>
-                  <span>{VISIBILITY_LABEL[l.visibility]}・申請{l.apply_open ? 'あり' : 'なし'}</span>
-                </div>
-              </button>
-              <JoinButton lecture={l} onChanged={onChanged} onOpenLecture={onOpenLecture} />
-            </div>
-            {open && (
-              <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {!tasks[l.id] ? (
-                  <p style={emptyText}>読み込み中...</p>
-                ) : tasks[l.id].length === 0 ? (
-                  <p style={emptyText}>課題はまだありません</p>
-                ) : (
-                  tasks[l.id].map(t => (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>{t.title}</span>
-                      <span style={{ flexShrink: 0 }}>締切 {formatDate(t.due_date)}{t.due_time ? ` ${t.due_time}` : ''}</span>
-                      <span style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
-                        取り組み中 {counts[t.id]?.inProgress ?? 0}・完了 {counts[t.id]?.done ?? 0}
-                      </span>
-                    </div>
-                  ))
-                )}
+          <LectureCard
+            key={l.id}
+            lecture={l}
+            action={<JoinButton lecture={l} onChanged={onChanged} onOpenLecture={onOpenLecture} />}
+            expanded={openId === l.id}
+            onToggle={() => void toggle(l.id)}
+          >
+            {!list ? (
+              <p style={emptyText}>読み込み中...</p>
+            ) : list.length === 0 ? (
+              <p style={emptyText}>課題はまだありません</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {list.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <DueLabel date={t.due_date} time={t.due_time} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.title}
+                    </span>
+                    <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0, fontSize: 11, fontWeight: 700 }}>
+                      <span style={{ color: '#0779A0' }} title="取り組み中">● {counts[t.id]?.inProgress ?? 0}</span>
+                      <span style={{ color: '#14913F' }} title="完了・提出済み">✓ {counts[t.id]?.done ?? 0}</span>
+                    </span>
+                  </div>
+                ))}
+                <p style={{ ...emptyText, fontSize: 10, padding: '2px 0 0' }}>● 取り組み中 / ✓ 完了・提出済み</p>
               </div>
             )}
-          </div>
+          </LectureCard>
         )
       })}
     </div>

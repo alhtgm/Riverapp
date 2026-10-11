@@ -52,7 +52,7 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
   const name = user?.display_name ?? 'ユーザー'
 
   return (
-    <Sheet title={isMe ? '自分のプロフィール' : 'プロフィール'} onClose={onClose} zIndex={320}>
+    <Sheet title={isMe ? '自分のプロフィール' : 'プロフィール'} onClose={onClose} zIndex={320} width={760}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Avatar name={name} size={48} />
         <div style={{ minWidth: 0 }}>

@@ -15,12 +15,14 @@ interface Props {
   /** 右上の閉じるボタンの左に並べる要素 */
   headerExtra?: ReactNode
   width?: number
+  /** 指定するとタブ切り替えなどで高さが変わらない固定の高さになる */
+  height?: number
   /** 重ねて開くとき用（既定 300） */
   zIndex?: number
 }
 
 /** 画面中央のモーダル（スマートフォンでは下からのシート） */
-export default function Sheet({ title, onClose, children, footer, headerExtra, width = 520, zIndex = 300 }: Props) {
+export default function Sheet({ title, onClose, children, footer, headerExtra, width = 520, height, zIndex = 300 }: Props) {
   // 重ねて開いているときは、Esc で一番上のシートだけを閉じる
   const closeRef = useRef(onClose)
   useEffect(() => { closeRef.current = onClose }, [onClose])
@@ -39,10 +41,10 @@ export default function Sheet({ title, onClose, children, footer, headerExtra, w
         @keyframes sheetFade { from { opacity: 0 } to { opacity: 1 } }
         @keyframes sheetUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
         .river-sheet-body > * { flex-shrink: 0; }
-        .river-sheet { width: min(${width}px, calc(100vw - 32px)); max-height: min(86svh, 760px); border-radius: 14px; }
         @media (max-width: 639px) {
           .river-sheet-wrap { align-items: flex-end !important; padding: 0 !important; }
-          .river-sheet { width: 100vw; max-height: 92svh; border-radius: 16px 16px 0 0; }
+          .river-sheet { width: 100vw !important; max-height: 92svh !important; border-radius: 16px 16px 0 0 !important; }
+          .river-sheet[data-fixed-height] { height: 92svh !important; }
         }
       `}</style>
       <div
@@ -58,9 +60,14 @@ export default function Sheet({ title, onClose, children, footer, headerExtra, w
       >
         <div
           className="river-sheet"
+          data-fixed-height={height ? '' : undefined}
           role="dialog"
           aria-modal="true"
           style={{
+            width: `min(${width}px, calc(100vw - 32px))`,
+            height: height ? `min(${height}px, 88svh)` : undefined,
+            maxHeight: 'min(88svh, 900px)',
+            borderRadius: 14,
             background: 'var(--surface)',
             border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-xl)',

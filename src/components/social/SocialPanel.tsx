@@ -110,7 +110,7 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
   )
 
   return (
-    <Sheet title="つながり" onClose={onClose} width={560}>
+    <Sheet title="つながり" onClose={onClose} width={820} height={760}>
       <div role="tablist" style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 10, padding: 3 }}>
         {tabs.map(t => (
           <button

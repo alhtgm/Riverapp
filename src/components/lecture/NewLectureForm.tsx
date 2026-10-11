@@ -4,8 +4,9 @@ import { toMessage } from '../../lib/errors'
 import { pickLectureColor } from '../../lib/colors'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
-import { btn, inputStyle, listRow } from '../ui/styles'
+import { btn, inputStyle } from '../ui/styles'
 import JoinButton from './JoinButton'
+import LectureCard from './LectureCard'
 import { TERM_LABEL, type LectureSummary, type LectureTerm } from '../../types'
 
 interface Props {
@@ -110,15 +111,11 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
             似た講義があります。既存の講義に参加しますか？
           </p>
           {candidates.map(c => (
-            <div key={c.id} style={{ ...listRow, background: 'var(--surface)' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{c.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  {c.year}年度 {TERM_LABEL[c.term]}{c.professor ? `・${c.professor}` : ''}・参加 {c.participant_count}人
-                </div>
-              </div>
-              <JoinButton lecture={c} onChanged={refreshCandidates} onOpenLecture={onReady} />
-            </div>
+            <LectureCard
+              key={c.id}
+              lecture={c}
+              action={<JoinButton lecture={c} onChanged={refreshCandidates} onOpenLecture={onReady} />}
+            />
           ))}
         </div>
       )}

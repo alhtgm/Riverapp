@@ -104,7 +104,7 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
       }
       onClose={onClose}
       zIndex={310}
-      width={600}
+      width={800}
     >
       <div>
         <p style={sectionTitle}>メンバーが参加している講義</p>
