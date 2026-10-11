@@ -115,7 +115,7 @@ create index lecture_tasks_lecture_idx on lecture_tasks (lecture_id, deleted_at)
 create index lecture_tasks_due_idx on lecture_tasks (lecture_id, due_date);
 create index lecture_tasks_recurrence_idx on lecture_tasks (recurrence_id);
 
--- 課題の個人項目（進捗・作業予定期間・メモ・表示行）
+-- 課題の個人項目（進捗・作業予定期間・メモ）
 create table task_user_state (
   task_id        uuid references lecture_tasks(id) on delete cascade not null,
   user_id        uuid references auth.users(id) on delete cascade not null,
@@ -123,7 +123,6 @@ create table task_user_state (
   work_start_date date,
   work_end_date   date,
   memo            text,
-  row_id          uuid,
   updated_at      timestamptz default now(),
   primary key (task_id, user_id)
 );

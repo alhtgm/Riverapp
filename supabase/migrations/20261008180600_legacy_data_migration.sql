@@ -87,14 +87,13 @@ begin
 
     -- lecture_tasks の INSERT トリガーが所有者分の task_user_state を既定値で
     -- 自動作成しているため、ここでは実際の値へ upsert する。
-    insert into task_user_state (task_id, user_id, status, work_start_date, work_end_date, memo, row_id, updated_at)
-      values (v_new_task_id, v_task.user_id, v_task.status, v_task.start_date, v_task.due_date, v_task.memo, v_task.row_id, v_task.created_at)
+    insert into task_user_state (task_id, user_id, status, work_start_date, work_end_date, memo, updated_at)
+      values (v_new_task_id, v_task.user_id, v_task.status, v_task.start_date, v_task.due_date, v_task.memo, v_task.created_at)
       on conflict (task_id, user_id) do update set
         status = excluded.status,
         work_start_date = excluded.work_start_date,
         work_end_date = excluded.work_end_date,
         memo = excluded.memo,
-        row_id = excluded.row_id,
         updated_at = excluded.updated_at;
   end loop;
 end;

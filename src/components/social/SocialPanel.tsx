@@ -5,7 +5,7 @@ import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
-import { Avatar, Badge, Button, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
+import { Avatar, Badge, Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
 import { inputStyle } from '../ui/styles'
 import { VISIBILITY_LABEL, formatDate, type AppNotification, type LectureVisibility, type UserSummary } from '../../types'
 
@@ -55,7 +55,7 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
   const { showToast } = useToast()
   const social = useSocialStore()
   const { users, friends, incoming, outgoing, blockedIds, parties, invites, notifications } = social
-  const { profile, updateMyProfile, subjects } = useStore()
+  const { profile, updateMyProfile, subjects, schoolName, setMySchoolEmail } = useStore()
   const [tab, setTab] = useState<SocialTab>(initialTab)
   const [busy, setBusy] = useState(false)
 
@@ -65,6 +65,8 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
   const [code, setCode] = useState('')
   const [handle, setHandle] = useState(profile?.handle ?? '')
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
+  const [schoolEmail, setSchoolEmail] = useState('')
+  const [confirmSchoolRemove, setConfirmSchoolRemove] = useState(false)
 
   useEffect(() => { void social.fetchSocial() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -326,6 +328,44 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
               </Field>
               <div><Button type="submit" variant="primary" loading={busy}>保存する</Button></div>
             </form>
+          </Section>
+
+          <Section title="大学（任意）" description="登録すると、ヘッダーに大学名が表示されます。フレンドや講義の機能には影響しません">
+            {schoolName ? (
+              confirmSchoolRemove ? (
+                <Confirm
+                  message="大学の登録を外しますか？"
+                  detail="ヘッダーの大学名が消えます。いつでも登録し直せます。"
+                  confirmLabel="登録を外す"
+                  busy={busy}
+                  onCancel={() => setConfirmSchoolRemove(false)}
+                  onConfirm={() => run(async () => { await setMySchoolEmail(null); setConfirmSchoolRemove(false); showToast('大学の登録を外しました') })}
+                />
+              ) : (
+                <ListItem
+                  title={schoolName}
+                  subtitle={profile?.school_email ?? undefined}
+                  trailing={<Button size="sm" variant="ghost" onClick={() => setConfirmSchoolRemove(true)}>登録を外す</Button>}
+                />
+              )
+            ) : (
+              <form
+                style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 440 }}
+                onSubmit={e => {
+                  e.preventDefault()
+                  void run(async () => {
+                    await setMySchoolEmail(schoolEmail)
+                    setSchoolEmail('')
+                    showToast('大学を登録しました')
+                  })
+                }}
+              >
+                <Field label="大学のメールアドレス" help="ドメイン（@より後ろ）から大学を判定します。メールは届きませんし、ほかの人にも表示されません">
+                  <input type="email" value={schoolEmail} onChange={e => setSchoolEmail(e.target.value)} placeholder="you@s.yourschool.ac.jp" style={{ ...inputStyle, minHeight: 38 }} />
+                </Field>
+                <div><Button type="submit" disabled={!schoolEmail.trim()} loading={busy}>登録する</Button></div>
+              </form>
+            )}
           </Section>
 
           <Section title="ブロック中のユーザー" count={blockedIds.length} description="ブロックした相手からは申請や招待が届かず、互いのプロフィールも見えません">

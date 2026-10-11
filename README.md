@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# River
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+大学生向けの課題管理アプリ。課題を横スクロールのタイムライン（ガントチャート風）で表示し、
+フレンドやパーティーと講義・課題・進捗を共有できます。
 
-Currently, two official plugins are available:
+- フロントエンド: React + Vite + TypeScript、状態管理は Zustand
+- バックエンド: Supabase（Auth / PostgreSQL / RLS / RPC）
+- ホスティング: Vercel
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 開発
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # .env.local の VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY を使う
+npm run build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### ローカルの Supabase で動かす（本番DBに触れずに試す）
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npx supabase start          # Docker が必要。supabase/migrations をすべて適用する
+npx supabase db reset       # マイグレーションを当て直す
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+起動後に表示される API URL と anon key を `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` に設定して `npm run dev` する。
+
+## ドキュメント
+
+- `../spec-friends-party.md` — フレンド・パーティー機能の仕様
+- `docs/ui-template.md` — UI テンプレート（分かりやすさ優先のルールと部品）
+- `docs/account-requirements.md` — アカウント機能の当初の要件（一部は改訂済み。冒頭の注記を参照）
+
+## ディレクトリ
+
+```
+src/
+  components/
+    auth/       ログイン・初回プロフィール作成
+    timeline/   タイムライン本体・ヘッダーメニュー
+    task/       課題の追加・詳細・クイックメニュー
+    lecture/    講義の画面・講義カード・参加ボタン・公開範囲
+    social/     つながり（通知・フレンド・パーティー・アカウント）・プロフィール
+    ui/         UI キット（kit.tsx）・モーダル（Sheet）・トースト
+  store/        useStore（講義・課題）、useSocialStore（フレンド・パーティー・通知）
+  lib/          Supabase クライアント、上限値、エラーメッセージ変換など
+supabase/migrations/  DB スキーマ・RLS・RPC
 ```

@@ -10,7 +10,3 @@ export function applyTheme(mode: ThemeMode) {
   document.documentElement.setAttribute('data-theme', mode)
   localStorage.setItem('river-theme', mode)
 }
-
-export function initTheme() {
-  applyTheme(getStoredTheme())
-}

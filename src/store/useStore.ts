@@ -36,7 +36,6 @@ interface TaskStateRow {
   status: Task['status']
   work_start_date: string | null
   memo: string | null
-  row_id: string | null
 }
 
 export interface LectureInput {
@@ -48,7 +47,7 @@ export interface LectureInput {
 
 export type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
 
-type TaskInput = Pick<Task, 'subject_id' | 'title' | 'start_date' | 'due_date' | 'due_time' | 'status' | 'memo' | 'row_id'> &
+type TaskInput = Pick<Task, 'subject_id' | 'title' | 'start_date' | 'due_date' | 'due_time' | 'status' | 'memo'> &
   Partial<Pick<Task, 'description' | 'url'>>
 
 type TaskUpdates = Partial<Pick<Task, SharedTaskField | PersonalTaskField>>
@@ -82,7 +81,6 @@ function toTask(t: LectureTaskRow, st: TaskStateRow | undefined): Task {
     id: t.id,
     subject_id: t.lecture_id,
     recurrence_id: t.recurrence_id,
-    row_id: st?.row_id ?? null,
     title: t.title,
     start_date: workStart ?? t.due_date,
     due_date: t.due_date,
@@ -122,7 +120,9 @@ interface AppState {
   profileLoaded: boolean
   schoolName: string | null
   fetchProfile: () => Promise<void>
-  completeOnboarding: (schoolEmail: string, displayName: string, handle: string) => Promise<void>
+  completeOnboarding: (displayName: string, handle: string) => Promise<void>
+  /** 大学を任意で登録する（null で登録を外す）。ドメインから大学を判定するだけで、ほかの機能には影響しない */
+  setMySchoolEmail: (schoolEmail: string | null) => Promise<void>
   updateMyProfile: (updates: { handle?: string; display_name?: string }) => Promise<void>
 
   // Theme
@@ -199,45 +199,55 @@ export const useStore = create<AppState>((set, get) => ({
     set({ profile: row as unknown as Profile, schoolName: sName, profileLoaded: true, userId: user.id })
   },
 
-  completeOnboarding: async (schoolEmail, displayName, handle) => {
+  completeOnboarding: async (displayName, handle) => {
     const userId = await requireUserId()
-
-    const email = schoolEmail.trim().toLowerCase()
     const name = displayName.trim()
     const h = handle.trim().replace(/^@/, '')
-    const domain = email.split('@')[1] ?? ''
-    if (!domain) throw new Error('メールアドレスの形式が正しくありません')
     if (!name) throw new Error('表示名を入力してください')
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(h)) {
       throw new Error('ユーザーIDは英数字とアンダースコアで3〜20文字にしてください')
     }
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert({ id: userId, display_name: name, handle: h })
+      .select()
+      .single()
+    if (error) fail(error)
+    set({ profile: data, schoolName: null, profileLoaded: true, userId })
+  },
 
-    // ドメインを許可リストと照合して学校を特定
+  setMySchoolEmail: async (schoolEmail) => {
+    const userId = await requireUserId()
+    if (schoolEmail === null) {
+      const { error } = await supabase.from('profiles').update({ school_email: null, school_id: null }).eq('id', userId)
+      if (error) fail(error)
+      set(s => ({ profile: s.profile ? { ...s.profile, school_email: null, school_id: null } : s.profile, schoolName: null }))
+      return
+    }
+    const email = schoolEmail.trim().toLowerCase()
+    const domain = email.split('@')[1] ?? ''
+    if (!domain) throw new Error('メールアドレスの形式が正しくありません')
+
+    // ドメインを許可リストと照合して大学を特定
     const { data: domainRow, error: domainErr } = await supabase
       .from('school_domains')
       .select('school_id, schools(name)')
       .eq('domain', domain)
       .maybeSingle()
     if (domainErr) fail(domainErr)
-    if (!domainRow) {
-      throw new Error(`未対応の学校ドメインです（${domain}）`)
-    }
+    if (!domainRow) throw new Error(`まだ対応していない大学のドメインです（${domain}）`)
     const sf = (domainRow as Record<string, unknown>).schools as { name?: string } | { name?: string }[] | null | undefined
     const schoolName = Array.isArray(sf) ? (sf[0]?.name ?? null) : (sf?.name ?? null)
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
-      .insert({
-        id: userId,
-        school_email: email,
-        school_id: domainRow.school_id,
-        display_name: name,
-        handle: h,
-      })
-      .select()
-      .single()
+      .update({ school_email: email, school_id: domainRow.school_id })
+      .eq('id', userId)
     if (error) fail(error)
-    set({ profile: data, schoolName, profileLoaded: true, userId })
+    set(s => ({
+      profile: s.profile ? { ...s.profile, school_email: email, school_id: domainRow.school_id } : s.profile,
+      schoolName,
+    }))
   },
 
   updateMyProfile: async (updates) => {
@@ -298,7 +308,7 @@ export const useStore = create<AppState>((set, get) => ({
             .order('due_date'),
           supabase
             .from('task_user_state')
-            .select('task_id, status, work_start_date, memo, row_id')
+            .select('task_id, status, work_start_date, memo')
             .eq('user_id', userId),
         ])
         if (taskRes.error) fail(taskRes.error)
@@ -424,11 +434,10 @@ export const useStore = create<AppState>((set, get) => ({
       status: task.status,
       work_start_date: task.start_date < task.due_date ? task.start_date : null,
       memo: task.memo,
-      row_id: task.row_id,
     }
     const { error: stErr } = await supabase
       .from('task_user_state')
-      .update({ status: state.status, work_start_date: state.work_start_date, memo: state.memo, row_id: state.row_id })
+      .update({ status: state.status, work_start_date: state.work_start_date, memo: state.memo })
       .eq('task_id', data.id)
       .eq('user_id', userId)
     if (stErr) fail(stErr)
@@ -455,7 +464,6 @@ export const useStore = create<AppState>((set, get) => ({
       status: 'todo',
       work_start_date: addDays(r.due_date, -recurrence.duration_days),
       memo: null,
-      row_id: null,
     }))
     const results = await Promise.all(
       states.map(st =>
@@ -489,7 +497,6 @@ export const useStore = create<AppState>((set, get) => ({
     const personal: Record<string, unknown> = {}
     if (updates.status !== undefined) personal.status = updates.status
     if (updates.memo !== undefined) personal.memo = updates.memo
-    if (updates.row_id !== undefined) personal.row_id = updates.row_id
     if (updates.start_date !== undefined) {
       const due = updates.due_date ?? current?.due_date
       // 開始日が締切日と同じなら「作業予定期間は未設定」として扱う

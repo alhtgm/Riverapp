@@ -14,9 +14,6 @@ alter table profiles
 
 create unique index if not exists profiles_handle_lower_idx on profiles (lower(handle));
 
-alter table profiles add column if not exists hide_progress_name boolean not null default false;
--- 2026-10: 仕様変更により進捗の名前は常に表示する運用に変更。
--- カラムは将来の再導入に備えて残すが、アプリ側からは参照しない。
 
 -- ------------------------------------------------------------
 -- blocks（ブロック）

@@ -1,11 +1,5 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'submitted'
 
-export interface School {
-  id: string
-  name: string
-  created_at: string
-}
-
 export interface Profile {
   id: string
   school_email: string | null
@@ -37,7 +31,7 @@ export const VISIBILITY_DESC: Record<LectureVisibility, string> = {
   private: '参加者だけ',
   party: '選んだパーティーのメンバーだけ',
   friends: '選んだパーティー ＋ 参加者のいずれかのフレンド',
-  public: '誰でも（参加申請はオンに固定）',
+  public: 'River を使っている誰でも（他大学の人も含む。参加は承認制に固定）',
 }
 
 /**
@@ -68,13 +62,12 @@ export interface Recurrence {
 /**
  * タイムライン上の課題 = 講義の共有課題（lecture_tasks）＋ 自分の個人項目（task_user_state）。
  * 共有: title / due_date / due_time / description / url
- * 個人: status / start_date（作業予定の開始。未設定なら締切日と同じ）/ memo / row_id
+ * 個人: status / start_date（作業予定の開始。未設定なら締切日と同じ）/ memo
  */
 export interface Task {
   id: string
   subject_id: string // lecture_id
   recurrence_id: string | null
-  row_id: string | null
   title: string
   start_date: string // YYYY-MM-DD
   due_date: string   // YYYY-MM-DD
@@ -89,7 +82,7 @@ export interface Task {
 }
 
 export type SharedTaskField = 'title' | 'due_date' | 'due_time' | 'description' | 'url' | 'subject_id'
-export type PersonalTaskField = 'status' | 'start_date' | 'memo' | 'row_id'
+export type PersonalTaskField = 'status' | 'start_date' | 'memo'
 
 // ---- フレンド・パーティー ----
 
@@ -250,8 +243,4 @@ export function toDateString(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
-}
-
-export function todayString(): string {
-  return toDateString(new Date())
 }

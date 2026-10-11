@@ -98,7 +98,6 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
       if (effectiveMode === 'single') {
         await addTask({
           subject_id: subjectId,
-          row_id: null,
           title: effectiveTitle,
           start_date: startDate,
           due_date: dueDate,

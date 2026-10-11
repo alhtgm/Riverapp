@@ -104,16 +104,6 @@ function buildSubjectRows(tasks: Task[]): SubjectRow[] {
     assignments.push({ task, rowIdx: assignedRow })
   }
 
-  // Debug: log row assignments
-  if (typeof window !== 'undefined' && tasks.length > 0) {
-    console.log('[buildSubjectRows]', assignments.map(a => ({
-      title: a.task.title,
-      start: a.task.start_date,
-      due: a.task.due_date,
-      row: a.rowIdx,
-    })))
-  }
-
   // Group by rowIdx
   const buckets = new Map<number, Task[]>()
   for (const { task, rowIdx } of assignments) {
@@ -209,6 +199,12 @@ export default function TimelineView() {
   })()
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // 読み込みに失敗したときは、黙って空の画面にせずトーストで知らせる
+  const loadError = useStore(s => s.error)
+  useEffect(() => {
+    if (loadError) showToast(`読み込みに失敗しました：${loadError}`, 'error')
+  }, [loadError, showToast])
 
   // 通知・申請のバッジを定期的に更新する（アプリ内通知のみ。9章）
   useEffect(() => {
@@ -363,7 +359,8 @@ export default function TimelineView() {
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }, [])
@@ -407,7 +404,8 @@ export default function TimelineView() {
   const toggleStatus = (key: EffectiveStatus) => {
     setSelectedStatuses(prev => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -437,7 +435,6 @@ export default function TimelineView() {
     try {
       await addTask({
         subject_id: reAdd.subjectId,
-        row_id: null,
         title: t.title,
         start_date: todayStr,
         due_date: t.nextDue,
