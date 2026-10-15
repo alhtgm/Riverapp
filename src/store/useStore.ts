@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Subject, Task, Recurrence, TaskStatus } from '../types'
 import { toDateString } from '../types'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
+import { getCurrentSemester, type Semester } from '../lib/semester'
 
 interface AppState {
   subjects: Subject[]
@@ -13,6 +14,17 @@ interface AppState {
   // Theme
   isDark: boolean
   toggleTheme: () => void
+
+  // Sidebar (UI only)
+  isSidebarOpen: boolean
+  setSidebarOpen: (open: boolean) => void
+  toggleSidebar: () => void
+  /** 科目での絞り込み (null = 絞り込みなし) */
+  selectedSubjectId: string | null
+  toggleSelectedSubject: (id: string) => void
+  clearSelectedSubject: () => void
+  semester: Semester
+  setSemester: (semester: Semester) => void
 
   fetchAll: () => Promise<void>
   signOut: () => Promise<void>
@@ -50,6 +62,15 @@ export const useStore = create<AppState>((set, get) => ({
     applyTheme(next)
     set({ isDark: next === 'dark' })
   },
+
+  isSidebarOpen: false,
+  setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+  toggleSidebar: () => set(s => ({ isSidebarOpen: !s.isSidebarOpen })),
+  selectedSubjectId: null,
+  toggleSelectedSubject: (id) => set(s => ({ selectedSubjectId: s.selectedSubjectId === id ? null : id })),
+  clearSelectedSubject: () => set({ selectedSubjectId: null }),
+  semester: getCurrentSemester(),
+  setSemester: (semester) => set({ semester }),
 
   signOut: async () => {
     await supabase.auth.signOut()
@@ -130,6 +151,7 @@ export const useStore = create<AppState>((set, get) => ({
     set(s => ({
       subjects: s.subjects.filter(sub => sub.id !== id),
       tasks: s.tasks.filter(t => t.subject_id !== id),
+      selectedSubjectId: s.selectedSubjectId === id ? null : s.selectedSubjectId,
     }))
   },
 

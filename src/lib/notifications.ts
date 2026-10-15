@@ -2,9 +2,28 @@ import type { Task } from '../types'
 import { toDateString } from '../types'
 
 const CHECKED_KEY = 'river-notif-checked'
+const ENABLED_KEY = 'river-notif-enabled'
+
+/** 通知設定。未設定の場合は従来どおり ON 扱い */
+export function getNotifEnabled(): boolean {
+  try {
+    return localStorage.getItem(ENABLED_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
+
+export function setNotifEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(ENABLED_KEY, enabled ? 'true' : 'false')
+  } catch {
+    // localStorage が使えない環境では保存しない
+  }
+}
 
 export async function requestAndNotify(tasks: Task[]): Promise<void> {
   if (!('Notification' in window)) return
+  if (!getNotifEnabled()) return
 
   // 1日1回のみチェック
   const today = new Date().toDateString()

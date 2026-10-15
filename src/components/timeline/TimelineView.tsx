@@ -5,6 +5,8 @@ import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ColorPicker from '../ui/ColorPicker'
+import Sidebar from '../sidebar/Sidebar'
+import { isInSemester } from '../../lib/semester'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
 
@@ -128,7 +130,8 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, signOut, updateTask, loading, isDark, toggleTheme } = useStore()
+  const { subjects, tasks, fetchAll, deleteSubject, updateSubject, updateTask, loading, isDark, toggleTheme,
+    isSidebarOpen, toggleSidebar, selectedSubjectId, clearSelectedSubject, semester } = useStore()
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
@@ -196,6 +199,7 @@ export default function TimelineView() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if ((e.target as HTMLElement).isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
@@ -304,9 +308,12 @@ export default function TimelineView() {
     return row.tasks.some(t => t.start_date <= focusCutoffStr && t.due_date >= todayStr)
   }, [todayStr, focusCutoffStr])
 
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId) ?? null
+
   const grouped: GroupedSubject[] = subjects
+    .filter(subject => !selectedSubject || subject.id === selectedSubject.id)
     .map(subject => {
-      const allRows = buildTaskRows(tasks.filter(t => t.subject_id === subject.id))
+      const allRows = buildTaskRows(tasks.filter(t => t.subject_id === subject.id && isInSemester(t, semester)))
       let taskRows = allRows
 
       // Apply status filter
@@ -383,6 +390,36 @@ export default function TimelineView() {
         position: 'relative',
         zIndex: 100,
       }}>
+
+        {/* Menu (sidebar toggle) */}
+        <button
+          onClick={toggleSidebar}
+          aria-label={isSidebarOpen ? 'メニューを閉じる' : 'メニューを開く'}
+          aria-expanded={isSidebarOpen}
+          aria-controls="river-sidebar"
+          title="メニュー"
+          style={{
+            background: isSidebarOpen ? 'rgba(255,255,255,0.16)' : 'transparent',
+            border: 'none',
+            borderRadius: 7,
+            width: 32,
+            height: 32,
+            marginLeft: -6,
+            cursor: 'pointer',
+            color: 'rgba(255,255,255,0.85)',
+            transition: 'background 0.2s',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = isSidebarOpen ? 'rgba(255,255,255,0.16)' : 'transparent' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </button>
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
@@ -466,67 +503,6 @@ export default function TimelineView() {
           </svg>
           {!isMobile && '課題を追加'}
         </button>
-
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleTheme}
-          aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-          title={isDark ? 'ライトモード [D]' : 'ダークモード [D]'}
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 10px',
-            fontSize: 15,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            lineHeight: 1,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
-        >
-          {isDark ? '☀️' : '🌙'}
-        </button>
-
-        {/* Logout */}
-        <button
-          onClick={() => signOut()}
-          aria-label="ログアウト"
-          style={{
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 7,
-            padding: isMobile ? '6px 8px' : '6px 11px',
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer',
-            color: 'rgba(255,255,255,0.75)',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            fontFamily: 'inherit',
-            letterSpacing: '-0.01em',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.14)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.07)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-          }}
-        >
-          {isMobile ? (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          ) : 'ログアウト'}
-        </button>
       </header>
 
       {/* ---- Filter bar ---- */}
@@ -585,6 +561,36 @@ export default function TimelineView() {
         </button>
 
         <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0 }} />
+
+        {/* Subject filter chip (set from sidebar) */}
+        {selectedSubject && (
+          <button
+            onClick={clearSelectedSubject}
+            title="科目の絞り込みを解除"
+            aria-label={`科目「${selectedSubject.name}」の絞り込みを解除`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'var(--accent-bg)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--accent)',
+              borderRadius: 9999,
+              padding: '3px 8px 3px 8px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              maxWidth: 180,
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: selectedSubject.color, flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>科目: {selectedSubject.name}</span>
+            <span aria-hidden="true" style={{ color: 'var(--text-tertiary)', fontSize: 13, lineHeight: 1 }}>✕</span>
+          </button>
+        )}
 
         {!isMobile && (
           <span style={{
@@ -1445,6 +1451,7 @@ export default function TimelineView() {
       </div>
 
       {/* ---- Overlays ---- */}
+      <Sidebar />
       {selectedTask && (
         <TaskDetailPanel
           task={selectedTask}
