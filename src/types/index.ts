@@ -61,8 +61,8 @@ export interface Recurrence {
 
 /**
  * タイムライン上の課題 = 講義の共有課題（lecture_tasks）＋ 自分の個人項目（task_user_state）。
- * 共有: title / due_date / due_time / description / url
- * 個人: status / start_date（作業予定の開始。未設定なら締切日と同じ）/ memo
+ * 共有: title / 発生日 / due_date / due_time / description / url
+ * 個人: status / start_date（作業開始日。本人が変えていなければ共有の発生日、それもなければ締切日）/ memo
  */
 export interface Task {
   id: string
@@ -76,7 +76,9 @@ export interface Task {
   memo: string | null
   description: string | null
   url: string | null
-  /** 作業予定期間を本人が設定済みか（false なら締切だけが表示される） */
+  /** 講義で共有している発生日（未設定なら null）。start_date をこの日にすると本人の上書きを外す */
+  shared_start_date: string | null
+  /** バーが期間として表示されるか（false なら締切だけが表示される） */
   has_work_period: boolean
   created_at: string
 }
@@ -147,6 +149,18 @@ export interface LectureSummary {
   participant_count: number
   party_member_count: number | null
   my_status: JoinStatus
+}
+
+/** 自分が参加している講義に届いている参加申請（まとめて管理画面・通知から承認する） */
+export interface ApplyRequest {
+  id: string
+  lecture_id: string
+  lecture_title: string
+  user_id: string
+  display_name: string | null
+  handle: string | null
+  created_at: string
+  expires_at: string
 }
 
 export interface LectureParticipant {

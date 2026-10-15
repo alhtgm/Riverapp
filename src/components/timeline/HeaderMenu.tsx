@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
-import { Avatar } from '../ui/kit'
+import { Avatar, Button, Field } from '../ui/kit'
+import Sheet from '../ui/Sheet'
+import { inputStyle } from '../ui/styles'
+import {
+  SEMESTER_TERMS, currentSemester, listSemesters, semesterKey, semesterLabel, subjectInSemester,
+  type SemesterTerm,
+} from '../../lib/semester'
 import type { SocialTab } from '../social/SocialPanel'
+import type { ManageTab } from '../social/ManageCenter'
 
 interface Props {
   onOpenSocial: (tab: SocialTab) => void
   onOpenMyProfile: () => void
+  onOpenManage: (tab?: ManageTab) => void
 }
 
 const headerButton: CSSProperties = {
@@ -85,6 +93,20 @@ const icon = {
       <path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7L3.6 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   ),
+  semester: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="3" width="12" height="11" rx="1.8" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  ),
+  manage: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 4h7M12 4h2M2 8h2M7 8h7M2 12h9M14 12h0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="10.5" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="5.5" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="12.5" cy="12" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  ),
   logout: (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -92,13 +114,158 @@ const icon = {
   ),
 }
 
+const TERM_OPTION_LABEL: Record<SemesterTerm, string> = { spring: '前期', fall: '後期', other: 'その他' }
+
+/** メニュー内の行（MenuItem と同じ寸法）。選択中の学期などに使う */
+function MenuRow({ icon, label, trailing, onClick, active = false, expanded, nested = false }: {
+  icon: ReactNode; label: string; trailing?: ReactNode; onClick: () => void; active?: boolean; expanded?: boolean
+  /** 灰色のまとまりの中に置くとき（ホバー色を背景と変える） */
+  nested?: boolean
+}) {
+  return (
+    <button
+      role={expanded === undefined ? 'menuitem' : undefined}
+      aria-expanded={expanded}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px',
+        background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer',
+        fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 500, textAlign: 'left',
+        color: 'var(--text-primary)',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = nested ? 'var(--surface)' : 'var(--bg-secondary)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+    >
+      <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      {trailing}
+    </button>
+  )
+}
+
+const chevron = (open: boolean) => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+    style={{ color: 'var(--text-tertiary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+    <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+const check = (
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M2.5 7.5l3 3 6-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+const plus = (
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M7 2.5v9M2.5 7h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+)
+
+const trailingText = (text: string) => (
+  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500, flexShrink: 0 }}>{text}</span>
+)
+
+/** 学期の切り替え（Excel のシートを切り替える感覚）。開くと学期の一覧が出る */
+function SemesterSection({ onPicked, onCreate }: { onPicked: () => void; onCreate: () => void }) {
+  const { subjects, semester, setSemester } = useStore()
+  const [expanded, setExpanded] = useState(false)
+  const semesters = listSemesters(subjects, [currentSemester(), semester])
+  const currentKey = semesterKey(semester)
+
+  return (
+    <>
+      <MenuRow
+        icon={icon.semester}
+        label="学期"
+        expanded={expanded}
+        onClick={() => setExpanded(e => !e)}
+        trailing={<>{trailingText(semesterLabel(semester))}{chevron(expanded)}</>}
+      />
+      {expanded && (
+        <div role="group" aria-label="学期を選ぶ" style={{ background: 'var(--bg-secondary)', borderRadius: 8, margin: '2px 0 4px', padding: 2 }}>
+          <div style={{ maxHeight: 216, overflowY: 'auto' }}>
+            {semesters.map(s => {
+              const key = semesterKey(s)
+              const active = key === currentKey
+              const count = subjects.filter(sub => subjectInSemester(sub, s)).length
+              return (
+                <MenuRow
+                  key={key}
+                  icon={active ? check : null}
+                  label={semesterLabel(s)}
+                  active={active}
+                  nested
+                  onClick={() => { setSemester(s); setExpanded(false); onPicked() }}
+                  trailing={trailingText(count > 0 ? `${count}講義` : '講義なし')}
+                />
+              )
+            })}
+          </div>
+          <MenuRow icon={plus} label="新しい学期を始める" nested onClick={onCreate} />
+        </div>
+      )}
+    </>
+  )
+}
+
+/** 新しい学期を始める（空のシートを開く） */
+function NewSemesterSheet({ onClose }: { onClose: () => void }) {
+  const setSemester = useStore(s => s.setSemester)
+  const now = currentSemester()
+  const [year, setYear] = useState(now.year)
+  const [term, setTerm] = useState<SemesterTerm>(now.term)
+  const validYear = Number.isInteger(year) && year >= 2000 && year <= 2100
+
+  const open = () => {
+    if (!validYear) return
+    setSemester({ year, term })
+    onClose()
+  }
+
+  return (
+    <Sheet
+      title="新しい学期を始める"
+      subtitle="選んだ学期の空のシートが開きます。講義を作るときの年度・学期も、この学期が初期値になります。"
+      onClose={onClose}
+      width={420}
+      zIndex={320}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button onClick={onClose}>やめる</Button>
+          <Button variant="primary" disabled={!validYear} onClick={open}>この学期を開く</Button>
+        </div>
+      }
+    >
+      <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <Field label="年度" required error={validYear ? null : '2000〜2100の年度を入力してください'}>
+            <input type="number" min={2000} max={2100} value={year} onChange={e => setYear(Number(e.target.value))} style={inputStyle} />
+          </Field>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Field label="学期" required>
+            <select value={term} onChange={e => setTerm(e.target.value as SemesterTerm)} style={inputStyle}>
+              {SEMESTER_TERMS.map(t => <option key={t} value={t}>{TERM_OPTION_LABEL[t]}</option>)}
+            </select>
+          </Field>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
 /** ヘッダー右端の「通知」ボタンとハンバーガーメニュー */
-export default function HeaderMenu({ onOpenSocial, onOpenMyProfile }: Props) {
+export default function HeaderMenu({ onOpenSocial, onOpenMyProfile, onOpenManage }: Props) {
   const { profile, isDark, toggleTheme, signOut } = useStore()
   const unread = useSocialStore(s => s.notifications.filter(n => !n.read_at).length)
   const incoming = useSocialStore(s => s.incoming.length)
   const invites = useSocialStore(s => s.invites.length)
+  const applyRequests = useSocialStore(s => s.applyRequests.length)
+  /** まとめて管理で返事が必要な件数 */
+  const pending = applyRequests + incoming + invites
   const [open, setOpen] = useState(false)
+  const [newSemesterOpen, setNewSemesterOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -117,6 +284,18 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile }: Props) {
 
   return (
     <>
+      <button
+        onClick={() => onOpenManage(pending > 0 ? 'inbox' : undefined)}
+        aria-label={pending > 0 ? `まとめて管理（対応が必要な申請${pending}件）` : 'まとめて管理'}
+        title="まとめて管理（申請・招待・講義の公開）"
+        style={headerButton}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+      >
+        {icon.manage}
+        <Badge count={pending} />
+      </button>
+
       <button
         onClick={() => onOpenSocial('notifications')}
         aria-label={unread > 0 ? `通知（未読${unread}件）` : '通知'}
@@ -177,6 +356,9 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile }: Props) {
                 </span>
               </span>
             </button>
+            <SemesterSection onPicked={() => setOpen(false)} onCreate={pick(() => setNewSemesterOpen(true))} />
+            <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
+            <MenuItem icon={icon.manage} label="まとめて管理" badge={pending} onClick={pick(() => onOpenManage(pending > 0 ? 'inbox' : undefined))} />
             <MenuItem icon={icon.friends} label="フレンド" badge={incoming} onClick={pick(() => onOpenSocial('friends'))} />
             <MenuItem icon={icon.party} label="パーティー" badge={invites} onClick={pick(() => onOpenSocial('parties'))} />
             <MenuItem icon={icon.account} label="アカウント設定" onClick={pick(() => onOpenSocial('account'))} />
@@ -190,6 +372,7 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile }: Props) {
           </div>
         )}
       </div>
+      {newSemesterOpen && <NewSemesterSheet onClose={() => setNewSemesterOpen(false)} />}
     </>
   )
 }
