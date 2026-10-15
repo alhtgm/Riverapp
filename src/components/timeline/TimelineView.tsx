@@ -3,8 +3,8 @@ import type { Subject, Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
-import SocialPanel, { type SocialTab } from '../social/SocialPanel'
-import ManageCenter, { type ManageTab } from '../social/ManageCenter'
+import InboxPanel from '../social/InboxPanel'
+import PeoplePanel, { type PeopleTab } from '../social/PeoplePanel'
 import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
@@ -177,10 +177,10 @@ export default function TimelineView() {
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
-  /** つながり（通知・フレンド・パーティー）パネル。開いているタブ */
-  const [socialTab, setSocialTab] = useState<SocialTab | null>(null)
-  /** まとめて管理（申請・招待・講義の公開を一括で操作する画面）。開いているタブ */
-  const [manageTab, setManageTab] = useState<ManageTab | null>(null)
+  /** 受信箱（返事が必要な申請・招待とお知らせ） */
+  const [inboxOpen, setInboxOpen] = useState(false)
+  /** 仲間（フレンド・パーティー）。開いているタブ */
+  const [peopleTab, setPeopleTab] = useState<PeopleTab | null>(null)
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
   const [partyId, setPartyId] = useState<string | null>(null)
   const [lectureId, setLectureId] = useState<string | null>(null)
@@ -658,9 +658,10 @@ export default function TimelineView() {
 
         {/* 通知 + ハンバーガーメニュー（フレンド・パーティー・アカウント・テーマ・ログアウト） */}
         <HeaderMenu
-          onOpenSocial={setSocialTab}
+          onOpenPeople={tab => setPeopleTab(tab ?? 'friends')}
+          onOpenInbox={() => setInboxOpen(true)}
           onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
-          onOpenManage={tab => setManageTab(tab ?? 'inbox')}
+          isMobile={isMobile}
         />
       </header>
 
@@ -1446,21 +1447,21 @@ export default function TimelineView() {
         />
       )}
 
-      {manageTab && (
-        <ManageCenter
-          initialTab={manageTab}
-          onClose={() => setManageTab(null)}
-          onOpenProfile={setProfileUserId}
-        />
-      )}
-
-      {socialTab && (
-        <SocialPanel
-          initialTab={socialTab}
-          onClose={() => setSocialTab(null)}
+      {inboxOpen && (
+        <InboxPanel
+          onClose={() => setInboxOpen(false)}
           onOpenProfile={setProfileUserId}
           onOpenParty={setPartyId}
           onOpenLecture={setLectureId}
+        />
+      )}
+      {peopleTab && (
+        <PeoplePanel
+          initialTab={peopleTab}
+          onClose={() => setPeopleTab(null)}
+          onOpenProfile={setProfileUserId}
+          onOpenParty={setPartyId}
+          onOpenInbox={() => { setPeopleTab(null); setInboxOpen(true) }}
         />
       )}
       {partyId && (
@@ -1476,7 +1477,6 @@ export default function TimelineView() {
           userId={profileUserId}
           onClose={() => setProfileUserId(null)}
           onOpenLecture={setLectureId}
-          onEditProfile={() => { setProfileUserId(null); setSocialTab('account') }}
         />
       )}
       {lectureId && (

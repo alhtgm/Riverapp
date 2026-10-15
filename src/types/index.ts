@@ -151,7 +151,7 @@ export interface LectureSummary {
   my_status: JoinStatus
 }
 
-/** 自分が参加している講義に届いている参加申請（まとめて管理画面・通知から承認する） */
+/** 自分が参加している講義に届いている参加申請（受信箱・講義画面から承認する） */
 export interface ApplyRequest {
   id: string
   lecture_id: string

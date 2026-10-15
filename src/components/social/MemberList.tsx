@@ -26,6 +26,8 @@ export default function MemberList({ targetType, targetId, members, onOpenProfil
   const { myId, users, ensureUsers } = useSocialStore()
   const [votes, setVotes] = useState<OpenVote[]>([])
   const [confirmUser, setConfirmUser] = useState<{ userId: string; kind: 'exclude' | 'unexclude' } | null>(null)
+  /** 「…」メニューを開いている人（除外投票はふだんは隠しておく） */
+  const [menuFor, setMenuFor] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const loadVotes = useCallback(async () => {
@@ -86,9 +88,20 @@ export default function MemberList({ targetType, targetId, members, onOpenProfil
         </>
       )
     }
+    if (menuFor === userId) {
+      return (
+        <>
+          <Button size="sm" variant="ghost" onClick={() => setMenuFor(null)}>やめる</Button>
+          <Button size="sm" variant="danger" onClick={() => { setMenuFor(null); setConfirmUser({ userId, kind }) }}>
+            {kind === 'exclude' ? '除外投票を始める' : '除外を解除する投票を始める'}
+          </Button>
+        </>
+      )
+    }
     return (
-      <Button size="sm" variant="ghost" style={{ color: 'var(--text-tertiary)' }} onClick={() => setConfirmUser({ userId, kind })}>
-        {kind === 'exclude' ? '除外投票' : '解除投票'}
+      <Button size="sm" variant="ghost" aria-label="その他の操作" title="その他の操作" style={{ color: 'var(--text-tertiary)', minWidth: 30, padding: 0 }}
+        onClick={() => setMenuFor(userId)}>
+        …
       </Button>
     )
   }
@@ -98,7 +111,7 @@ export default function MemberList({ targetType, targetId, members, onOpenProfil
       <Section
         title={groupWord}
         count={active.length}
-        description={`押すとプロフィールを確認できます。荒らしなどは、対象の人を除く${groupWord}の過半数の賛成で外せます`}
+        description={`押すとプロフィールを開きます。困った人がいるときは「…」から、${groupWord}の投票で外せます`}
       >
         {confirmUser && (
           <Confirm

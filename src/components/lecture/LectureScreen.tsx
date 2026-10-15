@@ -13,7 +13,7 @@ import MemberList from '../social/MemberList'
 import ProgressPeople from './ProgressPeople'
 import PartyPicker from './PartyPicker'
 import {
-  TERM_LABEL, VISIBILITY_LABEL, VISIBILITY_DESC, formatDate,
+  TERM_LABEL, VISIBILITY_LABEL, formatDate,
   type ActivityLogEntry, type ApplyRequest, type LectureParticipant, type LectureTerm, type LectureVisibility,
 } from '../../types'
 
@@ -97,6 +97,27 @@ function describe(entry: ActivityLogEntry, name: (id: string | null | undefined)
   }
 }
 
+/** 公開範囲の説明（誰が見つけられるかを具体的に） */
+const VISIBILITY_HELP: Record<LectureVisibility, string> = {
+  private: 'この講義のメンバーだけ。ほかの人からは見つかりません',
+  party: '下で選んだパーティーのメンバーが見つけて参加できます',
+  friends: '選んだパーティーのメンバーに加えて、この講義のメンバーのフレンドも見つけられます',
+  public: 'River を使っている誰でも見つけられます（他大学の人も含む）。参加は承認制になります',
+}
+
+/** いまの設定を1文で説明する */
+function summarizeSharing(visibility: LectureVisibility, applyOpen: boolean, partyNames: string[]): string {
+  if (visibility === 'private') return 'いまは、この講義のメンバーだけが見られます。'
+  const parties = partyNames.length > 0 ? `「${partyNames.join('」「')}」のメンバー` : null
+  const who = visibility === 'public'
+    ? 'River を使っている誰でも'
+    : visibility === 'friends'
+      ? `${parties ? `${parties}と、` : ''}メンバーのフレンド`
+      : parties ?? 'まだ誰も（見せるパーティーを選んでください）'
+  const how = visibility === 'public' || applyOpen ? '参加には、メンバーの誰かの承認が必要です。' : '承認なしですぐ参加できます。'
+  return `いまは、${who}がこの講義を見つけられます。${how}`
+}
+
 function StatBox({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 14px' }}>
@@ -129,8 +150,6 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
   const [year, setYear] = useState(lecture?.year ?? new Date().getFullYear())
   const [term, setTerm] = useState<LectureTerm>(lecture?.term ?? 'other')
   const [professor, setProfessor] = useState(lecture?.professor ?? '')
-  const [visibility, setVisibility] = useState<LectureVisibility>(lecture?.visibility ?? 'party')
-  const [applyOpen, setApplyOpen] = useState(lecture?.apply_open ?? false)
 
   const loadMembers = useCallback(async () => {
     const [partRes, reqRes] = await Promise.all([
@@ -212,8 +231,20 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
     { inProgress: 0, done: 0 },
   )
   const settingsDirty =
-    title !== lecture.name || year !== lecture.year || term !== lecture.term || (professor || null) !== (lecture.professor || null) ||
-    visibility !== lecture.visibility || (visibility !== 'public' && applyOpen !== lecture.apply_open)
+    title !== lecture.name || year !== lecture.year || term !== lecture.term || (professor || null) !== (lecture.professor || null)
+  const visibility = lecture.visibility
+  const applyOpen = visibility === 'public' ? true : lecture.apply_open
+  const visiblePartyNames = visibleParties.map(id => myParties.find(p => p.id === id)?.name).filter((n): n is string => !!n)
+
+  /** 公開範囲を変える（すぐ保存）。パーティー内にしたときは申請なしを既定にする */
+  const changeVisibility = (v: LectureVisibility) => run(async () => {
+    if (v === visibility) return
+    await updateLectureSettings(lectureId, {
+      visibility: v,
+      apply_open: v === 'public' ? true : v === 'party' ? false : lecture.apply_open,
+    })
+    showToast(v === 'public' ? '全体公開にしました（参加は承認制になります）' : `公開範囲を「${VISIBILITY_LABEL[v]}」にしました`)
+  })
 
   return (
     <Sheet
@@ -234,7 +265,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
         onChange={setTab}
         tabs={[
           { key: 'tasks', label: '課題と進捗' },
-          { key: 'members', label: '参加者', badge: requests.length },
+          { key: 'members', label: 'メンバー', badge: requests.length },
           { key: 'settings', label: '設定' },
           { key: 'history', label: '履歴' },
         ]}
@@ -244,7 +275,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
         <>
           <Card padding={0}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-              <StatBox label="参加者" value={activeCount} />
+              <StatBox label="メンバー" value={activeCount} />
               <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="取り組み中（のべ）" value={totals.inProgress} color="#0779A0" /></div>
               <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="完了（のべ）" value={totals.done} color="#14913F" /></div>
             </div>
@@ -301,7 +332,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
       {tab === 'members' && (
         <>
-          <Section title="参加申請" count={requests.length} description={`参加者なら誰でも承認・却下できます。${LIMITS.applyRequestTtlDays}日間だれも対応しないと自動で失効します`}>
+          <Section title="参加申請" count={requests.length} description={`メンバーなら誰でも承認・却下できます（受信箱からもできます）。${LIMITS.applyRequestTtlDays}日間だれも対応しないと自動で失効します`}>
             {requests.length === 0 ? (
               <EmptyState compact title="届いている申請はありません" />
             ) : (
@@ -361,7 +392,88 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
       {tab === 'settings' && (
         <>
-          <Notice>講義の設定は参加者なら誰でも変更でき、変更は「履歴」に残ります。公開範囲を変えると参加者全員に通知されます。</Notice>
+          <Notice>講義の設定はメンバーなら誰でも変更でき、変更は「履歴」に残ります。</Notice>
+
+          <Section title="公開と参加" description="誰がこの講義を見つけられるか・どうやって参加するかを決めます。押すとすぐ反映されます">
+            <Card tone="muted" padding={12}>
+              <span style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{summarizeSharing(visibility, applyOpen, visiblePartyNames)}</span>
+            </Card>
+
+            <Field group required label="公開範囲" help="公開範囲を変えると、メンバー全員に通知されます">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                {VISIBILITIES.map(v => {
+                  const active = visibility === v
+                  return (
+                    <label
+                      key={v}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 12, cursor: busy ? 'wait' : 'pointer',
+                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-light)'}`,
+                        background: active ? 'var(--accent-bg)' : 'var(--surface)',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="radio" name="visibility" checked={active} disabled={busy} onChange={() => void changeVisibility(v)} style={{ margin: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{VISIBILITY_HELP[v]}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </Field>
+
+            {(visibility === 'party' || visibility === 'friends') && (
+              <Field group label="見せるパーティー" help="あなたが所属しているパーティーから選べます">
+                {myParties.length === 0 && visibleParties.length === 0 ? (
+                  <EmptyState compact title="所属しているパーティーがありません" description="メニューの「仲間」でパーティーを作るか参加すると、ここで選べるようになります。" />
+                ) : (
+                  <PartyPicker
+                    myParties={myParties}
+                    selectedIds={visibleParties}
+                    busy={busy}
+                    onChange={(partyId, enabled) => {
+                      const partyName = myParties.find(pt => pt.id === partyId)?.name ?? 'パーティー'
+                      void run(async () => {
+                        const { error } = await supabase.rpc('set_lecture_visible_party', {
+                          p_lecture_id: lectureId, p_party_id: partyId, p_enabled: enabled,
+                        })
+                        if (error) throw error
+                        await loadVisibleParties()
+                        showToast(enabled ? `「${partyName}」に見せるようにしました` : `「${partyName}」に見せないようにしました`)
+                      })
+                    }}
+                  />
+                )}
+              </Field>
+            )}
+
+            {visibility !== 'private' && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-light)', background: 'var(--surface)', cursor: visibility === 'public' ? 'default' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={applyOpen}
+                  disabled={visibility === 'public' || busy}
+                  onChange={e => {
+                    const open = e.target.checked
+                    void run(async () => {
+                      await updateLectureSettings(lectureId, { apply_open: open })
+                      showToast(open ? '参加を承認制にしました' : '承認なしで参加できるようにしました')
+                    })
+                  }}
+                  style={{ marginTop: 3 }}
+                />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>参加を承認制にする</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                    {visibility === 'public'
+                      ? '全体公開の間は承認制に固定されます'
+                      : 'オンにすると、参加したい人の申請がメンバーの受信箱に届き、誰かが承認すると参加できます'}
+                  </span>
+                </span>
+              </label>
+            )}
+          </Section>
 
           <form
             style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
@@ -369,16 +481,12 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
               e.preventDefault()
               void run(async () => {
                 if (!title.trim()) throw new Error('講義名を入力してください')
-                const becamePublic = visibility === 'public' && lecture.visibility !== 'public'
-                await updateLectureSettings(lectureId, {
-                  title, year, term, professor, visibility,
-                  apply_open: visibility === 'public' ? true : applyOpen,
-                })
-                showToast(becamePublic ? '全体公開にしたため、参加申請をオンにしました' : '講義の設定を保存しました')
+                await updateLectureSettings(lectureId, { title, year, term, professor })
+                showToast('基本情報を保存しました')
               })
             }}
           >
-            <Section title="基本情報">
+            <Section title="基本情報" description="名前・年度・学期を直したら「保存する」を押します">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <Field label="講義名" required>
@@ -401,81 +509,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
               </div>
             </Section>
 
-            <Section title="公開範囲" description="この講義を誰に見せるかを選びます。参加者自身はいつでも見えます">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
-                {VISIBILITIES.map(v => {
-                  const active = visibility === v
-                  return (
-                    <label
-                      key={v}
-                      style={{
-                        display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
-                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-light)'}`,
-                        background: active ? 'var(--accent-bg)' : 'var(--surface)',
-                      }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input type="radio" name="visibility" checked={active} onChange={() => {
-                          setVisibility(v)
-                          // パーティー内公開は申請なしを既定にする
-                          if (v === 'party' && v !== visibility) setApplyOpen(false)
-                        }} style={{ margin: 0 }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
-                      </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{VISIBILITY_DESC[v]}</span>
-                    </label>
-                  )
-                })}
-              </div>
-
-              {(visibility === 'party' || visibility === 'friends') && (
-                <Field group label="見せるパーティー" help="追加・削除はすぐに反映されます。あなたが所属しているパーティーから選べます">
-                  {myParties.length === 0 && visibleParties.length === 0 ? (
-                    <EmptyState compact title="所属しているパーティーがありません" description="メニューの「パーティー」から作るか参加すると、ここで選べるようになります。" />
-                  ) : (
-                    <PartyPicker
-                      myParties={myParties}
-                      selectedIds={visibleParties}
-                      busy={busy}
-                      onChange={(partyId, enabled) => {
-                        const partyName = myParties.find(pt => pt.id === partyId)?.name ?? 'パーティー'
-                        void run(async () => {
-                          const { error } = await supabase.rpc('set_lecture_visible_party', {
-                            p_lecture_id: lectureId, p_party_id: partyId, p_enabled: enabled,
-                          })
-                          if (error) throw error
-                          await loadVisibleParties()
-                          showToast(enabled ? `「${partyName}」に見せるようにしました` : `「${partyName}」に見せないようにしました`)
-                        })
-                      }}
-                    />
-                  )}
-                </Field>
-              )}
-
-              {visibility !== 'private' && (
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-light)', background: 'var(--surface)', cursor: visibility === 'public' ? 'default' : 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={visibility === 'public' ? true : applyOpen}
-                    disabled={visibility === 'public'}
-                    onChange={e => setApplyOpen(e.target.checked)}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>参加を承認制にする</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-                      {visibility === 'public'
-                        ? '全体公開の間は承認制に固定されます'
-                        : 'オンにすると、参加したい人は申請を送り、参加者の誰かが承認すると参加できます'}
-                    </span>
-                  </span>
-                </label>
-              )}
-            </Section>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', bottom: -20, padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--border-light)' }}>
-              <Button type="submit" variant="primary" disabled={!settingsDirty} loading={busy}>設定を保存</Button>
+              <Button type="submit" variant="primary" disabled={!settingsDirty} loading={busy}>保存する</Button>
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{settingsDirty ? '保存していない変更があります' : '変更はありません'}</span>
             </div>
           </form>

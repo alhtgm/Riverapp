@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toMessage } from '../../lib/errors'
+import { pickLectureColor } from '../../lib/colors'
+import { semesterLabel, subjectInSemester } from '../../lib/semester'
 import {
   LIMITS, INVITE_CODE_TTLS, INVITE_CODE_MAX_USES, DEFAULT_INVITE_CODE_TTL, DEFAULT_INVITE_CODE_MAX_USES,
 } from '../../lib/limits'
+import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
-import { Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
+import { Avatar, Badge, Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
 import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import MemberList from './MemberList'
-import type { LectureSummary, PartyInviteCode, PartyMember } from '../../types'
+import { usePartyInvites } from './usePartyInvites'
+import { VISIBILITY_LABEL, type LectureSummary, type PartyInviteCode, type PartyMember, type Subject } from '../../types'
 
 interface Props {
   partyId: string
@@ -20,18 +24,35 @@ interface Props {
   onOpenProfile: (userId: string) => void
 }
 
-type Tab = 'lectures' | 'members' | 'invite' | 'settings'
+type Tab = 'lectures' | 'members' | 'settings'
+type Scope = 'semester' | 'all'
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const selectStyle = { ...inputStyle, minHeight: 38 }
+function ScopeSelect({ value, onChange }: { value: Scope; onChange: (v: Scope) => void }) {
+  const semester = useStore(s => s.semester)
+  return (
+    <select value={value} onChange={e => onChange(e.target.value as Scope)} aria-label="表示する学期"
+      style={{ ...inputStyle, width: 'auto', minHeight: 30, padding: '4px 10px', fontSize: 12 }}>
+      <option value="semester">{semesterLabel(semester)}</option>
+      <option value="all">すべての学期</option>
+    </select>
+  )
+}
 
+/**
+ * パーティーのホーム。このパーティーに関することはすべてここで行う。
+ *   講義：共有されている講義にまとめて参加する／自分の講義をこのパーティーに見せる
+ *   メンバー：フレンドや招待コードで招待する／メンバー一覧
+ *   設定：名前の変更・退出
+ */
 export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfile }: Props) {
   const { showToast } = useToast()
-  const { parties, friends, users, fetchSocial, version: socialVersion } = useSocialStore()
+  const { parties, fetchSocial, version: socialVersion } = useSocialStore()
+  const dataVersion = useStore(s => s.dataVersion)
   const party = parties.find(p => p.id === partyId)
 
   const [tab, setTab] = useState<Tab>('lectures')
@@ -39,9 +60,6 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
   const [members, setMembers] = useState<PartyMember[]>([])
   const [codes, setCodes] = useState<PartyInviteCode[]>([])
   const [name, setName] = useState(party?.name ?? '')
-  const [ttl, setTtl] = useState<string>(DEFAULT_INVITE_CODE_TTL)
-  const [maxUses, setMaxUses] = useState<number>(DEFAULT_INVITE_CODE_MAX_USES)
-  const [inviteFriend, setInviteFriend] = useState('')
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -57,8 +75,8 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
     setCodes(((codeRes.data ?? []) as PartyInviteCode[]).filter(c => c.use_count < c.max_uses))
   }, [partyId])
 
-  // メンバーの参加・退出などはリアルタイムで届くので、そのたびに読み直す
-  useEffect(() => { void load() }, [load, socialVersion])
+  // メンバー・講義の変化はリアルタイムで届くので、そのたびに読み直す
+  useEffect(() => { void load() }, [load, socialVersion, dataVersion])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -74,13 +92,11 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
   }
 
   const activeCount = members.filter(m => m.status === 'active').length
-  const memberIds = new Set(members.filter(m => m.status === 'active').map(m => m.user_id))
-  const invitableFriends = friends.filter(f => !memberIds.has(f.userId))
 
   return (
     <Sheet
       title={party.name}
-      subtitle={`メンバー ${activeCount}/${LIMITS.partyMaxMembers}人・全員が対等で、リーダーはいません`}
+      subtitle={`メンバー ${activeCount}/${LIMITS.partyMaxMembers}人・全員が対等で、誰でも招待や設定の変更ができます`}
       onClose={onClose}
       zIndex={310}
       width={800}
@@ -92,142 +108,30 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
         tabs={[
           { key: 'lectures', label: '講義' },
           { key: 'members', label: 'メンバー' },
-          { key: 'invite', label: '招待' },
           { key: 'settings', label: '設定' },
         ]}
       />
 
       {tab === 'lectures' && (
-        <Section
-          title="メンバーが参加している講義"
-          count={lectures?.length}
-          description="このパーティーに見せている講義の一覧です。参加すると課題があなたのタイムラインに入ります"
-        >
-          {lectures === null ? (
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
-          ) : (
-            <LectureList
-              lectures={lectures}
-              onChanged={load}
-              onOpenLecture={onOpenLecture}
-              emptyMessage="まだ共有されている講義はありません"
-            />
-          )}
-        </Section>
+        <LecturesTab partyId={partyId} partyName={party.name} lectures={lectures} onChanged={load} onOpenLecture={onOpenLecture} />
       )}
 
       {tab === 'members' && (
-        <MemberList
-          targetType="party"
-          targetId={partyId}
-          members={members.map(m => ({ userId: m.user_id, status: m.status }))}
-          onOpenProfile={onOpenProfile}
-          onChanged={() => { void load(); void fetchSocial() }}
-        />
-      )}
-
-      {tab === 'invite' && (
         <>
-          <Section title="フレンドを招待" description="相手に通知が届き、承諾するとメンバーになります">
-            {invitableFriends.length === 0 ? (
-              <EmptyState compact title="招待できるフレンドがいません" description="フレンドが全員参加済みか、まだフレンドがいません。下の招待コードも使えます。" />
-            ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <select value={inviteFriend} onChange={e => setInviteFriend(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
-                  <option value="">フレンドを選んでください</option>
-                  {invitableFriends.map(f => <option key={f.userId} value={f.userId}>{userLabel(users, f.userId)}</option>)}
-                </select>
-                <Button
-                  variant="primary"
-                  disabled={!inviteFriend}
-                  loading={busy}
-                  onClick={() => run(async () => {
-                    const { error } = await supabase.rpc('invite_to_party', { p_party_id: partyId, p_invitee_id: inviteFriend })
-                    if (error) throw error
-                    setInviteFriend('')
-                    showToast('招待を送りました')
-                  })}
-                >
-                  招待する
-                </Button>
-              </div>
-            )}
-          </Section>
-
-          <Section title="招待コード" count={codes.length} description="フレンドでない人も、コードを入力すると参加できます。メンバーなら誰でも発行・無効化できます">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, alignItems: 'end' }}>
-              <Field label="有効期限" required>
-                <select value={ttl} onChange={e => setTtl(e.target.value)} style={selectStyle}>
-                  {INVITE_CODE_TTLS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </Field>
-              <Field label="使える回数" required>
-                <select value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} style={selectStyle}>
-                  {INVITE_CODE_MAX_USES.map(n => <option key={n} value={n}>{n}回</option>)}
-                </select>
-              </Field>
-              <Button
-                variant={invitableFriends.length === 0 ? 'primary' : 'secondary'}
-                loading={busy}
-                onClick={() => run(async () => {
-                  const { error } = await supabase.rpc('create_party_invite_code', { p_party_id: partyId, p_ttl: ttl, p_max_uses: maxUses })
-                  if (error) throw error
-                  await load()
-                  showToast('招待コードを発行しました')
-                })}
-              >
-                コードを発行
-              </Button>
-            </div>
-            {codes.length === 0 ? (
-              <EmptyState compact title="有効な招待コードはありません" />
-            ) : (
-              <List>
-                {codes.map(c => (
-                  <ListItem
-                    key={c.id}
-                    title={<code style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.14em' }}>{c.code}</code>}
-                    subtitle={`${formatDateTime(c.expires_at)}まで・${c.use_count}/${c.max_uses}回使用`}
-                    trailing={
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            void navigator.clipboard?.writeText(c.code).then(
-                              () => showToast('コピーしました'),
-                              () => showToast('コピーできませんでした', 'error'),
-                            )
-                          }}
-                        >
-                          コピー
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          style={{ color: 'var(--danger)' }}
-                          disabled={busy}
-                          onClick={() => run(async () => {
-                            const { error } = await supabase.rpc('revoke_party_invite_code', { p_code_id: c.id })
-                            if (error) throw error
-                            await load()
-                            showToast('招待コードを無効にしました')
-                          })}
-                        >
-                          無効化
-                        </Button>
-                      </>
-                    }
-                  />
-                ))}
-              </List>
-            )}
-          </Section>
+          <InviteSection partyId={partyId} codes={codes} onChanged={load} />
+          <MemberList
+            targetType="party"
+            targetId={partyId}
+            members={members.map(m => ({ userId: m.user_id, status: m.status }))}
+            onOpenProfile={onOpenProfile}
+            onChanged={() => { void load(); void fetchSocial() }}
+          />
         </>
       )}
 
       {tab === 'settings' && (
         <>
-          <Section title="パーティー名" description="メンバーなら誰でも変更できます。変更は履歴に残ります">
+          <Section title="パーティー名" description="メンバーなら誰でも変更できます">
             <form
               style={{ display: 'flex', gap: 8, maxWidth: 480 }}
               onSubmit={e => {
@@ -242,7 +146,7 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
                 })
               }}
             >
-              <input value={name} onChange={e => setName(e.target.value)} maxLength={40} style={{ ...inputStyle, minHeight: 38 }} />
+              <input value={name} onChange={e => setName(e.target.value)} maxLength={40} style={inputStyle} />
               <Button type="submit" variant="primary" disabled={name.trim() === party.name} loading={busy}>保存する</Button>
             </form>
           </Section>
@@ -272,5 +176,299 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
         </>
       )}
     </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------
+// 講義タブ
+// ---------------------------------------------------------------
+function LecturesTab({ partyId, partyName, lectures, onChanged, onOpenLecture }: {
+  partyId: string
+  partyName: string
+  lectures: LectureSummary[] | null
+  onChanged: () => Promise<void>
+  onOpenLecture: (lectureId: string) => void
+}) {
+  const { showToast } = useToast()
+  const { subjects, semester, fetchAll, updateLectureSettings, dataVersion } = useStore()
+  const [scope, setScope] = useState<Scope>('semester')
+  const [busy, setBusy] = useState(false)
+  /** 自分の講義のうち、このパーティーに見せているもの */
+  const [shared, setShared] = useState<Set<string> | null>(null)
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    try { await fn() } catch (e: unknown) { showToast(toMessage(e), 'error') } finally { setBusy(false) }
+  }
+
+  const inScope = useCallback(
+    (l: { year: number; term: Subject['term'] }) => scope === 'all' || subjectInSemester(l, semester),
+    [scope, semester],
+  )
+
+  const subjectIdsKey = subjects.map(s => s.id).join(',')
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('lecture_visible_parties')
+        .select('lecture_id')
+        .eq('party_id', partyId)
+        .in('lecture_id', subjectIdsKey ? subjectIdsKey.split(',') : [])
+      if (!cancelled) setShared(new Set(((data ?? []) as { lecture_id: string }[]).map(r => r.lecture_id)))
+    })()
+    return () => { cancelled = true }
+  }, [partyId, subjectIdsKey, dataVersion])
+
+  const shown = (lectures ?? []).filter(inScope)
+  const notJoined = shown.filter(l => l.my_status === 'none')
+  const myLectures = useMemo(() => subjects.filter(inScope), [subjects, inScope])
+  const isShared = (l: Subject) => l.visibility === 'public' || (shared?.has(l.id) ?? false)
+  const editable = myLectures.filter(l => l.visibility !== 'public')
+  const allShared = editable.length > 0 && editable.every(isShared)
+
+  const joinAll = () => run(async () => {
+    let joined = 0
+    let requested = 0
+    let failed = 0
+    for (const [i, l] of notJoined.entries()) {
+      const { error } = l.apply_open
+        ? await supabase.rpc('request_join_lecture', { p_lecture_id: l.id })
+        : await supabase.rpc('join_lecture', { p_lecture_id: l.id, p_color: pickLectureColor(subjects.length + i) })
+      if (error) failed++
+      else if (l.apply_open) requested++
+      else joined++
+    }
+    if (joined > 0) await fetchAll({ silent: true })
+    await onChanged()
+    showToast([
+      joined && `${joined}件の講義に参加しました`,
+      requested && `${requested}件に参加申請を送りました`,
+      failed && `${failed}件はできませんでした`,
+    ].filter(Boolean).join('・'), failed && !joined && !requested ? 'error' : undefined)
+  })
+
+  /** 「公開しない」の講義を見せるときは、公開範囲を「パーティー内」にする */
+  const setShare = async (targets: Subject[], enabled: boolean) => {
+    for (const l of targets) {
+      if (enabled && l.visibility === 'private') await updateLectureSettings(l.id, { visibility: 'party', apply_open: false })
+      const { error } = await supabase.rpc('set_lecture_visible_party', { p_lecture_id: l.id, p_party_id: partyId, p_enabled: enabled })
+      if (error) throw error
+    }
+    setShared(prev => {
+      const next = new Set(prev)
+      for (const l of targets) {
+        if (enabled) next.add(l.id)
+        else next.delete(l.id)
+      }
+      return next
+    })
+  }
+
+  return (
+    <>
+      <Section
+        title="このパーティーで見られる講義"
+        count={lectures === null ? undefined : shown.length}
+        description="メンバーが参加している講義です。参加すると課題があなたのタイムラインに入ります"
+        action={
+          <>
+            <ScopeSelect value={scope} onChange={setScope} />
+            {notJoined.length > 0 && (
+              <Button size="sm" variant="primary" loading={busy} onClick={() => void joinAll()}>
+                まだの{notJoined.length}件にまとめて参加
+              </Button>
+            )}
+          </>
+        }
+      >
+        {lectures === null ? (
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+        ) : (
+          <LectureList
+            lectures={shown}
+            onChanged={() => { void onChanged() }}
+            onOpenLecture={onOpenLecture}
+            emptyMessage={scope === 'semester' ? 'この学期の講義はまだありません（右上で「すべての学期」も選べます）' : 'まだ共有されている講義はありません'}
+          />
+        )}
+      </Section>
+
+      <Section
+        title={`あなたの講義を「${partyName}」に見せる`}
+        count={myLectures.length}
+        description="チェックした講義は、このパーティーのメンバーが見つけて参加できます。押すとすぐ反映されます"
+        action={editable.length > 1 && (
+          <Button size="sm" disabled={busy || shared === null} onClick={() => run(async () => {
+            await setShare(allShared ? editable : editable.filter(l => !isShared(l)), !allShared)
+            showToast(allShared ? 'すべての講義を見せないようにしました' : 'すべての講義を見せるようにしました')
+          })}>
+            {allShared ? 'すべて外す' : 'すべて見せる'}
+          </Button>
+        )}
+      >
+        {myLectures.length === 0 ? (
+          <EmptyState compact title="この学期の講義はありません" description="右上の学期を「すべての学期」にすると、ほかの学期の講義も選べます。" />
+        ) : (
+          <List>
+            {myLectures.map(l => {
+              const on = isShared(l)
+              const locked = l.visibility === 'public'
+              return (
+                <label key={l.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, minHeight: 48, padding: '8px 12px',
+                  border: `1px solid ${on ? 'var(--accent-muted)' : 'var(--border-light)'}`, borderRadius: 12,
+                  background: on ? 'var(--accent-bg)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={busy || shared === null || locked}
+                    onChange={() => void run(async () => {
+                      await setShare([l], !on)
+                      showToast(on ? `「${l.name}」を見せないようにしました` : `「${l.name}」を「${partyName}」に見せるようにしました`)
+                    })}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                    {locked ? '全体公開（誰でも見られます）' : `${VISIBILITY_LABEL[l.visibility]}・${l.apply_open ? '参加は承認制' : 'すぐ参加できる'}`}
+                  </span>
+                </label>
+              )
+            })}
+          </List>
+        )}
+      </Section>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------
+// メンバーを招待
+// ---------------------------------------------------------------
+function InviteSection({ partyId, codes, onChanged }: { partyId: string; codes: PartyInviteCode[]; onChanged: () => Promise<void> }) {
+  const { showToast } = useToast()
+  const { friends, users, parties } = useSocialStore()
+  const party = parties.find(p => p.id === partyId)
+  const { loaded, stateOf, invite, busy: inviting } = usePartyInvites()
+  const [showCode, setShowCode] = useState(false)
+  const [ttl, setTtl] = useState<string>(DEFAULT_INVITE_CODE_TTL)
+  const [maxUses, setMaxUses] = useState<number>(DEFAULT_INVITE_CODE_MAX_USES)
+  const [busy, setBusy] = useState(false)
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    try { await fn() } catch (e: unknown) { showToast(toMessage(e), 'error') } finally { setBusy(false) }
+  }
+
+  const candidates = friends.filter(f => stateOf(partyId, f.userId) !== 'member')
+  const invitable = candidates.filter(f => !stateOf(partyId, f.userId))
+  const full = (party?.member_count ?? 0) >= LIMITS.partyMaxMembers
+
+  return (
+    <Section
+      title="メンバーを招待"
+      description="フレンドは「招待」を押すだけで招待できます。相手が受信箱で承諾するとメンバーになります"
+      action={invitable.length > 1 && !full && (
+        <Button size="sm" variant="primary" disabled={!loaded || inviting} onClick={() => void invite(partyId, invitable.map(f => f.userId))}>
+          フレンド全員を招待（{invitable.length}）
+        </Button>
+      )}
+    >
+      {friends.length === 0 ? (
+        <EmptyState compact title="まだフレンドがいません" description="フレンドでない人は、下の招待コードで招待できます。" />
+      ) : candidates.length === 0 ? (
+        <EmptyState compact title="フレンドは全員メンバーです" description="ほかの人は、下の招待コードで招待できます。" />
+      ) : (
+        <List>
+          {candidates.map(f => {
+            const st = stateOf(partyId, f.userId)
+            return (
+              <ListItem
+                key={f.userId}
+                leading={<Avatar name={userLabel(users, f.userId)} size={32} />}
+                title={userLabel(users, f.userId)}
+                subtitle={users[f.userId]?.handle ? `@${users[f.userId]?.handle}` : undefined}
+                trailing={st === 'invited' ? <Badge tone="info">招待中</Badge>
+                  : st === 'excluded' ? <Badge tone="danger">除外中</Badge>
+                    : (
+                      <Button size="sm" variant="primary" disabled={!loaded || inviting || full} title={full ? '満員のため招待できません' : undefined}
+                        onClick={() => void invite(partyId, [f.userId])}>
+                        招待
+                      </Button>
+                    )}
+              />
+            )
+          })}
+        </List>
+      )}
+
+      <div>
+        <Button size="sm" variant="ghost" aria-expanded={showCode} onClick={() => setShowCode(s => !s)}>
+          フレンド以外の人を招待する（招待コード）{showCode ? ' ▲' : ' ▼'}
+        </Button>
+      </div>
+      {showCode && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, alignItems: 'end' }}>
+            <Field label="有効期限" required>
+              <select value={ttl} onChange={e => setTtl(e.target.value)} style={inputStyle}>
+                {INVITE_CODE_TTLS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="使える回数" required>
+              <select value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} style={inputStyle}>
+                {INVITE_CODE_MAX_USES.map(n => <option key={n} value={n}>{n}回</option>)}
+              </select>
+            </Field>
+            <Button
+              loading={busy}
+              onClick={() => run(async () => {
+                const { error } = await supabase.rpc('create_party_invite_code', { p_party_id: partyId, p_ttl: ttl, p_max_uses: maxUses })
+                if (error) throw error
+                await onChanged()
+                showToast('招待コードを発行しました。相手に伝えて「仲間 › パーティー」で入力してもらいます')
+              })}
+            >
+              コードを発行
+            </Button>
+          </div>
+          {codes.length > 0 && (
+            <List>
+              {codes.map(c => (
+                <ListItem
+                  key={c.id}
+                  title={<code style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.14em' }}>{c.code}</code>}
+                  subtitle={`${formatDateTime(c.expires_at)}まで・${c.use_count}/${c.max_uses}回使用`}
+                  trailing={
+                    <>
+                      <Button size="sm" onClick={() => {
+                        void navigator.clipboard?.writeText(c.code).then(
+                          () => showToast('コピーしました'),
+                          () => showToast('コピーできませんでした', 'error'),
+                        )
+                      }}>
+                        コピー
+                      </Button>
+                      <Button size="sm" variant="ghost" style={{ color: 'var(--danger)' }} disabled={busy}
+                        onClick={() => run(async () => {
+                          const { error } = await supabase.rpc('revoke_party_invite_code', { p_code_id: c.id })
+                          if (error) throw error
+                          await onChanged()
+                          showToast('招待コードを無効にしました')
+                        })}>
+                        無効にする
+                      </Button>
+                    </>
+                  }
+                />
+              ))}
+            </List>
+          )}
+        </div>
+      )}
+    </Section>
   )
 }
