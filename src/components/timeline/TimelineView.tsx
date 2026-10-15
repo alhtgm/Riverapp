@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import SocialPanel, { type SocialTab } from '../social/SocialPanel'
+import ManageCenter, { type ManageTab } from '../social/ManageCenter'
 import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
@@ -14,6 +15,7 @@ import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
+import { semesterKey, semesterLabel, semesterRange, subjectInSemester } from '../../lib/semester'
 
 const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
@@ -21,19 +23,27 @@ const ROW_HEIGHT = 52
 const HEADER_HEIGHT = 56
 const SUBJECT_SEP_HEIGHT = 40
 
-function getDays(totalDays: number): Date[] {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const half = Math.floor(totalDays / 2)
-  return Array.from({ length: totalDays }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(d.getDate() + i - half)
-    return d
-  })
+function getDays(start: Date, end: Date): Date[] {
+  const days: Date[] = []
+  const d = new Date(start)
+  d.setHours(0, 0, 0, 0)
+  while (d <= end) {
+    days.push(new Date(d))
+    d.setDate(d.getDate() + 1)
+  }
+  return days
 }
 
+function shiftDate(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
+/** 学期の期間の前後に付ける余白（日） */
+const RANGE_MARGIN_DAYS = 14
+
 const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
-const TOTAL_DAYS = 240
 
 
 type EffectiveStatus = 'todo' | 'in_progress' | 'done' | 'submitted' | 'overdue'
@@ -153,12 +163,23 @@ interface DragState {
 }
 
 export default function TimelineView() {
-  const { subjects, tasks, fetchAll, updateSubject, updateTask, addTask, loading, isDark, toggleTheme, schoolName, userId } = useStore()
+  const {
+    subjects: allSubjects, tasks: allTasks, semester,
+    fetchAll, updateSubject, updateTask, addTask, loading, isDark, toggleTheme, schoolName, userId,
+  } = useStore()
+  // 表示中の学期の講義・課題だけを扱う（学期 = Excel のシート）
+  const subjects = useMemo(() => allSubjects.filter(s => subjectInSemester(s, semester)), [allSubjects, semester])
+  const tasks = useMemo(() => {
+    const ids = new Set(subjects.map(s => s.id))
+    return allTasks.filter(t => ids.has(t.subject_id))
+  }, [allTasks, subjects])
   const { showToast } = useToast()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addModalSubjectId, setAddModalSubjectId] = useState<string | null>(null)
   /** つながり（通知・フレンド・パーティー）パネル。開いているタブ */
   const [socialTab, setSocialTab] = useState<SocialTab | null>(null)
+  /** まとめて管理（申請・招待・講義の公開を一括で操作する画面）。開いているタブ */
+  const [manageTab, setManageTab] = useState<ManageTab | null>(null)
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
   const [partyId, setPartyId] = useState<string | null>(null)
   const [lectureId, setLectureId] = useState<string | null>(null)
@@ -169,7 +190,7 @@ export default function TimelineView() {
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
   /** 表示範囲: 'week'=今週, 'month'=今月(30日), 'all'=すべて */
-  const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('month')
+  const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('all')
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -186,7 +207,19 @@ export default function TimelineView() {
   const [dragOverride, setDragOverride] = useState<{ id: string; start_date: string; due_date: string } | null>(null)
   const wasDraggingRef = useRef(false)
 
-  const days = getDays(TOTAL_DAYS)
+  // 表示する日付: 学期の期間（前後に余白）。期間外の課題があればそこまで広げる
+  const days = useMemo(() => {
+    const range = semesterRange(semester)
+    let start = shiftDate(range.start, -RANGE_MARGIN_DAYS)
+    let end = shiftDate(range.end, RANGE_MARGIN_DAYS)
+    for (const t of tasks) {
+      const s = shiftDate(parseLocalDate(t.start_date), -7)
+      const e = shiftDate(parseLocalDate(t.due_date), 7)
+      if (s < start) start = s
+      if (e > end) end = e
+    }
+    return getDays(start, end)
+  }, [semester, tasks])
   const todayStr = toDateString(new Date())
   const todayIdx = days.findIndex(d => toDateString(d) === todayStr)
 
@@ -253,12 +286,24 @@ export default function TimelineView() {
     }
   }, [todayIdx, COL_WIDTH])
 
+  // 初回表示と学期の切り替え時: 今日が学期内なら今日へ、そうでなければ学期の最初の課題へスクロールする
+  const currentSemesterKey = semesterKey(semester)
+  const scrolledSemesterRef = useRef<string | null>(null)
+  /** 最初の読み込みが始まったか（読み込み前に表示位置を決めないようにする） */
+  const loadStartedRef = useRef(false)
   useEffect(() => {
-    if (scrollRef.current && todayIdx >= 0) {
-      const target = todayIdx * COL_WIDTH - scrollRef.current.clientWidth / 2 + COL_WIDTH / 2
-      scrollRef.current.scrollLeft = Math.max(0, target)
+    if (loading) { loadStartedRef.current = true; return }
+    const el = scrollRef.current
+    if (!el || !loadStartedRef.current || scrolledSemesterRef.current === currentSemesterKey) return
+    scrolledSemesterRef.current = currentSemesterKey
+    let idx = todayIdx
+    if (idx < 0) {
+      const first = tasks.reduce<string | null>((min, t) => (min === null || t.start_date < min ? t.start_date : min), null)
+      idx = first ? days.findIndex(d => toDateString(d) === first) : RANGE_MARGIN_DAYS
     }
-  }, [todayIdx])
+    const target = idx * COL_WIDTH - el.clientWidth / 2 + COL_WIDTH / 2
+    el.scrollLeft = Math.max(0, target)
+  }, [currentSemesterKey, todayIdx, tasks, days, loading, COL_WIDTH])
 
   // Keyboard shortcuts: N = new task, T = scroll to today, D = dark mode
   // Shift+R = 再追加カードを強制表示（科目を順送り）。本番環境でも有効。
@@ -529,6 +574,23 @@ export default function TimelineView() {
           }}>
             v{__APP_VERSION__}
           </span>
+          <span
+            title="学期はメニューから切り替えられます"
+            style={{
+              fontSize: 11,
+              color: '#ffffff',
+              fontWeight: 700,
+              background: 'rgba(255,255,255,0.14)',
+              border: '1px solid rgba(255,255,255,0.22)',
+              borderRadius: 9999,
+              padding: '2px 9px',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {isMobile ? semesterLabel(semester).replace('年度 ', '') : semesterLabel(semester)}
+          </span>
         </div>
 
         {/* Add task button */}
@@ -573,6 +635,7 @@ export default function TimelineView() {
         <HeaderMenu
           onOpenSocial={setSocialTab}
           onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
+          onOpenManage={tab => setManageTab(tab ?? 'inbox')}
         />
       </header>
 
@@ -915,10 +978,16 @@ export default function TimelineView() {
                   </svg>
                 </div>
                 <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  {viewRange !== 'all' ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません` : '課題を追加してはじめましょう'}
+                  {viewRange !== 'all'
+                    ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません`
+                    : subjects.length === 0 ? `${semesterLabel(semester)}の講義はまだありません` : '課題を追加してはじめましょう'}
                 </p>
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 5, letterSpacing: '-0.01em' }}>
-                  {viewRange !== 'all' ? '「すべて」に切り替えると全期間の課題が表示されます' : '右上の「課題を追加」から追加できます [N]'}
+                  {viewRange !== 'all'
+                    ? '「すべて」に切り替えると全期間の課題が表示されます'
+                    : subjects.length === 0
+                      ? '「課題を追加」から講義を作成できます。ほかの学期はメニューから切り替えられます'
+                      : '右上の「課題を追加」から追加できます [N]'}
                 </p>
                 {viewRange !== 'all' && (
                   <button
@@ -1349,6 +1418,14 @@ export default function TimelineView() {
           subjects={subjects}
           onClose={() => setAddModalSubjectId(null)}
           defaultSubjectId={addModalSubjectId || undefined}
+        />
+      )}
+
+      {manageTab && (
+        <ManageCenter
+          initialTab={manageTab}
+          onClose={() => setManageTab(null)}
+          onOpenProfile={setProfileUserId}
         />
       )}
 

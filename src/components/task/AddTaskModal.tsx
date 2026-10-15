@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { Subject } from '../../types'
 import { useStore } from '../../store/useStore'
-import { toDateString, parseLocalDate, formatDate } from '../../types'
+import { toDateString, parseLocalDate, formatDate, TERM_LABEL } from '../../types'
+import { subjectInSemester } from '../../lib/semester'
 import { useToast } from '../ui/Toast'
 import MiniCalendar from '../ui/MiniCalendar'
 import NewLectureForm from '../lecture/NewLectureForm'
@@ -50,7 +51,7 @@ function offsetFromToday(dateStr: string): number {
 }
 
 export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Props) {
-  const { addTask, addRecurringTasks } = useStore()
+  const { addTask, addRecurringTasks, subjects: allSubjects, semester } = useStore()
   const { showToast } = useToast()
   const [mode, setMode] = useState<Mode>('single')
   const [title, setTitle] = useState('')
@@ -69,6 +70,13 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const [showCustomDue, setShowCustomDue] = useState(false)
 
   const effectiveMode = mode
+
+  // ほかの学期の講義をこの画面で作った場合も選べるようにする（追加先の学期はトーストで知らせる）
+  const chosen = allSubjects.find(s => s.id === subjectId)
+  const options = chosen && !subjects.some(s => s.id === chosen.id) ? [...subjects, chosen] : subjects
+  const otherSemesterNote = chosen && !subjectInSemester(chosen, semester)
+    ? `（${chosen.year}年度 ${TERM_LABEL[chosen.term]}の講義です）`
+    : ''
 
   useEffect(() => {
     if (subjects.length > 0 && !subjectId) setSubjectId(subjects[0].id)
@@ -105,13 +113,13 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
           status: 'todo',
           memo: memo || null,
         })
-        showToast('課題を追加しました')
+        showToast(`課題を追加しました${otherSemesterNote}`)
       } else {
         await addRecurringTasks(
           { title: effectiveTitle, start_from: startDate, interval_weeks: intervalWeeks, duration_days: durationDays, count },
           subjectId
         )
-        showToast(`繰り返し課題を${count}件追加しました`)
+        showToast(`繰り返し課題を${count}件追加しました${otherSemesterNote}`)
       }
       onClose()
     } catch (e: unknown) {
@@ -322,10 +330,10 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 onFocus={handleFocus}
                 onBlur={handleBlur}
               >
-                {subjects.map(s => (
+                {options.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {subjects.length === 0 && <option value="">講義がありません（「+ 講義」から作成）</option>}
+                {options.length === 0 && <option value="">講義がありません（「+ 講義」から作成）</option>}
               </select>
               {(
                 <button
@@ -360,7 +368,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
               />
             )}
             <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 0', lineHeight: 1.5 }}>
-              課題名・締切は講義の参加者全員に共有されます。開始日・ステータス・メモはあなただけのものです。
+              課題名・開始日・締切は講義の参加者全員に共有されます。ステータス・メモはあなただけのものです。
             </p>
           </div>
 

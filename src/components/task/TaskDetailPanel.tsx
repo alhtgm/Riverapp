@@ -430,7 +430,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
             <label style={labelStyle}>作業開始日</label>
             <input type="date" value={startDate} max={dueDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
-              タイムラインのバーの開始位置です。締切日と同じにすると未設定（締切だけ表示）になります。
+              タイムラインのバーの開始位置です。変えるとあなたにだけ反映され、講義の発生日に戻すとほかの参加者と同じ表示になります。
             </p>
           </div>
 

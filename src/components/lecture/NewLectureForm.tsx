@@ -18,24 +18,17 @@ interface Props {
 
 const TERMS: LectureTerm[] = ['spring', 'fall', 'full_year', 'other']
 
-/** 4月始まりの年度と、4〜9月なら前期・それ以外は後期を既定値にする */
-function defaultYearAndTerm(): { year: number; term: LectureTerm } {
-  const now = new Date()
-  const m = now.getMonth() + 1
-  return { year: m >= 4 ? now.getFullYear() : now.getFullYear() - 1, term: m >= 4 && m <= 9 ? 'spring' : 'fall' }
-}
-
 /**
  * 講義の作成（5章）。作成前に、自分から見える講義のうち年度・学期が同じで
  * 名前が似ているもの（全角半角・空白・大文字小文字を正規化して一致）を候補として提示する。
  */
 export default function NewLectureForm({ onReady, onCancel }: Props) {
   const { showToast } = useToast()
-  const { addSubject, subjects } = useStore()
-  const defaults = defaultYearAndTerm()
+  const { addSubject, subjects, semester } = useStore()
   const [title, setTitle] = useState('')
-  const [year, setYear] = useState(defaults.year)
-  const [term, setTerm] = useState<LectureTerm>(defaults.term)
+  // 表示中の学期を既定値にする
+  const [year, setYear] = useState(semester.year)
+  const [term, setTerm] = useState<LectureTerm>(semester.term)
   const [professor, setProfessor] = useState('')
   const [candidates, setCandidates] = useState<LectureSummary[] | null>(null)
   const [busy, setBusy] = useState(false)

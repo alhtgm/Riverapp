@@ -4,9 +4,10 @@ import type {
   Subject, Task, Recurrence, Profile, TaskProgress, LectureTerm, LectureVisibility,
   SharedTaskField, PersonalTaskField,
 } from '../types'
-import { toDateString, parseLocalDate, emptyProgress } from '../types'
+import { toDateString, emptyProgress } from '../types'
 import { toMessage } from '../lib/errors'
 import { getStoredTheme, applyTheme, type ThemeMode } from '../lib/theme'
+import { currentSemester, parseSemesterKey, semesterKey, type Semester } from '../lib/semester'
 
 interface LectureRow {
   id: string
@@ -24,6 +25,7 @@ interface LectureTaskRow {
   lecture_id: string
   recurrence_id: string | null
   title: string
+  start_date: string | null
   due_date: string
   due_time: string | null
   description: string | null
@@ -74,30 +76,29 @@ function toSubject(lecture: LectureRow, color: string, order: number): Subject {
   }
 }
 
+const TASK_COLUMNS = 'id, lecture_id, recurrence_id, title, start_date, due_date, due_time, description, url, created_at'
+
 function toTask(t: LectureTaskRow, st: TaskStateRow | undefined): Task {
-  // 作業予定の開始が未設定、または締切より後になっている場合は締切日だけを表示する
+  // 本人の作業開始日 → 講義で共有している発生日 → 締切日 の順に使う（締切より後の日付は使わない）
+  const sharedStart = t.start_date && t.start_date <= t.due_date ? t.start_date : null
   const workStart = st?.work_start_date && st.work_start_date <= t.due_date ? st.work_start_date : null
+  const start = workStart ?? sharedStart ?? t.due_date
   return {
     id: t.id,
     subject_id: t.lecture_id,
     recurrence_id: t.recurrence_id,
     title: t.title,
-    start_date: workStart ?? t.due_date,
+    start_date: start,
     due_date: t.due_date,
     due_time: t.due_time,
     status: st?.status ?? 'todo',
     memo: st?.memo ?? null,
     description: t.description,
     url: t.url,
-    has_work_period: workStart !== null,
+    shared_start_date: sharedStart,
+    has_work_period: start < t.due_date,
     created_at: t.created_at,
   }
-}
-
-function addDays(dateStr: string, days: number): string {
-  const d = parseLocalDate(dateStr)
-  d.setDate(d.getDate() + days)
-  return toDateString(d)
 }
 
 async function requireUserId(): Promise<string> {
@@ -129,6 +130,10 @@ interface AppState {
   isDark: boolean
   toggleTheme: () => void
 
+  /** 表示中の学期（最後に選んだ学期をアカウントに保存し、次回も同じ学期を開く） */
+  semester: Semester
+  setSemester: (semester: Semester) => void
+
   fetchAll: () => Promise<void>
   fetchProgress: () => Promise<void>
   signOut: () => Promise<void>
@@ -154,6 +159,16 @@ interface AppState {
   restoreTask: (id: string) => Promise<void>
 }
 
+const SEMESTER_STORAGE_KEY = 'river:semester'
+
+function readStoredSemester(): Semester | null {
+  try { return parseSemesterKey(localStorage.getItem(SEMESTER_STORAGE_KEY)) } catch { return null }
+}
+
+function storeSemesterLocally(s: Semester) {
+  try { localStorage.setItem(SEMESTER_STORAGE_KEY, semesterKey(s)) } catch { /* 保存できなくても表示は続ける */ }
+}
+
 export const useStore = create<AppState>((set, get) => ({
   userId: null,
   subjects: [],
@@ -173,11 +188,25 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isDark: next === 'dark' })
   },
 
+  semester: readStoredSemester() ?? currentSemester(),
+  setSemester: (semester) => {
+    if (semesterKey(semester) === semesterKey(get().semester)) return
+    set({ semester })
+    storeSemesterLocally(semester)
+    // ほかのブラウザでも同じ学期を開けるよう、アカウントにも保存する（失敗しても表示は切り替える）
+    void supabase.auth.updateUser({ data: { last_semester: semesterKey(semester) } })
+  },
+
   fetchProfile: async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       set({ profile: null, profileLoaded: true, userId: null })
       return
+    }
+    const saved = parseSemesterKey(user.user_metadata?.last_semester as string | undefined)
+    if (saved && semesterKey(saved) !== semesterKey(get().semester)) {
+      set({ semester: saved })
+      storeSemesterLocally(saved)
     }
     const { data, error } = await supabase
       .from('profiles')
@@ -272,7 +301,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ profile: null, profileLoaded: false, schoolName: null, subjects: [], tasks: [], progress: {}, userId: null })
+    try { localStorage.removeItem(SEMESTER_STORAGE_KEY) } catch { /* 無視 */ }
+    set({
+      profile: null, profileLoaded: false, schoolName: null, subjects: [], tasks: [], progress: {}, userId: null,
+      semester: currentSemester(),
+    })
   },
 
   fetchAll: async () => {
@@ -302,7 +335,7 @@ export const useStore = create<AppState>((set, get) => ({
         const [taskRes, stateRes] = await Promise.all([
           supabase
             .from('lecture_tasks')
-            .select('id, lecture_id, recurrence_id, title, due_date, due_time, description, url, created_at')
+            .select(TASK_COLUMNS)
             .in('lecture_id', lectureIds)
             .is('deleted_at', null)
             .order('due_date'),
@@ -418,21 +451,23 @@ export const useStore = create<AppState>((set, get) => ({
       .insert({
         lecture_id: task.subject_id,
         title: task.title,
+        // 開始日は発生日として参加者全員に共有する
+        start_date: task.start_date < task.due_date ? task.start_date : null,
         due_date: task.due_date,
         due_time: task.due_time,
         description: task.description ?? null,
         url: task.url ?? null,
         created_by: userId,
       })
-      .select('id, lecture_id, recurrence_id, title, due_date, due_time, description, url, created_at')
+      .select(TASK_COLUMNS)
       .single()
     if (error) fail(error)
 
-    // 追加した本人の作業予定・進捗・メモ（他の参加者は未設定から始まる）
+    // 追加した本人の進捗・メモ（作業開始日は共有の発生日に従う）
     const state: TaskStateRow = {
       task_id: data.id,
       status: task.status,
-      work_start_date: task.start_date < task.due_date ? task.start_date : null,
+      work_start_date: null,
       memo: task.memo,
     }
     const { error: stErr } = await supabase
@@ -446,7 +481,6 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addRecurringTasks: async (recurrence, subjectId) => {
-    const userId = await requireUserId()
     const { data, error } = await supabase.rpc('add_lecture_recurring_tasks', {
       p_lecture_id: subjectId,
       p_title: recurrence.title,
@@ -456,28 +490,9 @@ export const useStore = create<AppState>((set, get) => ({
       p_count: recurrence.count,
     })
     if (error) fail(error)
+    // 各回の発生日は RPC が共有の start_date として保存する
     const rows = (data ?? []) as LectureTaskRow[]
-
-    // 追加した本人は、各回の発生日を作業予定の開始にする
-    const states: TaskStateRow[] = rows.map(r => ({
-      task_id: r.id,
-      status: 'todo',
-      work_start_date: addDays(r.due_date, -recurrence.duration_days),
-      memo: null,
-    }))
-    const results = await Promise.all(
-      states.map(st =>
-        supabase
-          .from('task_user_state')
-          .update({ work_start_date: st.work_start_date })
-          .eq('task_id', st.task_id)
-          .eq('user_id', userId)
-      )
-    )
-    const stErr = results.find(r => r.error)?.error
-    if (stErr) fail(stErr)
-
-    set(s => ({ tasks: [...s.tasks, ...rows.map((r, i) => toTask(r, states[i]))] }))
+    set(s => ({ tasks: [...s.tasks, ...rows.map(r => toTask(r, undefined))] }))
   },
 
   updateTask: async (id, updates) => {
@@ -498,9 +513,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (updates.status !== undefined) personal.status = updates.status
     if (updates.memo !== undefined) personal.memo = updates.memo
     if (updates.start_date !== undefined) {
-      const due = updates.due_date ?? current?.due_date
-      // 開始日が締切日と同じなら「作業予定期間は未設定」として扱う
-      personal.work_start_date = due && updates.start_date < due ? updates.start_date : null
+      // 共有の発生日（なければ締切日）と同じなら上書きを外し、講義の発生日に従う
+      const defaultStart = current?.shared_start_date ?? updates.due_date ?? current?.due_date
+      personal.work_start_date = updates.start_date === defaultStart ? null : updates.start_date
     }
     if (Object.keys(personal).length > 0) {
       personal.updated_at = new Date().toISOString()
