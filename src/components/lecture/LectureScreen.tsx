@@ -38,7 +38,7 @@ const VISIBILITIES: LectureVisibility[] = ['private', 'party', 'friends', 'publi
 
 const FIELD_LABEL: Record<string, string> = {
   title: '名前', year: '年度', term: '学期', professor: '担当教員', visibility: '公開範囲',
-  apply_open: '参加申請', due_date: '締切', due_time: '締切時刻', description: '説明', url: '関連URL',
+  apply_open: '参加申請', start_date: '発生日', due_date: '締切', due_time: '締切時刻', description: '説明', url: '関連URL',
 }
 
 function formatValue(field: string, v: unknown): string {
@@ -46,7 +46,7 @@ function formatValue(field: string, v: unknown): string {
   if (field === 'term') return TERM_LABEL[v as LectureTerm] ?? String(v)
   if (field === 'visibility') return VISIBILITY_LABEL[v as LectureVisibility] ?? String(v)
   if (field === 'apply_open') return v ? 'オン' : 'オフ'
-  if (field === 'due_date') return formatDate(String(v))
+  if (field === 'due_date' || field === 'start_date') return formatDate(String(v))
   return String(v)
 }
 
@@ -72,7 +72,7 @@ function describe(entry: ActivityLogEntry, name: (id: string | null | undefined)
       case 'delete': return { what: `課題「${taskTitle}」を削除`, diffs: [] }
       case 'restore': return { what: `課題「${taskTitle}」を復元`, diffs: [] }
       default: {
-        const diffs = diffFields(['title', 'due_date', 'due_time', 'description', 'url'])
+        const diffs = diffFields(['title', 'start_date', 'due_date', 'due_time', 'description', 'url'])
         return diffs.length ? { what: `課題「${taskTitle}」を編集`, diffs } : null
       }
     }
@@ -414,7 +414,11 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                       }}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input type="radio" name="visibility" checked={active} onChange={() => setVisibility(v)} style={{ margin: 0 }} />
+                        <input type="radio" name="visibility" checked={active} onChange={() => {
+                          setVisibility(v)
+                          // パーティー内公開は申請なしを既定にする
+                          if (v === 'party' && v !== visibility) setApplyOpen(false)
+                        }} style={{ margin: 0 }} />
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{VISIBILITY_DESC[v]}</span>
