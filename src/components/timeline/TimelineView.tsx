@@ -250,13 +250,13 @@ export default function TimelineView() {
         await useSocialStore.getState().ensureUsers(notificationUserIds(n))
         const { users } = useSocialStore.getState()
         showToast(describeNotification(n, users, useStore.getState().subjects), 'info')
-        // 参加が承認された・締切が変わったときはタイムラインも読み直す
-        if ((n.type === 'lecture_apply_response' && n.payload.approved) || n.type === 'task_due_changed') {
-          void useStore.getState().fetchAll()
-        }
       })()
     })
-    const onVisible = () => { if (document.visibilityState === 'visible') void fetchSocial() }
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void fetchSocial()
+      void useStore.getState().fetchAll({ silent: true })
+    }
     document.addEventListener('visibilitychange', onVisible)
     const id = window.setInterval(() => { void fetchSocial() }, 5 * 60_000)
     return () => {
@@ -265,6 +265,11 @@ export default function TimelineView() {
       window.clearInterval(id)
     }
   }, [fetchSocial, subscribeRealtime, showToast])
+
+  // 課題・講義・進捗の変化をリアルタイムで反映する。参加する講義が変わったら購読し直す
+  const subscribeLectures = useStore(s => s.subscribeRealtime)
+  const lectureIdsKey = allSubjects.map(s => s.id).sort().join(',')
+  useEffect(() => subscribeLectures(), [subscribeLectures, lectureIdsKey])
 
   // 再追加カードのトリガー: 初回ロード時に期限切れをチェック、以降は完了への遷移を検知
   useEffect(() => {

@@ -339,7 +339,7 @@ function InboxTab({ onOpenProfile }: { onOpenProfile: (userId: string) => void }
 // 講義の公開（自分の講義 × パーティー）
 // ---------------------------------------------------------------
 function ShareTab() {
-  const { subjects, semester, updateLectureSettings } = useStore()
+  const { subjects, semester, updateLectureSettings, dataVersion } = useStore()
   const parties = useSocialStore(s => s.parties)
   const { busy, run, showToast } = useRun()
   const [scope, setScope] = useState<Scope>('semester')
@@ -364,7 +364,7 @@ function ShareTab() {
       setVisible(new Set(((data ?? []) as { lecture_id: string; party_id: string }[]).map(r => `${r.lecture_id}:${r.party_id}`)))
     })()
     return () => { cancelled = true }
-  }, [subjectIdsKey, showToast])
+  }, [subjectIdsKey, showToast, dataVersion])
 
   const isOn = (l: Subject, partyId: string) => l.visibility === 'public' || (visible?.has(`${l.id}:${partyId}`) ?? false)
 

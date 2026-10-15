@@ -134,7 +134,15 @@ interface AppState {
   semester: Semester
   setSemester: (semester: Semester) => void
 
-  fetchAll: () => Promise<void>
+  /** silent: 読み込み中の表示を出さずに読み直す（リアルタイム更新用） */
+  fetchAll: (options?: { silent?: boolean }) => Promise<void>
+  /** 講義・課題を読み直すたびに増える番号。講義画面の履歴などの再読み込みに使う */
+  dataVersion: number
+  /**
+   * 参加中の講義の課題・設定・参加者・進捗の変化をリアルタイムで受け取り、自動で読み直す。
+   * 戻り値で購読を止める。参加する講義が変わったら購読し直す
+   */
+  subscribeRealtime: () => () => void
   fetchProgress: () => Promise<void>
   signOut: () => Promise<void>
 
@@ -308,8 +316,10 @@ export const useStore = create<AppState>((set, get) => ({
     })
   },
 
-  fetchAll: async () => {
-    set({ loading: true, error: null })
+  dataVersion: 0,
+
+  fetchAll: async (options) => {
+    if (!options?.silent) set({ loading: true, error: null })
     try {
       const userId = await requireUserId()
 
@@ -364,7 +374,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
       const visibleTasks = tasks.filter(t => (rowLastDue.get(t.recurrence_id ?? t.id) ?? '') >= cutoffStr)
 
-      set({ subjects, tasks: visibleTasks, loading: false, userId })
+      set(s => ({ subjects, tasks: visibleTasks, loading: false, error: null, userId, dataVersion: s.dataVersion + 1 }))
       void get().fetchProgress()
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false })
@@ -386,6 +396,56 @@ export const useStore = create<AppState>((set, get) => ({
       if (p[status]) p[status].push({ userId: row.user_id, name: row.display_name })
     }
     set({ progress })
+  },
+
+  subscribeRealtime: () => {
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let allTimer: number | undefined
+    let progressTimer: number | undefined
+    let stopped = false
+    // 1つの操作で何行も変わる（繰り返し課題の一括追加など）ので、まとめて1回だけ読み直す
+    const refreshAll = () => {
+      window.clearTimeout(allTimer)
+      allTimer = window.setTimeout(() => { void get().fetchAll({ silent: true }) }, 400)
+    }
+    const refreshProgress = () => {
+      window.clearTimeout(progressTimer)
+      progressTimer = window.setTimeout(() => { void get().fetchProgress() }, 400)
+    }
+
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || stopped) return
+      const me = user.id
+      // 全体公開の講義も RLS 上は読めるため、自分が参加している講義だけに絞る（Realtime の in フィルタは100件まで）
+      const ids = get().subjects.map(s => s.id)
+      const inIds = ids.length > 0 && ids.length <= 100 ? `in.(${ids.join(',')})` : null
+      let ch = supabase.channel(`lectures:${me}`)
+        // 自分の参加・退出・除外（別の端末での操作や、参加申請の承認を含む）
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_participants', filter: `user_id=eq.${me}` }, refreshAll)
+        // 自分の進捗・メモ・作業開始日（別の端末での操作）
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'task_user_state', filter: `user_id=eq.${me}` }, refreshAll)
+        // ほかの参加者の進捗（RLS で参加中の講義の分だけ届く）
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'task_user_state' }, payload => {
+          const row = (payload.new ?? payload.old) as { user_id?: string } | null
+          if (row?.user_id !== me) refreshProgress()
+        })
+      if (inIds) {
+        ch = ch
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_tasks', filter: `lecture_id=${inIds}` }, refreshAll)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lectures', filter: `id=${inIds}` }, refreshAll)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_participants', filter: `lecture_id=${inIds}` }, refreshProgress)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_visible_parties', filter: `lecture_id=${inIds}` }, refreshAll)
+      }
+      channel = ch.subscribe()
+    })()
+
+    return () => {
+      stopped = true
+      window.clearTimeout(allTimer)
+      window.clearTimeout(progressTimer)
+      if (channel) void supabase.removeChannel(channel)
+    }
   },
 
   addSubject: async (input, color) => {
