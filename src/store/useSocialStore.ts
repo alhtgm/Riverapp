@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { toMessage } from '../lib/errors'
 import type { AppNotification, ApplyRequest, FriendRequest, Party, PartyInvite, UserSummary } from '../types'
+import { notificationUserIds } from '../lib/notificationText'
 
 export interface PartyWithCount extends Party {
   member_count: number
@@ -26,6 +27,8 @@ interface SocialState {
   notifications: AppNotification[]
   /** 表示名・@handle のキャッシュ */
   users: Record<string, UserSummary>
+  /** 読み直すたびに増える番号。画面ごとに持っている一覧（メンバー・講義など）の再読み込みに使う */
+  version: number
 
   fetchSocial: () => Promise<void>
   ensureUsers: (ids: (string | null | undefined)[]) => Promise<void>
@@ -45,6 +48,11 @@ interface SocialState {
   respondApplyRequests: (requestIds: string[], approve: boolean) => Promise<number>
 
   markAllNotificationsRead: () => Promise<void>
+  /**
+   * フレンド・パーティー・参加申請の変化をリアルタイムで受け取り、自動で読み直す。
+   * 新しい通知が届くと onNotification を呼ぶ。戻り値で購読を止める
+   */
+  subscribeRealtime: (onNotification: (n: AppNotification) => void) => () => void
 }
 
 export const useSocialStore = create<SocialState>((set, get) => ({
@@ -59,6 +67,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   applyRequests: [],
   notifications: [],
   users: {},
+  version: 0,
 
   fetchSocial: async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -97,7 +106,10 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     const notifications = (notifRes.data ?? []) as AppNotification[]
     const applyRequests = (applyRes.data ?? []) as ApplyRequest[]
 
-    set({ loaded: true, myId, friends, incoming, outgoing, blockedIds, parties, invites, applyRequests, notifications })
+    set(s => ({
+      loaded: true, myId, friends, incoming, outgoing, blockedIds, parties, invites, applyRequests, notifications,
+      version: s.version + 1,
+    }))
 
     // 名前表示に必要なユーザー情報をまとめて取得
     const ids = new Set<string>([myId])
@@ -106,12 +118,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     outgoing.forEach(r => ids.add(r.addressee_id))
     blockedIds.forEach(id => ids.add(id))
     invites.forEach(i => ids.add(i.inviter_id))
-    for (const n of notifications) {
-      for (const k of ['requester_id', 'addressee_id', 'inviter_id', 'applicant_id']) {
-        const v = n.payload[k]
-        if (typeof v === 'string') ids.add(v)
-      }
-    }
+    for (const n of notifications) notificationUserIds(n).forEach(id => ids.add(id))
     await get().ensureUsers([...ids])
   },
 
@@ -201,6 +208,43 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     const failed = results.filter(r => r.error)
     if (failed.length === requestIds.length && failed[0]?.error) fail(failed[0].error)
     return failed.length
+  },
+
+  subscribeRealtime: (onNotification) => {
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let timer: number | undefined
+    let stopped = false
+    // 1つの操作で複数の表が変わるので、まとめて1回だけ読み直す
+    const refresh = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => { void get().fetchSocial() }, 250)
+    }
+
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || stopped) return
+      const me = user.id
+      // 受け取れるのは各表の RLS で読める行だけ（20261016120000_realtime_social.sql）
+      channel = supabase
+        .channel(`social:${me}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${me}` }, payload => {
+          onNotification(payload.new as AppNotification)
+          refresh()
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests', filter: `addressee_id=eq.${me}` }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests', filter: `requester_id=eq.${me}` }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'party_invites', filter: `invitee_id=eq.${me}` }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'party_invites', filter: `inviter_id=eq.${me}` }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members' }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'lecture_apply_requests' }, refresh)
+        .subscribe()
+    })()
+
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+      if (channel) void supabase.removeChannel(channel)
+    }
   },
 
   markAllNotificationsRead: async () => {

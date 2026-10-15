@@ -20,7 +20,7 @@ interface Props {
 export default function ProfileView({ userId, onClose, onOpenLecture, onEditProfile }: Props) {
   const { showToast } = useToast()
   const {
-    myId, users, friends, incoming, outgoing, blockedIds, parties,
+    myId, users, friends, incoming, outgoing, blockedIds, parties, version: socialVersion,
     ensureUsers, sendFriendRequest, acceptFriendRequest, removeFriendRequest, block, unblock,
   } = useSocialStore()
   const [lectures, setLectures] = useState<LectureSummary[] | null>(null)
@@ -43,7 +43,7 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
   useEffect(() => {
     void ensureUsers([userId])
     void loadLectures()
-  }, [userId, ensureUsers, loadLectures])
+  }, [userId, ensureUsers, loadLectures, socialVersion])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)

@@ -31,7 +31,7 @@ const selectStyle = { ...inputStyle, minHeight: 38 }
 
 export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfile }: Props) {
   const { showToast } = useToast()
-  const { parties, friends, users, fetchSocial } = useSocialStore()
+  const { parties, friends, users, fetchSocial, version: socialVersion } = useSocialStore()
   const party = parties.find(p => p.id === partyId)
 
   const [tab, setTab] = useState<Tab>('lectures')
@@ -57,7 +57,8 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
     setCodes(((codeRes.data ?? []) as PartyInviteCode[]).filter(c => c.use_count < c.max_uses))
   }, [partyId])
 
-  useEffect(() => { void load() }, [load])
+  // メンバーの参加・退出などはリアルタイムで届くので、そのたびに読み直す
+  useEffect(() => { void load() }, [load, socialVersion])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)

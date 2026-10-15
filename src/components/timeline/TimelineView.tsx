@@ -16,6 +16,7 @@ import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import { semesterKey, semesterLabel, semesterRange, subjectInSemester } from '../../lib/semester'
+import { describeNotification, notificationUserIds } from '../../lib/notificationText'
 
 const COL_WIDTH_DESKTOP = 44
 const COL_WIDTH_MOBILE = 36
@@ -239,12 +240,36 @@ export default function TimelineView() {
     if (loadError) showToast(`読み込みに失敗しました：${loadError}`, 'error')
   }, [loadError, showToast])
 
-  // 通知・申請のバッジを定期的に更新する（アプリ内通知のみ。9章）
+  // 通知・申請・フレンド・パーティーの変化をリアルタイムで反映する（再読み込み不要）。
+  // 新しい通知はトーストでも知らせる。接続が切れていた間の分は、画面に戻ったときと5分ごとに読み直して補う
+  const subscribeRealtime = useSocialStore(s => s.subscribeRealtime)
   useEffect(() => {
     void fetchSocial()
-    const id = window.setInterval(() => { void fetchSocial() }, 60_000)
-    return () => window.clearInterval(id)
-  }, [fetchSocial])
+    const stop = subscribeRealtime(n => {
+      void (async () => {
+        await useSocialStore.getState().ensureUsers(notificationUserIds(n))
+        const { users } = useSocialStore.getState()
+        showToast(describeNotification(n, users, useStore.getState().subjects), 'info')
+      })()
+    })
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void fetchSocial()
+      void useStore.getState().fetchAll({ silent: true })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const id = window.setInterval(() => { void fetchSocial() }, 5 * 60_000)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(id)
+    }
+  }, [fetchSocial, subscribeRealtime, showToast])
+
+  // 課題・講義・進捗の変化をリアルタイムで反映する。参加する講義が変わったら購読し直す
+  const subscribeLectures = useStore(s => s.subscribeRealtime)
+  const lectureIdsKey = allSubjects.map(s => s.id).sort().join(',')
+  useEffect(() => subscribeLectures(), [subscribeLectures, lectureIdsKey])
 
   // 再追加カードのトリガー: 初回ロード時に期限切れをチェック、以降は完了への遷移を検知
   useEffect(() => {

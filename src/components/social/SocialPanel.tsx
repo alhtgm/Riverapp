@@ -7,7 +7,8 @@ import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Badge, Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
 import { inputStyle } from '../ui/styles'
-import { VISIBILITY_LABEL, formatDate, type AppNotification, type LectureVisibility, type UserSummary } from '../../types'
+import { describeNotification } from '../../lib/notificationText'
+import type { AppNotification, UserSummary } from '../../types'
 
 export type SocialTab = 'notifications' | 'friends' | 'parties' | 'account'
 
@@ -82,24 +83,7 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
 
   const name = (id: unknown) => userLabel(users, typeof id === 'string' ? id : null)
   const handleOf = (id: string) => (users[id]?.handle ? `@${users[id]?.handle}` : undefined)
-  const lectureTitle = (n: AppNotification) =>
-    String(n.payload.title ?? subjects.find(s => s.id === n.payload.lecture_id)?.name ?? '講義')
-
-  const notificationText = (n: AppNotification): string => {
-    const p = n.payload
-    switch (n.type) {
-      case 'friend_request': return `${name(p.requester_id)}さんからフレンド申請が届きました`
-      case 'friend_accepted': return `${name(p.addressee_id)}さんがフレンド申請を承認しました`
-      case 'party_invite': return `${name(p.inviter_id)}さんから${p.party_name ? `「${String(p.party_name)}」` : 'パーティー'}に招待されました`
-      case 'lecture_apply_request': return `「${lectureTitle(n)}」に${name(p.applicant_id)}さんから参加申請が届きました`
-      case 'lecture_apply_response': return `「${lectureTitle(n)}」への参加申請が${p.approved ? '承認' : '却下'}されました`
-      case 'task_due_changed':
-        return `「${lectureTitle(n)}」の課題「${String(p.title ?? '')}」の締切が${formatDate(String(p.old_due_date))}から${formatDate(String(p.new_due_date))}に変わりました`
-      case 'lecture_visibility_changed':
-        return `「${lectureTitle(n)}」の公開範囲が「${VISIBILITY_LABEL[p.old_visibility as LectureVisibility] ?? ''}」から「${VISIBILITY_LABEL[p.new_visibility as LectureVisibility] ?? ''}」に変わりました`
-      default: return 'お知らせがあります'
-    }
-  }
+  const notificationText = (n: AppNotification) => describeNotification(n, users, subjects)
 
   const notificationAction = (n: AppNotification): { label: string; run: () => void; primary?: boolean } | null => {
     const p = n.payload

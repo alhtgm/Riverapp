@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
 
-type ToastType = 'success' | 'error'
+/** info はほかの人の操作で届いたお知らせ（フレンド申請など）。少し長めに表示する */
+type ToastType = 'success' | 'error' | 'info'
 
 interface ToastItem {
   id: number
@@ -27,7 +28,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => [...prev, { id, message, type }])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
-    }, 3200)
+    }, type === 'info' ? 5000 : 3200)
   }, [])
 
   return (
@@ -56,8 +57,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               alignItems: 'center',
               gap: 10,
               padding: '11px 16px',
-              background: toast.type === 'success' ? '#211D1A' : '#FDECEC',
-              color: toast.type === 'success' ? '#FFFFFF' : '#D42222',
+              background: toast.type === 'error' ? '#FDECEC' : '#211D1A',
+              color: toast.type === 'error' ? '#D42222' : '#FFFFFF',
               borderRadius: 10,
               fontSize: 14,
               fontWeight: 500,
@@ -71,7 +72,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               maxWidth: 320,
             }}
           >
-            {toast.type === 'success' ? (
+            {toast.type === 'info' ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: '#F4A27E' }}>
+                <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            ) : toast.type === 'success' ? (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
                 <circle cx="7" cy="7" r="6.5" stroke="rgba(255,255,255,0.35)" strokeWidth="1"/>
                 <path d="M4 7l2 2 4-4" stroke="#4ADE80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

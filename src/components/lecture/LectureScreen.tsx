@@ -110,8 +110,8 @@ const selectStyle = { ...inputStyle, minHeight: 38 }
 
 export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Props) {
   const { showToast } = useToast()
-  const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress } = useStore()
-  const { users, ensureUsers, parties: myParties } = useSocialStore()
+  const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress, dataVersion } = useStore()
+  const { users, ensureUsers, parties: myParties, version: socialVersion } = useSocialStore()
   const lecture = subjects.find(s => s.id === lectureId)
   const lectureTasks = tasks.filter(t => t.subject_id === lectureId).sort((a, b) => a.due_date.localeCompare(b.due_date))
 
@@ -176,16 +176,17 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
     void ensureUsers(merged.flatMap(e => [e.actor_id, (e.after?.request_user_id as string) ?? null]))
   }, [lectureId, ensureUsers])
 
+  // 参加申請・参加者の変化はリアルタイムで届くので、そのたびに読み直す（socialVersion / dataVersion）
   useEffect(() => {
     void loadMembers()
     void fetchProgress()
-  }, [loadMembers, fetchProgress])
+  }, [loadMembers, fetchProgress, socialVersion, dataVersion])
 
   useEffect(() => {
     if (tab === 'tasks') void loadDeleted()
     if (tab === 'history') void loadHistory()
     if (tab === 'settings') void loadVisibleParties()
-  }, [tab, loadDeleted, loadHistory, loadVisibleParties])
+  }, [tab, loadDeleted, loadHistory, loadVisibleParties, dataVersion])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)

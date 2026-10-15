@@ -339,7 +339,7 @@ function InboxTab({ onOpenProfile }: { onOpenProfile: (userId: string) => void }
 // 講義の公開（自分の講義 × パーティー）
 // ---------------------------------------------------------------
 function ShareTab() {
-  const { subjects, semester, updateLectureSettings } = useStore()
+  const { subjects, semester, updateLectureSettings, dataVersion } = useStore()
   const parties = useSocialStore(s => s.parties)
   const { busy, run, showToast } = useRun()
   const [scope, setScope] = useState<Scope>('semester')
@@ -364,7 +364,7 @@ function ShareTab() {
       setVisible(new Set(((data ?? []) as { lecture_id: string; party_id: string }[]).map(r => `${r.lecture_id}:${r.party_id}`)))
     })()
     return () => { cancelled = true }
-  }, [subjectIdsKey, showToast])
+  }, [subjectIdsKey, showToast, dataVersion])
 
   const isOn = (l: Subject, partyId: string) => l.visibility === 'public' || (visible?.has(`${l.id}:${partyId}`) ?? false)
 
@@ -503,7 +503,7 @@ function ShareTab() {
 // パーティーに招待（フレンド × パーティー）
 // ---------------------------------------------------------------
 function InviteTab({ onOpenProfile }: { onOpenProfile: (userId: string) => void }) {
-  const { friends, parties, users } = useSocialStore()
+  const { friends, parties, users, version: socialVersion } = useSocialStore()
   const { busy, run, showToast } = useRun()
   /** `${partyId}:${userId}` → 状態 */
   const [state, setState] = useState<Map<string, 'member' | 'excluded' | 'invited'> | null>(null)
@@ -527,7 +527,7 @@ function InviteTab({ onOpenProfile }: { onOpenProfile: (userId: string) => void 
       setState(next)
     })()
     return () => { cancelled = true }
-  }, [partyIdsKey, showToast])
+  }, [partyIdsKey, showToast, socialVersion])
 
   const invite = async (partyId: string, userIds: string[]) => {
     let failed = 0
@@ -620,6 +620,7 @@ interface JoinCandidate extends LectureSummary {
 function JoinTab() {
   const { semester, subjects, fetchAll } = useStore()
   const parties = useSocialStore(s => s.parties)
+  const socialVersion = useSocialStore(s => s.version)
   const { busy, run, showToast } = useRun()
   const [scope, setScope] = useState<Scope>('semester')
   const [candidates, setCandidates] = useState<JoinCandidate[] | null>(null)
@@ -643,7 +644,7 @@ function JoinTab() {
       setCandidates([...map.values()].sort((a, b) => b.year - a.year || a.title.localeCompare(b.title, 'ja')))
     })()
     return () => { cancelled = true }
-  }, [parties, reloadKey])
+  }, [parties, reloadKey, socialVersion])
 
   const shown = (candidates ?? []).filter(l => scope === 'all' || subjectInSemester(l, semester))
   const joinable = shown.filter(l => l.my_status !== 'pending')
