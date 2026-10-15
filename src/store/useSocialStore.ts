@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { toMessage } from '../lib/errors'
-import type { AppNotification, FriendRequest, Party, PartyInvite, UserSummary } from '../types'
+import type { AppNotification, ApplyRequest, FriendRequest, Party, PartyInvite, UserSummary } from '../types'
 
 export interface PartyWithCount extends Party {
   member_count: number
@@ -21,6 +21,8 @@ interface SocialState {
   blockedIds: string[]
   parties: PartyWithCount[]
   invites: PartyInvite[]
+  /** 自分が参加している講義に届いている参加申請（すべての講義分） */
+  applyRequests: ApplyRequest[]
   notifications: AppNotification[]
   /** 表示名・@handle のキャッシュ */
   users: Record<string, UserSummary>
@@ -39,6 +41,8 @@ interface SocialState {
   createParty: (name: string) => Promise<Party>
   redeemInviteCode: (code: string) => Promise<Party>
   respondPartyInvite: (inviteId: string, accept: boolean) => Promise<void>
+  /** 講義への参加申請に返事をする（複数をまとめて渡せる。失敗した件数を返す） */
+  respondApplyRequests: (requestIds: string[], approve: boolean) => Promise<number>
 
   markAllNotificationsRead: () => Promise<void>
 }
@@ -52,6 +56,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   blockedIds: [],
   parties: [],
   invites: [],
+  applyRequests: [],
   notifications: [],
   users: {},
 
@@ -63,13 +68,14 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     // 期限切れの申請・投票を失効させる（pg_cron を使わない代わりに画面表示時に実行）
     void supabase.rpc('expire_stale_requests_and_votes')
 
-    const [frRes, blockRes, partyRes, memberRes, inviteRes, notifRes] = await Promise.all([
+    const [frRes, blockRes, partyRes, memberRes, inviteRes, notifRes, applyRes] = await Promise.all([
       supabase.from('friend_requests').select('*'),
       supabase.from('blocks').select('blocked_id'),
       supabase.from('parties').select('id, name, created_at').is('archived_at', null).order('created_at'),
       supabase.from('party_members').select('party_id, user_id').eq('status', 'active'),
       supabase.rpc('get_my_party_invites'),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.rpc('get_my_pending_apply_requests'),
     ])
 
     const requests = (frRes.data ?? []) as FriendRequest[]
@@ -89,8 +95,9 @@ export const useSocialStore = create<SocialState>((set, get) => ({
 
     const invites = (inviteRes.data ?? []) as PartyInvite[]
     const notifications = (notifRes.data ?? []) as AppNotification[]
+    const applyRequests = (applyRes.data ?? []) as ApplyRequest[]
 
-    set({ loaded: true, myId, friends, incoming, outgoing, blockedIds, parties, invites, notifications })
+    set({ loaded: true, myId, friends, incoming, outgoing, blockedIds, parties, invites, applyRequests, notifications })
 
     // 名前表示に必要なユーザー情報をまとめて取得
     const ids = new Set<string>([myId])
@@ -184,6 +191,16 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     const { error } = await supabase.rpc('respond_party_invite', { p_invite_id: inviteId, p_accept: accept })
     if (error) fail(error)
     await get().fetchSocial()
+  },
+
+  respondApplyRequests: async (requestIds, approve) => {
+    const results = await Promise.all(
+      requestIds.map(id => supabase.rpc('respond_join_request', { p_request_id: id, p_approve: approve })),
+    )
+    await get().fetchSocial()
+    const failed = results.filter(r => r.error)
+    if (failed.length === requestIds.length && failed[0]?.error) fail(failed[0].error)
+    return failed.length
   },
 
   markAllNotificationsRead: async () => {

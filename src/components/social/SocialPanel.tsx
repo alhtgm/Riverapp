@@ -54,8 +54,8 @@ function HandleInput({ value, onChange, placeholder }: { value: string; onChange
 export default function SocialPanel({ initialTab = 'notifications', onClose, onOpenProfile, onOpenParty, onOpenLecture }: Props) {
   const { showToast } = useToast()
   const social = useSocialStore()
-  const { users, friends, incoming, outgoing, blockedIds, parties, invites, notifications } = social
-  const { profile, updateMyProfile, subjects, schoolName, setMySchoolEmail } = useStore()
+  const { users, friends, incoming, outgoing, blockedIds, parties, invites, notifications, applyRequests } = social
+  const { profile, updateMyProfile, subjects, schoolName, setMySchoolEmail, fetchAll } = useStore()
   const [tab, setTab] = useState<SocialTab>(initialTab)
   const [busy, setBusy] = useState(false)
 
@@ -101,8 +101,37 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
     }
   }
 
-  const notificationAction = (n: AppNotification): { label: string; run: () => void } | null => {
+  const notificationAction = (n: AppNotification): { label: string; run: () => void; primary?: boolean } | null => {
     const p = n.payload
+    // まだ返事をしていない申請・招待は、通知からそのまま1回で返事できるようにする
+    const applyRequest = n.type === 'lecture_apply_request' ? applyRequests.find(r => r.id === p.request_id) : undefined
+    if (applyRequest) {
+      return {
+        label: '承認する', primary: true,
+        run: () => void run(async () => {
+          const failed = await social.respondApplyRequests([applyRequest.id], true)
+          showToast(failed ? 'ほかの人が対応済みか、期限切れでした' : `${applyRequest.display_name ?? 'ユーザー'}さんの参加を承認しました`, failed ? 'error' : undefined)
+        }),
+      }
+    }
+    const friendRequest = n.type === 'friend_request' ? incoming.find(r => r.requester_id === p.requester_id) : undefined
+    if (friendRequest) {
+      return {
+        label: '承認する', primary: true,
+        run: () => void run(async () => { await social.acceptFriendRequest(friendRequest.id); showToast('フレンドになりました') }),
+      }
+    }
+    const invite = n.type === 'party_invite' ? invites.find(i => i.id === p.invite_id) : undefined
+    if (invite) {
+      return {
+        label: '参加する', primary: true,
+        run: () => void run(async () => {
+          await social.respondPartyInvite(invite.id, true)
+          await fetchAll()
+          showToast(`「${invite.party_name}」に参加しました`)
+        }),
+      }
+    }
     switch (n.type) {
       case 'friend_request': return { label: '確認する', run: () => setTab('friends') }
       case 'friend_accepted': return typeof p.addressee_id === 'string' ? { label: 'プロフィール', run: () => onOpenProfile(p.addressee_id as string) } : null
@@ -152,7 +181,9 @@ export default function SocialPanel({ initialTab = 'notifications', onClose, onO
                     highlight={!n.read_at}
                     title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{notificationText(n)}</span>}
                     subtitle={timeAgo(n.created_at)}
-                    trailing={action && <Button size="sm" onClick={action.run}>{action.label}</Button>}
+                    trailing={action && (
+                      <Button size="sm" variant={action.primary ? 'primary' : 'secondary'} disabled={busy} onClick={action.run}>{action.label}</Button>
+                    )}
                   />
                 )
               })}
