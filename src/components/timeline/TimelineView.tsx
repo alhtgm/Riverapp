@@ -154,6 +154,11 @@ function nextWeekSameWeekdayStr(origDueStr: string): string {
   return toDateString(d)
 }
 
+/** バーのタイトルを追従させるとき、バー末尾に残す最小幅（これより短い区間では止める） */
+const BAR_LABEL_MIN_PX = 88
+/** OS の「視差効果を減らす」設定がオンなら、タイトル追従のアニメーションを付けない */
+const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
 /** 色だけに頼らず状態がわかるよう、完了・提出済み・期限切れのバーにはアイコンを付ける */
 function TaskBarStatusIcon({ status, color }: { status: TaskStatus | 'overdue'; color: string }) {
   if (status !== 'done' && status !== 'submitted' && status !== 'overdue') return null
@@ -221,6 +226,11 @@ export default function TimelineView() {
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // 横スクロール量を CSS 変数 --tl-scroll に渡す（再描画せずに、バーのタイトルを見えている左端へ追従させる）。
+  // scroll イベントはブラウザが描画フレームに合わせて発火するので、そのまま書き込めばよい
+  const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    e.currentTarget.style.setProperty('--tl-scroll', `${e.currentTarget.scrollLeft}px`)
+  }, [])
 
   // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
   const [reAdd, setReAdd] = useState<{ subjectId: string; reason: 'completed' | 'overdue' } | null>(null)
@@ -911,6 +921,7 @@ export default function TimelineView() {
       {/* ---- Main scroll area ---- */}
       <div
         ref={scrollRef}
+        onScroll={handleTimelineScroll}
         style={{
           flex: 1,
           overflow: 'auto',
@@ -1400,34 +1411,44 @@ export default function TimelineView() {
                                   </svg>
                                 </div>
 
-                                {occurrenceLabel && (
-                                  <span style={{
-                                    fontSize: 10, fontWeight: 700, color: text,
-                                    background: `${color}22`,
-                                    borderRadius: 4, padding: '2px 5px',
-                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
-                                    pointerEvents: 'none',
-                                  }}>
-                                    {occurrenceLabel}
-                                  </span>
-                                )}
-                                <TaskBarStatusIcon status={statusKey} color={text} />
-                                <span style={{
-                                  fontSize: 12, fontWeight: 600, color: text,
-                                  overflow: 'hidden', textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  letterSpacing: '-0.02em', lineHeight: 1,
+                                {/* タイトル: バーの始まりが画面の左外へ出たら、見えている左端に追従する（バーの末尾 BAR_LABEL_MIN_PX 手前で止まる） */}
+                                <div style={{
+                                  '--label-shift': `clamp(0px, calc(var(--tl-scroll, 0px) - ${left}px), ${Math.max(0, width - BAR_LABEL_MIN_PX)}px)`,
+                                  display: 'flex', alignItems: 'center',
+                                  flex: 1, minWidth: 0,
+                                  maxWidth: 'calc(100% - var(--label-shift))',
+                                  transform: 'translateX(var(--label-shift))',
+                                  transition: isDragging || PREFERS_REDUCED_MOTION ? 'none' : 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+                                  willChange: 'transform',
                                   pointerEvents: 'none',
-                                  flex: 1,
-                                  minWidth: 0,
-                                }}>
-                                  {task.title}
-                                  {task.due_time && (
-                                    <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
-                                      {task.due_time}
+                                } as React.CSSProperties}>
+                                  {occurrenceLabel && (
+                                    <span style={{
+                                      fontSize: 10, fontWeight: 700, color: text,
+                                      background: `${color}22`,
+                                      borderRadius: 4, padding: '2px 5px',
+                                      flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
+                                    }}>
+                                      {occurrenceLabel}
                                     </span>
                                   )}
-                                </span>
+                                  <TaskBarStatusIcon status={statusKey} color={text} />
+                                  <span style={{
+                                    fontSize: 12, fontWeight: 600, color: text,
+                                    overflow: 'hidden', textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    letterSpacing: '-0.02em', lineHeight: 1,
+                                    flex: 1,
+                                    minWidth: 0,
+                                  }}>
+                                    {task.title}
+                                    {task.due_time && (
+                                      <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
+                                        {task.due_time}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             )
                           })}
