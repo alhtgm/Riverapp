@@ -155,9 +155,10 @@ function nextWeekSameWeekdayStr(origDueStr: string): string {
 }
 
 /** バーのタイトルを追従させるとき、バー末尾に残す最小幅（これより短い区間では止める） */
-const BAR_LABEL_MIN_PX = 88
 /** 追従中のタイトルを、画面の左端からどれだけ内側に置くか */
-const BAR_LABEL_INSET_PX = 20
+const BAR_LABEL_INSET_PX = 32
+/** バーの左端からタイトルまでの距離（左の太線 3px ＋ 内側の余白 8px） */
+const BAR_CONTENT_OFFSET_PX = 11
 /** OS の「視差効果を減らす」設定がオンなら、タイトル追従のアニメーションを付けない */
 const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -228,10 +229,10 @@ export default function TimelineView() {
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  // 横スクロール量を CSS 変数 --tl-scroll に渡す（再描画せずに、バーのタイトルを見えている左端へ追従させる）。
-  // scroll イベントはブラウザが描画フレームに合わせて発火するので、そのまま書き込めばよい
+  // 横スクロール量を CSS 変数 --tl-scroll-n（単位なしの数値）に渡す。タイトルの追従そのものは
+  // position: sticky でブラウザが行うので、ここで使うのは「‹」を出すかどうかの判定だけ（再描画はしない）
   const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    e.currentTarget.style.setProperty('--tl-scroll', `${e.currentTarget.scrollLeft}px`)
+    e.currentTarget.style.setProperty('--tl-scroll-n', String(e.currentTarget.scrollLeft))
   }, [])
 
   // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
@@ -1355,7 +1356,11 @@ export default function TimelineView() {
                                   alignItems: 'center',
                                   paddingLeft: 8,
                                   paddingRight: 16,
+                                  // clip はスクロール領域を作らないので、中のタイトルの position: sticky が効く。
+                                  // clip 非対応の古いブラウザでは hidden のまま（追従しないだけで表示は崩れない）
                                   overflow: 'hidden',
+                                  overflowX: 'clip',
+                                  overflowY: 'clip',
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
                                   transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
@@ -1413,17 +1418,27 @@ export default function TimelineView() {
                                   </svg>
                                 </div>
 
-                                {/* タイトル: バーの始まりが画面の左外へ出たら、見えている左端に追従する（バーの末尾 BAR_LABEL_MIN_PX 手前で止まる） */}
+                                {/* タイトル: position: sticky で、バーの始まりが画面の左外へ出ても見えている左端に貼り付く。
+                                    ブラウザがスクロールと同じ描画処理で動かすので、速くスクロールしても遅れたり隠れたりしない。
+                                    バーの終わりが近づくと、バーと一緒に自然に押し出される */}
                                 <div style={{
-                                  '--label-shift': `clamp(0px, calc(var(--tl-scroll, 0px) + ${BAR_LABEL_INSET_PX}px - ${left}px), ${Math.max(0, width - BAR_LABEL_MIN_PX)}px)`,
+                                  // 0〜1: バーが左の画面外に続いている度合い（「‹」の表示に使う）
+                                  '--stuck': `clamp(0, calc((var(--tl-scroll-n, 0) + ${BAR_LABEL_INSET_PX} - ${left + BAR_CONTENT_OFFSET_PX}) / 14), 1)`,
+                                  position: 'sticky',
+                                  left: BAR_LABEL_INSET_PX,
                                   display: 'flex', alignItems: 'center',
-                                  flex: 1, minWidth: 0,
-                                  maxWidth: 'calc(100% - var(--label-shift))',
-                                  transform: 'translateX(var(--label-shift))',
-                                  transition: isDragging || PREFERS_REDUCED_MOTION ? 'none' : 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
-                                  willChange: 'transform',
+                                  flex: '0 1 auto', minWidth: 0, maxWidth: '100%',
                                   pointerEvents: 'none',
                                 } as React.CSSProperties}>
+                                  {/* バーが左の画面外に続いているときだけ、ふわっと現れる「‹」 */}
+                                  <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true" style={{
+                                    position: 'absolute', left: -14, top: '50%',
+                                    opacity: 'var(--stuck)',
+                                    transform: 'translate(calc((1 - var(--stuck)) * 5px), -50%)',
+                                    transition: PREFERS_REDUCED_MOTION ? 'none' : 'opacity 0.3s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+                                  }}>
+                                    <path d="M5 1L1 5L5 9" stroke={text} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
                                   {occurrenceLabel && (
                                     <span style={{
                                       fontSize: 10, fontWeight: 700, color: text,
@@ -1440,7 +1455,7 @@ export default function TimelineView() {
                                     overflow: 'hidden', textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',
                                     letterSpacing: '-0.02em', lineHeight: 1,
-                                    flex: 1,
+                                    flex: '0 1 auto',
                                     minWidth: 0,
                                   }}>
                                     {task.title}
