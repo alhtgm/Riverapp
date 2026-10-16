@@ -156,6 +156,8 @@ function nextWeekSameWeekdayStr(origDueStr: string): string {
 
 /** バーのタイトルを追従させるとき、バー末尾に残す最小幅（これより短い区間では止める） */
 const BAR_LABEL_MIN_PX = 88
+/** 追従中のタイトルを、画面の左端からどれだけ内側に置くか */
+const BAR_LABEL_INSET_PX = 20
 /** OS の「視差効果を減らす」設定がオンなら、タイトル追従のアニメーションを付けない */
 const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -1413,7 +1415,7 @@ export default function TimelineView() {
 
                                 {/* タイトル: バーの始まりが画面の左外へ出たら、見えている左端に追従する（バーの末尾 BAR_LABEL_MIN_PX 手前で止まる） */}
                                 <div style={{
-                                  '--label-shift': `clamp(0px, calc(var(--tl-scroll, 0px) - ${left}px), ${Math.max(0, width - BAR_LABEL_MIN_PX)}px)`,
+                                  '--label-shift': `clamp(0px, calc(var(--tl-scroll, 0px) + ${BAR_LABEL_INSET_PX}px - ${left}px), ${Math.max(0, width - BAR_LABEL_MIN_PX)}px)`,
                                   display: 'flex', alignItems: 'center',
                                   flex: 1, minWidth: 0,
                                   maxWidth: 'calc(100% - var(--label-shift))',
