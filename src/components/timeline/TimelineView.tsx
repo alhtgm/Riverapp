@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
-import { STATUS_CONFIG, TASK_BAR_COLORS, isOverdue, toDateString, parseLocalDate } from '../../types'
+import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import InboxPanel from '../social/InboxPanel'
@@ -152,32 +152,6 @@ function nextWeekSameWeekdayStr(origDueStr: string): string {
   const d = new Date(today)
   d.setDate(today.getDate() + (7 - today.getDay()) + origDow) // 次の日曜 + 元の曜日
   return toDateString(d)
-}
-
-/** 色だけに頼らず状態がわかるよう、完了・提出済み・期限切れのバーにはアイコンを付ける */
-function TaskBarStatusIcon({ status, color }: { status: TaskStatus | 'overdue'; color: string }) {
-  if (status !== 'done' && status !== 'submitted' && status !== 'overdue') return null
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
-      style={{ flexShrink: 0, marginRight: 4, pointerEvents: 'none' }}>
-      {status === 'done' && (
-        <path d="M2.4 6.3l2.4 2.4 4.8-5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-      {status === 'submitted' && (
-        <>
-          <path d="M10.6 1.4L1.4 5.2l3.7 1.5 1.5 3.9 4-9.2z" stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M5.1 6.7l2.4-2.3" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
-        </>
-      )}
-      {status === 'overdue' && (
-        <>
-          <circle cx="6" cy="6" r="4.8" stroke={color} strokeWidth="1.5" />
-          <path d="M6 3.4v3.1" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-          <circle cx="6" cy="8.5" r="0.85" fill={color} />
-        </>
-      )}
-    </svg>
-  )
 }
 
 interface DragState {
@@ -550,13 +524,10 @@ export default function TimelineView() {
     if (si < 0 && ei < 0) return null
     const startI = si >= 0 ? si : 0
     const endI = ei >= 0 ? ei : days.length - 1
-    const statusKey: TaskStatus | 'overdue' = isOverdue(task) ? 'overdue' : task.status
-    const bar = TASK_BAR_COLORS[statusKey]
-    const color  = isDark ? bar.darkAccent : bar.accent
-    const bg     = isDark ? bar.darkFill   : bar.fill
-    const border = isDark ? bar.darkBorder : bar.border
-    const text   = isDark ? bar.darkText   : bar.text
-    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg, border, text, statusKey }
+    const cfg = isOverdue(task) ? STATUS_CONFIG.overdue : STATUS_CONFIG[task.status]
+    const color = isDark ? cfg.darkColor : cfg.color
+    const bg    = isDark ? cfg.darkBg    : cfg.bg
+    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
   }
 
   return (
@@ -1312,7 +1283,7 @@ export default function TimelineView() {
                               : task
                             const bp = getBarProps(effectiveTask)
                             if (!bp) return null
-                            const { left, width, color, bg, border, text, statusKey } = bp
+                            const { left, width, color, bg } = bp
                             const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
                             const timeLabel = task.due_time ? ` ${task.due_time}` : ''
                             const isDragging = dragRef.current?.taskId === task.id
@@ -1346,9 +1317,6 @@ export default function TimelineView() {
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
                                   transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
-                                  borderTop: `1px solid ${border}`,
-                                  borderRight: `1px solid ${border}`,
-                                  borderBottom: `1px solid ${border}`,
                                   borderLeft: `3px solid ${color}`,
                                   boxShadow: isDragging ? `0 6px 16px ${color}38` : `0 1px 4px ${color}18`,
                                   userSelect: 'none',
@@ -1396,13 +1364,13 @@ export default function TimelineView() {
                                   pointerEvents: 'none',
                                 }}>
                                   <svg width="5" height="9" viewBox="0 0 6 10" fill="none">
-                                    <path d="M1 1L5 5L1 9" stroke={text} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M1 1L5 5L1 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
                                 </div>
 
                                 {occurrenceLabel && (
                                   <span style={{
-                                    fontSize: 10, fontWeight: 700, color: text,
+                                    fontSize: 10, fontWeight: 700, color,
                                     background: `${color}22`,
                                     borderRadius: 4, padding: '2px 5px',
                                     flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
@@ -1411,9 +1379,8 @@ export default function TimelineView() {
                                     {occurrenceLabel}
                                   </span>
                                 )}
-                                <TaskBarStatusIcon status={statusKey} color={text} />
                                 <span style={{
-                                  fontSize: 12, fontWeight: 600, color: text,
+                                  fontSize: 12, fontWeight: 600, color,
                                   overflow: 'hidden', textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                   letterSpacing: '-0.02em', lineHeight: 1,
