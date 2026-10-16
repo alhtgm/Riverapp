@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
-import { STATUS_CONFIG, TASK_BAR_COLORS, isOverdue, toDateString, parseLocalDate } from '../../types'
+import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import InboxPanel from '../social/InboxPanel'
@@ -154,40 +154,6 @@ function nextWeekSameWeekdayStr(origDueStr: string): string {
   return toDateString(d)
 }
 
-/** バーのタイトルを追従させるとき、バー末尾に残す最小幅（これより短い区間では止める） */
-/** 追従中のタイトルを、画面の左端からどれだけ内側に置くか */
-const BAR_LABEL_INSET_PX = 32
-/** バーの左端からタイトルまでの距離（左の太線 3px ＋ 内側の余白 8px） */
-const BAR_CONTENT_OFFSET_PX = 11
-/** OS の「視差効果を減らす」設定がオンなら、タイトル追従のアニメーションを付けない */
-const PREFERS_REDUCED_MOTION = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-
-/** 色だけに頼らず状態がわかるよう、完了・提出済み・期限切れのバーにはアイコンを付ける */
-function TaskBarStatusIcon({ status, color }: { status: TaskStatus | 'overdue'; color: string }) {
-  if (status !== 'done' && status !== 'submitted' && status !== 'overdue') return null
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
-      style={{ flexShrink: 0, marginRight: 4, pointerEvents: 'none' }}>
-      {status === 'done' && (
-        <path d="M2.4 6.3l2.4 2.4 4.8-5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-      {status === 'submitted' && (
-        <>
-          <path d="M10.6 1.4L1.4 5.2l3.7 1.5 1.5 3.9 4-9.2z" stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M5.1 6.7l2.4-2.3" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
-        </>
-      )}
-      {status === 'overdue' && (
-        <>
-          <circle cx="6" cy="6" r="4.8" stroke={color} strokeWidth="1.5" />
-          <path d="M6 3.4v3.1" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-          <circle cx="6" cy="8.5" r="0.85" fill={color} />
-        </>
-      )}
-    </svg>
-  )
-}
-
 interface DragState {
   type: 'move' | 'resize-start' | 'resize-end'
   taskId: string
@@ -229,11 +195,6 @@ export default function TimelineView() {
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  // 横スクロール量を CSS 変数 --tl-scroll-n（単位なしの数値）に渡す。タイトルの追従そのものは
-  // position: sticky でブラウザが行うので、ここで使うのは「‹」を出すかどうかの判定だけ（再描画はしない）
-  const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    e.currentTarget.style.setProperty('--tl-scroll-n', String(e.currentTarget.scrollLeft))
-  }, [])
 
   // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
   const [reAdd, setReAdd] = useState<{ subjectId: string; reason: 'completed' | 'overdue' } | null>(null)
@@ -563,13 +524,10 @@ export default function TimelineView() {
     if (si < 0 && ei < 0) return null
     const startI = si >= 0 ? si : 0
     const endI = ei >= 0 ? ei : days.length - 1
-    const statusKey: TaskStatus | 'overdue' = isOverdue(task) ? 'overdue' : task.status
-    const bar = TASK_BAR_COLORS[statusKey]
-    const color  = isDark ? bar.darkAccent : bar.accent
-    const bg     = isDark ? bar.darkFill   : bar.fill
-    const border = isDark ? bar.darkBorder : bar.border
-    const text   = isDark ? bar.darkText   : bar.text
-    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg, border, text, statusKey }
+    const cfg = isOverdue(task) ? STATUS_CONFIG.overdue : STATUS_CONFIG[task.status]
+    const color = isDark ? cfg.darkColor : cfg.color
+    const bg    = isDark ? cfg.darkBg    : cfg.bg
+    return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
   }
 
   return (
@@ -924,7 +882,6 @@ export default function TimelineView() {
       {/* ---- Main scroll area ---- */}
       <div
         ref={scrollRef}
-        onScroll={handleTimelineScroll}
         style={{
           flex: 1,
           overflow: 'auto',
@@ -1326,7 +1283,7 @@ export default function TimelineView() {
                               : task
                             const bp = getBarProps(effectiveTask)
                             if (!bp) return null
-                            const { left, width, color, bg, border, text, statusKey } = bp
+                            const { left, width, color, bg } = bp
                             const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
                             const timeLabel = task.due_time ? ` ${task.due_time}` : ''
                             const isDragging = dragRef.current?.taskId === task.id
@@ -1356,17 +1313,10 @@ export default function TimelineView() {
                                   alignItems: 'center',
                                   paddingLeft: 8,
                                   paddingRight: 16,
-                                  // clip はスクロール領域を作らないので、中のタイトルの position: sticky が効く。
-                                  // clip 非対応の古いブラウザでは hidden のまま（追従しないだけで表示は崩れない）
                                   overflow: 'hidden',
-                                  overflowX: 'clip',
-                                  overflowY: 'clip',
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
                                   transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
-                                  borderTop: `1px solid ${border}`,
-                                  borderRight: `1px solid ${border}`,
-                                  borderBottom: `1px solid ${border}`,
                                   borderLeft: `3px solid ${color}`,
                                   boxShadow: isDragging ? `0 6px 16px ${color}38` : `0 1px 4px ${color}18`,
                                   userSelect: 'none',
@@ -1414,58 +1364,37 @@ export default function TimelineView() {
                                   pointerEvents: 'none',
                                 }}>
                                   <svg width="5" height="9" viewBox="0 0 6 10" fill="none">
-                                    <path d="M1 1L5 5L1 9" stroke={text} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M1 1L5 5L1 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
                                 </div>
 
-                                {/* タイトル: position: sticky で、バーの始まりが画面の左外へ出ても見えている左端に貼り付く。
-                                    ブラウザがスクロールと同じ描画処理で動かすので、速くスクロールしても遅れたり隠れたりしない。
-                                    バーの終わりが近づくと、バーと一緒に自然に押し出される */}
-                                <div style={{
-                                  // 0〜1: バーが左の画面外に続いている度合い（「‹」の表示に使う）
-                                  '--stuck': `clamp(0, calc((var(--tl-scroll-n, 0) + ${BAR_LABEL_INSET_PX} - ${left + BAR_CONTENT_OFFSET_PX}) / 14), 1)`,
-                                  position: 'sticky',
-                                  left: BAR_LABEL_INSET_PX,
-                                  display: 'flex', alignItems: 'center',
-                                  flex: '0 1 auto', minWidth: 0, maxWidth: '100%',
-                                  pointerEvents: 'none',
-                                } as React.CSSProperties}>
-                                  {/* バーが左の画面外に続いているときだけ、ふわっと現れる「‹」 */}
-                                  <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true" style={{
-                                    position: 'absolute', left: -14, top: '50%',
-                                    opacity: 'var(--stuck)',
-                                    transform: 'translate(calc((1 - var(--stuck)) * 5px), -50%)',
-                                    transition: PREFERS_REDUCED_MOTION ? 'none' : 'opacity 0.3s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+                                {occurrenceLabel && (
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700, color,
+                                    background: `${color}22`,
+                                    borderRadius: 4, padding: '2px 5px',
+                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
+                                    pointerEvents: 'none',
                                   }}>
-                                    <path d="M5 1L1 5L5 9" stroke={text} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                  {occurrenceLabel && (
-                                    <span style={{
-                                      fontSize: 10, fontWeight: 700, color: text,
-                                      background: `${color}22`,
-                                      borderRadius: 4, padding: '2px 5px',
-                                      flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
-                                    }}>
-                                      {occurrenceLabel}
+                                    {occurrenceLabel}
+                                  </span>
+                                )}
+                                <span style={{
+                                  fontSize: 12, fontWeight: 600, color,
+                                  overflow: 'hidden', textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  letterSpacing: '-0.02em', lineHeight: 1,
+                                  pointerEvents: 'none',
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}>
+                                  {task.title}
+                                  {task.due_time && (
+                                    <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
+                                      {task.due_time}
                                     </span>
                                   )}
-                                  <TaskBarStatusIcon status={statusKey} color={text} />
-                                  <span style={{
-                                    fontSize: 12, fontWeight: 600, color: text,
-                                    overflow: 'hidden', textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    letterSpacing: '-0.02em', lineHeight: 1,
-                                    flex: '0 1 auto',
-                                    minWidth: 0,
-                                  }}>
-                                    {task.title}
-                                    {task.due_time && (
-                                      <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
-                                        {task.due_time}
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
+                                </span>
                               </div>
                             )
                           })}
