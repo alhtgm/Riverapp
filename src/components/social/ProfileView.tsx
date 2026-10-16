@@ -1,31 +1,34 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toMessage } from '../../lib/errors'
-import { useSocialStore } from '../../store/useSocialStore'
+import { useStore } from '../../store/useStore'
+import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
-import { Avatar, Badge, Button, Card, Confirm, Notice, Section } from '../ui/kit'
+import { Avatar, Badge, Button, Card, Confirm, Field, List, ListItem, Notice, Section } from '../ui/kit'
 import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
+import { InviteToParties } from './PartyInvite'
 import type { LectureSummary } from '../../types'
 
 interface Props {
   userId: string
   onClose: () => void
   onOpenLecture: (lectureId: string) => void
-  /** 自分のプロフィールのとき「編集」から開く */
-  onEditProfile?: () => void
 }
 
-export default function ProfileView({ userId, onClose, onOpenLecture, onEditProfile }: Props) {
+/**
+ * プロフィール。ほかの人ならフレンド申請・パーティーへの招待・見える講義を、
+ * 自分ならアカウントの設定（表示名・ユーザーID・大学・ブロック）をまとめて扱う。
+ */
+export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
   const { showToast } = useToast()
   const {
-    myId, users, friends, incoming, outgoing, blockedIds, parties, version: socialVersion,
+    myId, users, friends, incoming, outgoing, blockedIds, version: socialVersion,
     ensureUsers, sendFriendRequest, acceptFriendRequest, removeFriendRequest, block, unblock,
   } = useSocialStore()
   const [lectures, setLectures] = useState<LectureSummary[] | null>(null)
   const [confirm, setConfirm] = useState<'unfriend' | 'block' | null>(null)
-  const [inviteParty, setInviteParty] = useState('')
   const [busy, setBusy] = useState(false)
 
   const user = users[userId]
@@ -54,9 +57,7 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
 
   // 関係に応じて「いちばん押してほしい操作」を1つだけ primary にする
   const relation = isMe ? null : isBlocked ? 'ブロック中' : friend ? 'フレンド' : inReq ? '申請が届いています' : outReq ? '申請中' : null
-  const mainActions = isMe ? (
-    onEditProfile && <Button onClick={onEditProfile}>表示名・ユーザーIDを編集</Button>
-  ) : isBlocked ? (
+  const mainActions = isMe ? null : isBlocked ? (
     <Button disabled={busy} onClick={() => run(async () => { await unblock(userId); showToast('ブロックを解除しました') })}>ブロックを解除</Button>
   ) : inReq ? (
     <>
@@ -76,8 +77,8 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
 
   return (
     <Sheet
-      title={isMe ? '自分のプロフィール' : 'プロフィール'}
-      subtitle={isMe ? 'ほかの人には、公開範囲に応じて講義だけが表示されます' : undefined}
+      title={isMe ? 'プロフィールとアカウント' : 'プロフィール'}
+      subtitle={isMe ? 'ほかの人には、表示名・ユーザーIDと、公開範囲に応じた講義だけが表示されます' : undefined}
       onClose={onClose}
       zIndex={320}
       width={760}
@@ -96,29 +97,13 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
         </div>
       </Card>
 
-      {friend && parties.length > 0 && (
-        <Section title="パーティーに招待" description="招待すると相手に通知が届き、承諾するとメンバーになります">
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select value={inviteParty} onChange={e => setInviteParty(e.target.value)} style={{ ...inputStyle, flex: 1, minHeight: 38 }}>
-              <option value="">パーティーを選んでください</option>
-              {parties.map(p => <option key={p.id} value={p.id}>{p.name}（{p.member_count}人）</option>)}
-            </select>
-            <Button
-              variant="primary"
-              disabled={!inviteParty}
-              loading={busy}
-              onClick={() => run(async () => {
-                const { error } = await supabase.rpc('invite_to_party', { p_party_id: inviteParty, p_invitee_id: userId })
-                if (error) throw error
-                setInviteParty('')
-                showToast('招待を送りました')
-              })}
-            >
-              招待する
-            </Button>
-          </div>
+      {friend && (
+        <Section title="パーティーに招待" description="「招待」を押すと相手の受信箱に届き、承諾するとメンバーになります">
+          <InviteToParties userId={userId} />
         </Section>
       )}
+
+      {isMe && <AccountSettings />}
 
       {isBlocked ? (
         <Notice tone="warning">この人をブロックしています。ブロック中は講義などが表示されません。</Notice>
@@ -171,5 +156,126 @@ export default function ProfileView({ userId, onClose, onOpenLecture, onEditProf
         </Section>
       )}
     </Sheet>
+  )
+}
+
+function HandleInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value.replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, ''))}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        style={{ ...inputStyle, paddingLeft: 28 }}
+      />
+    </div>
+  )
+}
+
+/** 自分のアカウントの設定（表示名・ユーザーID・大学・ブロック） */
+function AccountSettings() {
+  const { showToast } = useToast()
+  const { profile, updateMyProfile, schoolName, setMySchoolEmail } = useStore()
+  const social = useSocialStore()
+  const [handle, setHandle] = useState(profile?.handle ?? '')
+  const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
+  const [schoolEmail, setSchoolEmail] = useState('')
+  const [confirmSchoolRemove, setConfirmSchoolRemove] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    try { await fn() } catch (e: unknown) { showToast(toMessage(e), 'error') } finally { setBusy(false) }
+  }
+
+  const dirty = handle !== (profile?.handle ?? '') || displayName !== (profile?.display_name ?? '')
+
+  return (
+    <>
+      <Section title="表示名とユーザーID" description="フレンドや講義のメンバーに表示されます。ユーザーIDを伝えると検索してもらえます">
+        <form
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, alignItems: 'end' }}
+          onSubmit={e => {
+            e.preventDefault()
+            void run(async () => {
+              await updateMyProfile({ handle, display_name: displayName })
+              const me = useStore.getState().profile
+              if (me) {
+                useSocialStore.setState(st => ({
+                  users: { ...st.users, [me.id]: { id: me.id, handle: me.handle, display_name: me.display_name } },
+                }))
+              }
+              showToast('保存しました')
+            })
+          }}
+        >
+          <Field label="表示名" required help="本名でなくてもかまいません">
+            <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} required style={inputStyle} />
+          </Field>
+          <Field label="ユーザーID" required help="英数字とアンダースコアで3〜20文字">
+            <HandleInput value={handle} onChange={setHandle} />
+          </Field>
+          <div><Button type="submit" variant="primary" disabled={!dirty} loading={busy}>保存する</Button></div>
+        </form>
+      </Section>
+
+      <Section title="大学（任意）" description="登録すると、ヘッダーに大学名が表示されます。ほかの機能には影響しません">
+        {schoolName ? (
+          confirmSchoolRemove ? (
+            <Confirm
+              message="大学の登録を外しますか？"
+              detail="ヘッダーの大学名が消えます。いつでも登録し直せます。"
+              confirmLabel="登録を外す"
+              busy={busy}
+              onCancel={() => setConfirmSchoolRemove(false)}
+              onConfirm={() => run(async () => { await setMySchoolEmail(null); setConfirmSchoolRemove(false); showToast('大学の登録を外しました') })}
+            />
+          ) : (
+            <ListItem
+              title={schoolName}
+              subtitle={profile?.school_email ?? undefined}
+              trailing={<Button size="sm" variant="ghost" onClick={() => setConfirmSchoolRemove(true)}>登録を外す</Button>}
+            />
+          )
+        ) : (
+          <form
+            style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}
+            onSubmit={e => {
+              e.preventDefault()
+              void run(async () => {
+                await setMySchoolEmail(schoolEmail)
+                setSchoolEmail('')
+                showToast('大学を登録しました')
+              })
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Field label="大学のメールアドレス" help="@より後ろから大学を判定します。メールは届かず、ほかの人にも表示されません">
+                <input type="email" value={schoolEmail} onChange={e => setSchoolEmail(e.target.value)} placeholder="you@s.yourschool.ac.jp" style={inputStyle} />
+              </Field>
+            </div>
+            <Button type="submit" disabled={!schoolEmail.trim()} loading={busy}>登録する</Button>
+          </form>
+        )}
+      </Section>
+
+      {social.blockedIds.length > 0 && (
+        <Section title="ブロック中の人" count={social.blockedIds.length} description="ブロックした相手からは申請や招待が届かず、互いのプロフィールも見えません">
+          <List>
+            {social.blockedIds.map(id => (
+              <ListItem
+                key={id}
+                leading={<Avatar name={userLabel(social.users, id)} size={32} />}
+                title={userLabel(social.users, id)}
+                trailing={<Button size="sm" disabled={busy} onClick={() => run(async () => { await social.unblock(id); showToast('ブロックを解除しました') })}>解除</Button>}
+              />
+            ))}
+          </List>
+        </Section>
+      )}
+    </>
   )
 }

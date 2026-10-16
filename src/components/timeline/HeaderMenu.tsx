@@ -8,14 +8,17 @@ import {
   SEMESTER_TERMS, currentSemester, listSemesters, semesterKey, semesterLabel, subjectInSemester,
   type SemesterTerm,
 } from '../../lib/semester'
-import type { SocialTab } from '../social/SocialPanel'
-import type { ManageTab } from '../social/ManageCenter'
+import type { PeopleTab } from '../social/PeoplePanel'
 
 interface Props {
-  onOpenSocial: (tab: SocialTab) => void
+  onOpenPeople: (tab?: PeopleTab) => void
+  onOpenInbox: () => void
   onOpenMyProfile: () => void
-  onOpenManage: (tab?: ManageTab) => void
+  isMobile: boolean
 }
+
+/** 受信箱の「返事が必要」と同じ件を指す通知の種類（未読の数で二重に数えない） */
+const PENDING_TYPES = new Set(['friend_request', 'party_invite', 'lecture_apply_request'])
 
 const headerButton: CSSProperties = {
   background: 'rgba(255,255,255,0.07)',
@@ -82,29 +85,10 @@ const icon = {
       <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   ),
-  party: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M8 2.2l1.7 3.4 3.8.5-2.7 2.7.6 3.8L8 10.8l-3.4 1.8.6-3.8L2.5 6.1l3.8-.5L8 2.2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  ),
-  account: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7L3.6 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
   semester: (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <rect x="2" y="3" width="12" height="11" rx="1.8" stroke="currentColor" strokeWidth="1.4" />
       <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-  manage: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2 4h7M12 4h2M2 8h2M7 8h7M2 12h9M14 12h0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="10.5" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="5.5" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="12.5" cy="12" r="1.5" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   ),
   logout: (
@@ -256,14 +240,16 @@ function NewSemesterSheet({ onClose }: { onClose: () => void }) {
 }
 
 /** ヘッダー右端の「通知」ボタンとハンバーガーメニュー */
-export default function HeaderMenu({ onOpenSocial, onOpenMyProfile, onOpenManage }: Props) {
+export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile, isMobile }: Props) {
   const { profile, isDark, toggleTheme, signOut } = useStore()
-  const unread = useSocialStore(s => s.notifications.filter(n => !n.read_at).length)
   const incoming = useSocialStore(s => s.incoming.length)
   const invites = useSocialStore(s => s.invites.length)
   const applyRequests = useSocialStore(s => s.applyRequests.length)
-  /** まとめて管理で返事が必要な件数 */
+  /** 受信箱で返事が必要な件数 */
   const pending = applyRequests + incoming + invites
+  /** 返事が必要なもの以外の未読のお知らせ（返事が必要なものと二重に数えない） */
+  const unreadOther = useSocialStore(s => s.notifications.filter(n => !n.read_at && !PENDING_TYPES.has(n.type)).length)
+  const inboxCount = pending + unreadOther
   const [open, setOpen] = useState(false)
   const [newSemesterOpen, setNewSemesterOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -282,33 +268,46 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile, onOpenManage
 
   const pick = (fn: () => void) => () => { setOpen(false); fn() }
 
+  /** 文字つきのヘッダーボタン（スマホではアイコンだけ） */
+  const labeledButton: CSSProperties = {
+    ...headerButton,
+    width: isMobile ? headerButton.width : 'auto',
+    padding: isMobile ? 0 : '0 11px 0 9px',
+    gap: 6,
+    fontSize: 13,
+    fontWeight: 600,
+  }
+  const hoverOn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }
+  const hoverOff = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }
+
   return (
     <>
       <button
-        onClick={() => onOpenManage(pending > 0 ? 'inbox' : undefined)}
-        aria-label={pending > 0 ? `まとめて管理（対応が必要な申請${pending}件）` : 'まとめて管理'}
-        title="まとめて管理（申請・招待・講義の公開）"
-        style={headerButton}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+        onClick={() => onOpenPeople()}
+        aria-label="仲間（フレンド・パーティー）"
+        title="仲間（フレンド・パーティー）"
+        style={labeledButton}
+        onMouseEnter={hoverOn}
+        onMouseLeave={hoverOff}
       >
-        {icon.manage}
-        <Badge count={pending} />
+        {icon.friends}
+        {!isMobile && '仲間'}
       </button>
 
       <button
-        onClick={() => onOpenSocial('notifications')}
-        aria-label={unread > 0 ? `通知（未読${unread}件）` : '通知'}
-        title="通知"
-        style={headerButton}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+        onClick={onOpenInbox}
+        aria-label={inboxCount > 0 ? `受信箱（${pending > 0 ? `返事が必要 ${pending}件` : `未読 ${inboxCount}件`}）` : '受信箱'}
+        title="受信箱（申請・招待・お知らせ）"
+        style={labeledButton}
+        onMouseEnter={hoverOn}
+        onMouseLeave={hoverOff}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
           <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
-        <Badge count={unread} />
+        {!isMobile && '受信箱'}
+        <Badge count={inboxCount} />
       </button>
 
       <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
@@ -319,20 +318,19 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile, onOpenManage
           aria-expanded={open}
           title="メニュー"
           style={{ ...headerButton, background: open ? 'rgba(255,255,255,0.16)' : headerButton.background }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+          onMouseEnter={hoverOn}
           onMouseLeave={e => { e.currentTarget.style.background = open ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)' }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
-          <Badge count={incoming + invites} />
         </button>
 
         {open && (
           <div
             role="menu"
             style={{
-              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 270,
               background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
               boxShadow: 'var(--shadow-lg)', padding: 6, zIndex: 250,
             }}
@@ -352,16 +350,13 @@ export default function HeaderMenu({ onOpenSocial, onOpenMyProfile, onOpenManage
                   {profile?.display_name}
                 </span>
                 <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  {profile?.handle ? `@${profile.handle}・` : ''}自分のプロフィール
+                  {profile?.handle ? `@${profile.handle}・` : ''}プロフィールとアカウント
                 </span>
               </span>
             </button>
             <SemesterSection onPicked={() => setOpen(false)} onCreate={pick(() => setNewSemesterOpen(true))} />
             <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
-            <MenuItem icon={icon.manage} label="まとめて管理" badge={pending} onClick={pick(() => onOpenManage(pending > 0 ? 'inbox' : undefined))} />
-            <MenuItem icon={icon.friends} label="フレンド" badge={incoming} onClick={pick(() => onOpenSocial('friends'))} />
-            <MenuItem icon={icon.party} label="パーティー" badge={invites} onClick={pick(() => onOpenSocial('parties'))} />
-            <MenuItem icon={icon.account} label="アカウント設定" onClick={pick(() => onOpenSocial('account'))} />
+            <MenuItem icon={icon.friends} label="仲間（フレンド・パーティー）" onClick={pick(() => onOpenPeople())} />
             <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
             <MenuItem
               icon={<img src={isDark ? '/sun.png' : '/moon.png'} width={14} height={14} alt="" style={{ display: 'block', filter: isDark ? 'brightness(0) invert(1)' : 'none', opacity: 0.7 }} />}
