@@ -37,7 +37,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         style={{
           position: 'fixed',
-          bottom: 24,
+          // 右下の「課題を追加」ボタンの上に出す
+          bottom: 92,
           right: 24,
           display: 'flex',
           flexDirection: 'column',

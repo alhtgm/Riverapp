@@ -49,6 +49,8 @@ export interface Subject {
   visibility: LectureVisibility
   apply_open: boolean
   created_at: string
+  /** 講義を見せているパーティー。name は自分が所属していないパーティーだと null */
+  visible_parties: { id: string; name: string | null }[]
 }
 
 export interface Recurrence {
