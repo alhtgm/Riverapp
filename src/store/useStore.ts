@@ -61,7 +61,12 @@ function fail(error: unknown): never {
   throw new Error(toMessage(error))
 }
 
-function toSubject(lecture: LectureRow, color: string, order: number): Subject {
+function toSubject(
+  lecture: LectureRow,
+  color: string,
+  order: number,
+  visibleParties: Subject['visible_parties'] = [],
+): Subject {
   return {
     id: lecture.id,
     name: lecture.title,
@@ -73,6 +78,7 @@ function toSubject(lecture: LectureRow, color: string, order: number): Subject {
     visibility: lecture.visibility,
     apply_open: lecture.apply_open,
     created_at: lecture.created_at,
+    visible_parties: visibleParties,
   }
 }
 
@@ -342,7 +348,7 @@ export const useStore = create<AppState>((set, get) => ({
       const lectureIds = subjects.map(s => s.id)
       let tasks: Task[] = []
       if (lectureIds.length > 0) {
-        const [taskRes, stateRes] = await Promise.all([
+        const [taskRes, stateRes, partyRes] = await Promise.all([
           supabase
             .from('lecture_tasks')
             .select(TASK_COLUMNS)
@@ -353,9 +359,25 @@ export const useStore = create<AppState>((set, get) => ({
             .from('task_user_state')
             .select('task_id, status, work_start_date, memo')
             .eq('user_id', userId),
+          // パーティー名は parties の RLS により、自分が所属するものだけ読める（それ以外は null）
+          supabase
+            .from('lecture_visible_parties')
+            .select('lecture_id, party_id, parties(name)')
+            .in('lecture_id', lectureIds)
+            .order('created_at'),
         ])
         if (taskRes.error) fail(taskRes.error)
         if (stateRes.error) fail(stateRes.error)
+        if (partyRes.error) fail(partyRes.error)
+        const partiesByLecture = new Map<string, Subject['visible_parties']>()
+        for (const row of (partyRes.data ?? []) as Record<string, unknown>[]) {
+          const raw = row.parties as { name: string } | { name: string }[] | null
+          const party = Array.isArray(raw) ? raw[0] : raw
+          const arr = partiesByLecture.get(row.lecture_id as string) ?? []
+          arr.push({ id: row.party_id as string, name: party?.name ?? null })
+          partiesByLecture.set(row.lecture_id as string, arr)
+        }
+        for (const sub of subjects) sub.visible_parties = partiesByLecture.get(sub.id) ?? []
         const stateMap = new Map<string, TaskStateRow>()
         for (const st of (stateRes.data ?? []) as TaskStateRow[]) stateMap.set(st.task_id, st)
         tasks = ((taskRes.data ?? []) as LectureTaskRow[]).map(t => toTask(t, stateMap.get(t.id)))
@@ -491,7 +513,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (error) fail(error)
     const lecture = data as LectureRow
     set(s => ({
-      subjects: s.subjects.map(sub => (sub.id === id ? toSubject(lecture, sub.color, sub.order) : sub)),
+      subjects: s.subjects.map(sub => (sub.id === id ? toSubject(lecture, sub.color, sub.order, sub.visible_parties) : sub)),
     }))
   },
 

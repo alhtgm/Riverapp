@@ -618,44 +618,6 @@ export default function TimelineView() {
           </span>
         </div>
 
-        {/* Add task button */}
-        <button
-          onClick={() => setAddModalSubjectId('')}
-          aria-label="課題を追加 (N)"
-          title="課題を追加 [N]"
-          style={{
-            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 8,
-            padding: isMobile ? '7px 10px' : '7px 15px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            letterSpacing: '-0.02em',
-            boxShadow: '0 3px 10px rgba(224,110,66,0.35)',
-            transition: 'all 0.25s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            flexShrink: 0,
-            fontFamily: 'inherit',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.48)'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.35)'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          {!isMobile && '課題を追加'}
-        </button>
-
         {/* 通知 + ハンバーガーメニュー（フレンド・パーティー・アカウント・テーマ・ログアウト） */}
         <HeaderMenu
           onOpenPeople={tab => setPeopleTab(tab ?? 'friends')}
@@ -1219,6 +1181,12 @@ export default function TimelineView() {
                           <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                         </svg>
                       </button>
+
+                      <SharedPartiesBadge
+                        subject={subject}
+                        isMobile={isMobile}
+                        onClick={() => setLectureId(subject.id)}
+                      />
                     </div>
 
                     {/* 完了率バー — absolute right */}
@@ -1428,8 +1396,52 @@ export default function TimelineView() {
               )
             })
           )}
+          {/* 右下の追加ボタンに最後の行が隠れないようにする余白 */}
+          <div aria-hidden="true" style={{ height: 88 }} />
         </div>
       </div>
+
+      {/* 課題を追加（右下の丸ボタン） */}
+      {!reAdd && (
+        <button
+          onClick={() => setAddModalSubjectId('')}
+          aria-label="課題を追加 (N)"
+          title="課題を追加 [N]"
+          style={{
+            position: 'fixed',
+            right: isMobile ? 16 : 24,
+            bottom: isMobile ? 'calc(16px + env(safe-area-inset-bottom))' : 24,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            border: 'none',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
+            color: '#ffffff',
+            boxShadow: '0 6px 18px rgba(224,110,66,0.42)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            zIndex: 120,
+            transition: 'box-shadow 0.2s, transform 0.15s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(224,110,66,0.55)'
+            e.currentTarget.style.transform = 'translateY(-2px)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(224,110,66,0.42)'
+            e.currentTarget.style.transform = 'translateY(0)'
+          }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)' }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+        >
+          <svg width="22" height="22" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 1.5v9M1.5 6h9" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
 
       {/* ---- Overlays ---- */}
       {selectedTask && (
@@ -1505,5 +1517,82 @@ export default function TimelineView() {
         />
       )}
     </div>
+  )
+}
+
+/** 講義を見せているパーティーのタグ。クリックで講義の画面（共有先の変更）を開く */
+function SharedPartiesBadge({ subject, isMobile, onClick }: { subject: Subject; isMobile: boolean; onClick: () => void }) {
+  if (subject.visibility === 'private') return null
+
+  const named = subject.visible_parties.filter(p => p.name !== null).map(p => p.name as string)
+  const othersCount = subject.visible_parties.length - named.length
+  const maxShown = isMobile ? 1 : 2
+  const shown = named.slice(0, maxShown)
+  const rest = named.length - shown.length + othersCount
+  const isPublic = subject.visibility === 'public'
+  if (!isPublic && subject.visible_parties.length === 0) return null
+
+  const title = [
+    isPublic ? '全体に公開中' : null,
+    named.length > 0 ? `共有中のパーティー: ${named.join('、')}` : null,
+    othersCount > 0 ? `ほかの参加者のパーティー ${othersCount}件` : null,
+    subject.visibility === 'friends' ? '参加者のフレンドにも表示' : null,
+  ].filter(Boolean).join('\n')
+
+  const chip: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    height: 20,
+    padding: '0 8px',
+    borderRadius: 9999,
+    fontSize: 11,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onClick() }}
+      title={`${title}\nクリックで共有先を変更`}
+      aria-label={`${subject.name}の共有先: ${title.replace(/\n/g, '、')}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        marginRight: 8,
+        padding: 0,
+        border: 'none',
+        background: 'none',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      {isPublic && (
+        <span style={{ ...chip, background: 'var(--public-bg)', color: 'var(--public)' }}>全体公開</span>
+      )}
+      {shown.map((name, i) => (
+        <span
+          key={i}
+          style={{
+            ...chip,
+            background: 'var(--share-bg)',
+            color: 'var(--share)',
+            maxWidth: isMobile ? 72 : 120,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: 'inline-block',
+            lineHeight: '20px',
+          }}
+        >
+          {name}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span style={{ ...chip, background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>+{rest}</span>
+      )}
+    </button>
   )
 }

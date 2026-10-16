@@ -30,6 +30,12 @@
   --danger:          #D42222;
   --danger-bg:       #FDEEEE;
 
+  /* 共有先のタグ（パーティー・全体公開） */
+  --share:           #7233DE;
+  --share-bg:        rgba(124,58,237,0.12);
+  --public:          #047857;
+  --public-bg:       rgba(16,185,129,0.12);
+
   /* Glassmorphism */
   --header-glass: rgba(245,242,236,0.9);
   --filter-glass: rgba(245,242,236,0.72);
@@ -61,6 +67,10 @@
   --accent-muted:    rgba(242,155,110,0.26);
   --danger:          #F26565;
   --danger-bg:       rgba(242,101,101,0.16);
+  --share:           #C4B5FD;
+  --share-bg:        rgba(167,139,250,0.18);
+  --public:          #6EE7B7;
+  --public-bg:       rgba(52,211,153,0.16);
   --header-glass: rgba(24,21,18,0.9);
   --filter-glass: rgba(24,21,18,0.72);
   --shadow-xs:   0 1px 2px rgba(0,0,0,0.4);
