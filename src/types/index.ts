@@ -234,6 +234,31 @@ export const STATUS_CONFIG: Record<
   overdue:     { label: '期限切れ', color: '#D42222', bg: '#FDECEC', darkColor: '#F26565', darkBg: 'rgba(239,68,68,0.20)'  },
 }
 
+/**
+ * タイムラインの課題バー専用の色（OKLCH で設計）。
+ * - 色相はカラーユニバーサルデザインの Okabe-Ito 配色を基準にする（朱・青・青緑・赤紫＋無彩色）。
+ * - 塗りは不透明。週末や「今日」列の網掛けが透けて背景と混ざらないようにする。
+ * - ダークは暗い塗りに沈めず、明るめの塗り＋濃い文字にする（Material / Apple の方針）。
+ *   未着手だけは控えめな中間グレーにして、注意したい状態を浮かび上がらせる。
+ * - 背景との差・文字の読みやすさは APCA で検証した（WCAG 2 は暗い色の組み合わせを過大評価するため）。
+ *   ダーク: 塗り vs 行背景 Lc 30〜62 / ライト: 13〜32、文字 vs 塗り Lc 55 以上。
+ * - 色だけに頼らないよう、完了・提出済み・期限切れはバーにアイコンも付ける（色覚の多様性への配慮）。
+ * accent はバー左端の太線。
+ */
+export const TASK_BAR_COLORS: Record<
+  TaskStatus | 'overdue',
+  {
+    fill: string; border: string; text: string; accent: string
+    darkFill: string; darkBorder: string; darkText: string; darkAccent: string
+  }
+> = {
+  todo:        { fill: '#DDD8D2', border: '#8B857F', text: '#443F39', accent: '#69625A', darkFill: '#89847D', darkBorder: '#ACA7A1', darkText: '#FDF9F6', darkAccent: '#CBC3BA' },
+  in_progress: { fill: '#99CFFF', border: '#2E86C8', text: '#003D66', accent: '#006EB0', darkFill: '#7BC0FB', darkBorder: '#A9D7FF', darkText: '#031524', darkAccent: '#2186CE' },
+  done:        { fill: '#8EE0BD', border: '#239D75', text: '#004631', accent: '#00835F', darkFill: '#50BF96', darkBorder: '#8AD7B6', darkText: '#00140C', darkAccent: '#009069' },
+  submitted:   { fill: '#E2B7FC', border: '#A26BC3', text: '#551D71', accent: '#8944AE', darkFill: '#C195DC', darkBorder: '#D9B9EE', darkText: '#150A1C', darkAccent: '#9656BA' },
+  overdue:     { fill: '#FFB19F', border: '#CE543C', text: '#781300', accent: '#C83314', darkFill: '#FB9781', darkBorder: '#FFBBAB', darkText: '#230C08', darkAccent: '#DD5136' },
+}
+
 export const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done', 'submitted']
 
 export function isOverdue(task: Task): boolean {
