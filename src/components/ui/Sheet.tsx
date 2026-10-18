@@ -53,7 +53,7 @@ export default function Sheet({ title, subtitle, onClose, children, footer, head
         className="river-sheet-wrap"
         style={{
           position: 'fixed', inset: 0, zIndex,
-          background: 'rgba(20,16,10,0.32)',
+          background: 'rgba(20,18,40,0.32)',
           backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           animation: 'sheetFade 0.18s ease-out',

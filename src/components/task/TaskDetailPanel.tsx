@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Task, Subject, TaskStatus } from '../../types'
-import { STATUS_CONFIG, STATUS_ORDER } from '../../types'
+import { STATUS_CONFIG, STATUS_ORDER, withAlpha } from '../../types'
 import { useStore } from '../../store/useStore'
 import { useToast } from '../ui/Toast'
 import ProgressPeople from '../lecture/ProgressPeople'
@@ -224,7 +224,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = 'var(--accent)'
-    e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.12)'
+    e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent)'
     e.target.style.background = 'var(--surface)'
   }
   const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -250,7 +250,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
       <div
         style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(20,16,10,0.25)',
+          background: 'rgba(20,18,40,0.25)',
           backdropFilter: 'blur(2px)',
           WebkitBackdropFilter: 'blur(2px)',
           zIndex: 150,
@@ -265,7 +265,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
         width: 'min(420px, 100vw)',
         background: 'var(--surface)',
         borderLeft: '1px solid var(--border)',
-        boxShadow: '-8px 0 40px rgba(20,16,10,0.1)',
+        boxShadow: '-8px 0 40px rgba(20,18,40,0.1)',
         zIndex: 160,
         display: 'flex',
         flexDirection: 'column',
@@ -448,7 +448,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                     style={{
                       background: active ? cfg.bg : 'var(--surface-warm)',
                       color: active ? cfg.color : 'var(--text-secondary)',
-                      border: `1.5px solid ${active ? cfg.color + '55' : 'var(--border)'}`,
+                      border: `1.5px solid ${active ? withAlpha(cfg.color, '55') : 'var(--border)'}`,
                       borderRadius: 9999,
                       padding: '6px 15px',
                       fontSize: 13,
@@ -457,7 +457,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                       letterSpacing: '-0.01em',
                       transition: 'all 0.2s',
                       fontFamily: 'inherit',
-                      boxShadow: active ? `0 2px 8px ${cfg.color}22` : 'none',
+                      boxShadow: active ? `0 2px 8px ${withAlpha(cfg.color, '22')}` : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
@@ -465,7 +465,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                     onMouseEnter={e => {
                       if (!active) {
                         e.currentTarget.style.background = cfg.bg
-                        e.currentTarget.style.borderColor = cfg.color + '44'
+                        e.currentTarget.style.borderColor = withAlpha(cfg.color, '44')
                         e.currentTarget.style.color = cfg.color
                       }
                     }}
@@ -511,7 +511,7 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
                       cursor: 'pointer',
                       color: memoTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
                       fontFamily: 'inherit',
-                      boxShadow: memoTab === tab ? '0 1px 3px rgba(20,16,10,0.08)' : 'none',
+                      boxShadow: memoTab === tab ? '0 1px 3px rgba(20,18,40,0.08)' : 'none',
                       transition: 'all 0.2s',
                     }}
                   >
@@ -587,17 +587,17 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
               cursor: saving ? 'not-allowed' : 'pointer',
               transition: 'all 0.25s', letterSpacing: '-0.02em',
               fontFamily: 'inherit',
-              boxShadow: saving ? 'none' : '0 3px 10px rgba(224,110,66,0.3)',
+              boxShadow: saving ? 'none' : '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)',
             }}
             onMouseEnter={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.42)'
+                e.currentTarget.style.boxShadow = '0 5px 16px color-mix(in srgb, var(--accent) 42%, transparent)'
                 e.currentTarget.style.transform = 'translateY(-1px)'
               }
             }}
             onMouseLeave={e => {
               if (!saving) {
-                e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.3)'
+                e.currentTarget.style.boxShadow = '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)'
                 e.currentTarget.style.transform = 'translateY(0)'
               }
             }}

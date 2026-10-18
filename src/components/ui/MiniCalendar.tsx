@@ -71,7 +71,7 @@ export default function MiniCalendar({ value, onChange, min }: Props) {
             textAlign: 'center',
             fontSize: 10,
             fontWeight: 700,
-            color: i === 0 ? 'var(--danger)' : i === 6 ? '#B08948' : 'var(--text-tertiary)',
+            color: i === 0 ? 'var(--danger)' : i === 6 ? 'var(--brand)' : 'var(--text-tertiary)',
           }}>
             {w}
           </div>
@@ -105,7 +105,7 @@ export default function MiniCalendar({ value, onChange, min }: Props) {
                   ? 'var(--text-disabled)'
                   : isSelected ? '#fff'
                   : dow === 0 ? 'var(--danger)'
-                  : dow === 6 ? '#B08948'
+                  : dow === 6 ? 'var(--brand)'
                   : 'var(--text-primary)',
                 fontSize: 13,
                 fontWeight: isSelected ? 700 : 500,
@@ -113,7 +113,7 @@ export default function MiniCalendar({ value, onChange, min }: Props) {
                 opacity: isDisabled ? 0.4 : 1,
                 fontFamily: 'inherit',
                 transition: 'background 0.12s, border-color 0.12s',
-                boxShadow: isSelected ? '0 2px 8px rgba(224,110,66,0.4)' : 'none',
+                boxShadow: isSelected ? '0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
               }}
             >
               {d}

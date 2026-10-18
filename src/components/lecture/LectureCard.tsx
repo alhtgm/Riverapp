@@ -13,8 +13,8 @@ const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon
     ),
   },
   party: {
-    fg: '#7233DE',
-    bg: 'rgba(124,58,237,0.12)',
+    fg: '#7448D0',
+    bg: 'rgba(116,72,208,0.12)',
     icon: (
       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M8 2.2l1.7 3.4 3.8.5-2.7 2.7.6 3.8L8 10.8l-3.4 1.8.6-3.8L2.5 6.1l3.8-.5L8 2.2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
@@ -22,8 +22,8 @@ const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon
     ),
   },
   friends: {
-    fg: '#0779A0',
-    bg: 'rgba(8,145,178,0.12)',
+    fg: '#1C6BBD',
+    bg: 'rgba(28,107,189,0.12)',
     icon: (
       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.6" />
@@ -33,8 +33,8 @@ const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon
     ),
   },
   public: {
-    fg: '#14913F',
-    bg: 'rgba(22,163,74,0.12)',
+    fg: '#1B7D45',
+    bg: 'rgba(27,125,69,0.12)',
     icon: (
       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />

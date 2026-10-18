@@ -155,7 +155,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = 'var(--accent)'
-    e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.12)'
+    e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent)'
     e.target.style.background = 'var(--surface)'
   }
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -179,7 +179,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
   const pillStyle = (active: boolean): React.CSSProperties => ({
     background: active ? 'var(--accent-bg)' : 'var(--bg-secondary)',
     color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    border: `1px solid ${active ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
+    border: `1px solid ${active ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
     borderRadius: 9999,
     padding: '5px 14px',
     fontSize: 13,
@@ -188,13 +188,13 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     transition: 'all 0.2s',
     fontFamily: 'inherit',
     letterSpacing: '-0.01em',
-    boxShadow: active ? '0 2px 6px rgba(224,110,66,0.18)' : 'none',
+    boxShadow: active ? '0 2px 6px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
   })
 
   return (
     <>
       <div
-        style={{ position: 'fixed', inset: 0, background: 'rgba(20,16,10,0.3)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', zIndex: 200 }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(20,18,40,0.3)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', zIndex: 200 }}
         onClick={onClose}
       />
       <div style={{
@@ -205,7 +205,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 16,
-        boxShadow: '0 24px 64px rgba(20,16,10,0.14), 0 8px 20px rgba(20,16,10,0.07)',
+        boxShadow: '0 24px 64px rgba(20,18,40,0.14), 0 8px 20px rgba(20,18,40,0.07)',
         zIndex: 210,
         width: 'min(520px, calc(100vw - 32px))',
         maxHeight: 'calc(100svh - 48px)',
@@ -288,7 +288,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                     fontSize: 13,
                     fontWeight: mode === m ? 600 : 400,
                     cursor: 'pointer',
-                    boxShadow: mode === m ? '0 1px 4px rgba(20,16,10,0.1)' : 'none',
+                    boxShadow: mode === m ? '0 1px 4px rgba(20,18,40,0.1)' : 'none',
                     transition: 'all 0.25s',
                     letterSpacing: '-0.01em',
                     fontFamily: 'inherit',
@@ -341,7 +341,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                   onClick={() => setShowNewSubject(!showNewSubject)}
                   style={{
                     background: showNewSubject ? 'var(--accent-bg)' : 'var(--bg-secondary)',
-                    border: `1px solid ${showNewSubject ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
+                    border: `1px solid ${showNewSubject ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
                     borderRadius: 8,
                     padding: '0 12px',
                     fontSize: 12,
@@ -469,7 +469,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                       style={{
                         background: intervalWeeks === iv.weeks ? 'var(--accent-bg)' : 'var(--bg-secondary)',
                         color: intervalWeeks === iv.weeks ? 'var(--accent)' : 'var(--text-secondary)',
-                        border: `1px solid ${intervalWeeks === iv.weeks ? 'rgba(224,110,66,0.3)' : 'var(--border)'}`,
+                        border: `1px solid ${intervalWeeks === iv.weeks ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
                         borderRadius: 9999,
                         padding: '5px 14px',
                         fontSize: 13,
@@ -478,7 +478,7 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                         transition: 'all 0.2s',
                         fontFamily: 'inherit',
                         letterSpacing: '-0.01em',
-                        boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px rgba(224,110,66,0.18)' : 'none',
+                        boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
                       }}
                     >
                       {iv.label}
@@ -588,17 +588,17 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 transition: 'all 0.25s',
                 letterSpacing: '-0.02em',
                 fontFamily: 'inherit',
-                boxShadow: saving ? 'none' : '0 3px 10px rgba(224,110,66,0.3)',
+                boxShadow: saving ? 'none' : '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)',
               }}
               onMouseEnter={e => {
                 if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 5px 16px rgba(224,110,66,0.42)'
+                  e.currentTarget.style.boxShadow = '0 5px 16px color-mix(in srgb, var(--accent) 42%, transparent)'
                   e.currentTarget.style.transform = 'translateY(-1px)'
                 }
               }}
               onMouseLeave={e => {
                 if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 3px 10px rgba(224,110,66,0.3)'
+                  e.currentTarget.style.boxShadow = '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)'
                   e.currentTarget.style.transform = 'translateY(0)'
                 }
               }}

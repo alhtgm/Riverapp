@@ -44,7 +44,7 @@ export default function PartyPicker({ myParties, selectedIds, busy, onChange }: 
         {selectedMine.map(p => (
           <span key={p.id} style={{
             display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 4px 4px 10px', borderRadius: 9999,
-            background: 'rgba(124,58,237,0.12)', color: '#7233DE', fontSize: 12, fontWeight: 700,
+            background: 'rgba(116,72,208,0.12)', color: '#7448D0', fontSize: 12, fontWeight: 700,
           }}>
             {p.name}
             <span style={{ fontWeight: 500, opacity: 0.75 }}>{p.member_count}人</span>

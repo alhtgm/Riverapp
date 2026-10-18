@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { Avatar, Button, Field } from '../ui/kit'
 import Sheet from '../ui/Sheet'
+import SettingsSheet from '../settings/SettingsSheet'
 import { inputStyle } from '../ui/styles'
 import {
   SEMESTER_TERMS, currentSemester, listSemesters, semesterKey, semesterLabel, subjectInSemester,
@@ -21,9 +22,9 @@ interface Props {
 const PENDING_TYPES = new Set(['friend_request', 'party_invite', 'lecture_apply_request'])
 
 const headerButton: CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  color: 'rgba(255,255,255,0.85)',
-  border: '1px solid rgba(255,255,255,0.15)',
+  background: 'color-mix(in srgb, var(--on-brand) 7%, transparent)',
+  color: 'color-mix(in srgb, var(--on-brand) 85%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--on-brand) 15%, transparent)',
   borderRadius: 8,
   width: 36,
   height: 34,
@@ -42,9 +43,9 @@ function Badge({ count }: { count: number }) {
   return (
     <span style={{
       position: 'absolute', top: -5, right: -5, minWidth: 17, height: 17, borderRadius: 9999,
-      background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700,
+      background: 'var(--accent-solid)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
-      boxShadow: '0 0 0 2px #2f2963',
+      boxShadow: '0 0 0 2px var(--brand-deep)',
     }}>
       {count > 99 ? '99+' : count}
     </span>
@@ -70,7 +71,7 @@ function MenuItem({ icon, label, badge = 0, onClick, danger = false }: {
       <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: danger ? 'var(--danger)' : 'var(--text-secondary)' }}>{icon}</span>
       <span style={{ flex: 1 }}>{label}</span>
       {badge > 0 && (
-        <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 9999, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{badge}</span>
+        <span style={{ background: 'var(--accent-solid)', color: 'var(--on-accent)', borderRadius: 9999, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{badge}</span>
       )}
     </button>
   )
@@ -89,6 +90,12 @@ const icon = {
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <rect x="2" y="3" width="12" height="11" rx="1.8" stroke="currentColor" strokeWidth="1.4" />
       <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  ),
+  settings: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   ),
   logout: (
@@ -241,7 +248,7 @@ function NewSemesterSheet({ onClose }: { onClose: () => void }) {
 
 /** ヘッダー右端の「通知」ボタンとハンバーガーメニュー */
 export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile, isMobile }: Props) {
-  const { profile, isDark, toggleTheme, signOut } = useStore()
+  const { profile, signOut } = useStore()
   const incoming = useSocialStore(s => s.incoming.length)
   const invites = useSocialStore(s => s.invites.length)
   const applyRequests = useSocialStore(s => s.applyRequests.length)
@@ -252,6 +259,7 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
   const inboxCount = pending + unreadOther
   const [open, setOpen] = useState(false)
   const [newSemesterOpen, setNewSemesterOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -277,8 +285,8 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
     fontSize: 13,
     fontWeight: 600,
   }
-  const hoverOn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }
-  const hoverOff = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }
+  const hoverOn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--on-brand) 14%, transparent)' }
+  const hoverOff = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--on-brand) 7%, transparent)' }
 
   return (
     <>
@@ -317,9 +325,9 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
           aria-haspopup="menu"
           aria-expanded={open}
           title="メニュー"
-          style={{ ...headerButton, background: open ? 'rgba(255,255,255,0.16)' : headerButton.background }}
+          style={{ ...headerButton, background: open ? 'color-mix(in srgb, var(--on-brand) 16%, transparent)' : headerButton.background }}
           onMouseEnter={hoverOn}
-          onMouseLeave={e => { e.currentTarget.style.background = open ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = open ? 'color-mix(in srgb, var(--on-brand) 16%, transparent)' : 'color-mix(in srgb, var(--on-brand) 7%, transparent)' }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -358,16 +366,13 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
             <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
             <MenuItem icon={icon.friends} label="仲間（フレンド・パーティー）" onClick={pick(() => onOpenPeople())} />
             <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
-            <MenuItem
-              icon={<img src={isDark ? '/sun.png' : '/moon.png'} width={14} height={14} alt="" style={{ display: 'block', filter: isDark ? 'brightness(0) invert(1)' : 'none', opacity: 0.7 }} />}
-              label={isDark ? 'ライトモードにする' : 'ダークモードにする'}
-              onClick={() => toggleTheme()}
-            />
+            <MenuItem icon={icon.settings} label="設定" onClick={pick(() => setSettingsOpen(true))} />
             <MenuItem icon={icon.logout} label="ログアウト" danger onClick={pick(() => { void signOut() })} />
           </div>
         )}
       </div>
       {newSemesterOpen && <NewSemesterSheet onClose={() => setNewSemesterOpen(false)} />}
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </>
   )
 }

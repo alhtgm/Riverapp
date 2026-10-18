@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { applyPalette, getStoredPalette } from './lib/palette'
+
+// 設定で選んだテーマカラーを、最初の描画より前に当てる（ちらつき防止）
+applyPalette(getStoredPalette())
 
 // PWA: Service Worker 登録
 if ('serviceWorker' in navigator) {

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
-import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate } from '../../types'
+import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate, withAlpha } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
 import AddTaskModal from '../task/AddTaskModal'
 import InboxPanel from '../social/InboxPanel'
@@ -536,8 +536,8 @@ export default function TimelineView() {
       {/* ---- Brand header ---- */}
       <header style={{
         height: 52,
-        background: 'linear-gradient(135deg, #2f2963 0%, #454372 100%)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        background: 'linear-gradient(135deg, var(--brand-deep) 0%, var(--brand-header) 100%)',
+        borderBottom: '1px solid color-mix(in srgb, var(--on-brand) 7%, transparent)',
         boxShadow: '0 2px 12px rgba(28,22,60,0.45)',
         display: 'flex',
         alignItems: 'center',
@@ -555,15 +555,15 @@ export default function TimelineView() {
             width={30}
             height={30}
             alt="River"
-            style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(112,135,127,0.35)' }}
+            style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(13,11,40,0.35)' }}
           />
-          <span style={{ fontSize: 17, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.04em', flexShrink: 0 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--on-brand)', letterSpacing: '-0.04em', flexShrink: 0 }}>
             River
           </span>
-          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.28)', marginLeft: 2, flexShrink: 0 }} />
+          <div style={{ width: 1, height: 14, background: 'color-mix(in srgb, var(--on-brand) 28%, transparent)', marginLeft: 2, flexShrink: 0 }} />
           <span style={{
             fontSize: 12,
-            color: 'rgba(255,255,255,0.8)',
+            color: 'color-mix(in srgb, var(--on-brand) 80%, transparent)',
             fontWeight: 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -588,11 +588,11 @@ export default function TimelineView() {
           </span>
           <span style={{
             fontSize: 10,
-            color: 'rgba(255,255,255,0.62)',
+            color: 'color-mix(in srgb, var(--on-brand) 62%, transparent)',
             fontWeight: 500,
             letterSpacing: '0.02em',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'color-mix(in srgb, var(--on-brand) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--on-brand) 12%, transparent)',
             borderRadius: 4,
             padding: '1px 5px',
             flexShrink: 0,
@@ -603,10 +603,10 @@ export default function TimelineView() {
             title="学期はメニューから切り替えられます"
             style={{
               fontSize: 11,
-              color: '#ffffff',
+              color: 'var(--on-brand)',
               fontWeight: 700,
-              background: 'rgba(255,255,255,0.14)',
-              border: '1px solid rgba(255,255,255,0.22)',
+              background: 'color-mix(in srgb, var(--on-brand) 14%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--on-brand) 22%, transparent)',
               borderRadius: 9999,
               padding: '2px 9px',
               flexShrink: 0,
@@ -664,9 +664,9 @@ export default function TimelineView() {
             fontFamily: 'inherit',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(112,135,127,0.1)'
-            e.currentTarget.style.borderColor = 'rgba(112,135,127,0.35)'
-            e.currentTarget.style.color = '#70877f'
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'
+            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 35%, transparent)'
+            e.currentTarget.style.color = 'var(--accent-solid)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'transparent'
@@ -725,7 +725,7 @@ export default function TimelineView() {
                 flexShrink: 0,
                 letterSpacing: '-0.01em',
                 fontFamily: 'inherit',
-                boxShadow: active ? '0 2px 8px rgba(224,110,66,0.22)' : 'none',
+                boxShadow: active ? '0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent)' : 'none',
               }}
               onMouseEnter={e => {
                 if (!active) {
@@ -765,7 +765,7 @@ export default function TimelineView() {
                 gap: 5,
                 background: isActive ? pillBg : 'transparent',
                 color: isActive ? pillColor : 'var(--text-secondary)',
-                border: `1px solid ${isActive ? pillColor + '55' : 'var(--border)'}`,
+                border: `1px solid ${isActive ? withAlpha(pillColor, '55') : 'var(--border)'}`,
                 borderRadius: 9999,
                 padding: '5px 12px 5px 9px',
                 fontSize: 13,
@@ -776,12 +776,12 @@ export default function TimelineView() {
                 flexShrink: 0,
                 letterSpacing: '-0.01em',
                 fontFamily: 'inherit',
-                boxShadow: isActive ? `0 2px 8px ${pillColor}22` : 'none',
+                boxShadow: isActive ? `0 2px 8px ${withAlpha(pillColor, '22')}` : 'none',
               }}
               onMouseEnter={e => {
                 if (!isActive) {
                   e.currentTarget.style.background = pillBg
-                  e.currentTarget.style.borderColor = pillColor + '33'
+                  e.currentTarget.style.borderColor = withAlpha(pillColor, '33')
                   e.currentTarget.style.color = pillColor
                 }
               }}
@@ -861,7 +861,7 @@ export default function TimelineView() {
             zIndex: 20,
             background: 'var(--bg)',
             borderBottom: '1px solid var(--border)',
-            boxShadow: '0 2px 8px rgba(20,16,10,0.04)',
+            boxShadow: '0 2px 8px rgba(20,18,40,0.04)',
           }}>
             {/* Date columns */}
             {days.map((day, i) => {
@@ -884,11 +884,11 @@ export default function TimelineView() {
                     paddingBottom: 8,
                     gap: 2,
                     background: isToday
-                      ? (isDark ? 'rgba(112,135,127,0.22)' : 'rgba(112,135,127,0.14)')
+                      ? (isDark ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'color-mix(in srgb, var(--accent) 14%, transparent)')
                       : (isSun || isSat)
-                      ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(20,16,10,0.035)')
+                      ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(20,18,40,0.035)')
                       : 'transparent',
-                    borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(20,16,10,0.06)'}`,
+                    borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(20,18,40,0.06)'}`,
                     position: 'relative',
                   }}
                 >
@@ -898,7 +898,7 @@ export default function TimelineView() {
                     color: (isFirst || i === 0)
                       ? 'var(--text-primary)'
                       : isSun ? 'var(--danger)'
-                      : isSat ? (isDark ? '#D4B78A' : '#A9834B')
+                      : isSat ? 'var(--saturday)'
                       : 'var(--text-tertiary)',
                     letterSpacing: (isFirst || i === 0) ? '0.04em' : '0.02em',
                     whiteSpace: 'nowrap',
@@ -912,11 +912,11 @@ export default function TimelineView() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
-                    background: isToday ? '#70877f' : 'transparent',
-                    boxShadow: isToday ? '0 2px 10px rgba(112,135,127,0.48), 0 0 0 2px rgba(112,135,127,0.18)' : 'none',
+                    background: isToday ? 'var(--accent-solid)' : 'transparent',
+                    boxShadow: isToday ? '0 2px 10px color-mix(in srgb, var(--accent) 48%, transparent), 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
                     fontSize: isToday ? 13 : 12,
                     fontWeight: isToday ? 800 : 500,
-                    color: isToday ? '#ffffff' : isSun ? 'var(--danger)' : isSat ? (isDark ? '#D4B78A' : '#A9834B') : 'var(--text-secondary)',
+                    color: isToday ? 'var(--on-accent)' : isSun ? 'var(--danger)' : isSat ? 'var(--saturday)' : 'var(--text-secondary)',
                     letterSpacing: '-0.02em',
                     transition: 'all 0.2s',
                   }}>
@@ -954,7 +954,7 @@ export default function TimelineView() {
                   borderRadius: 14,
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
-                  boxShadow: '0 2px 8px rgba(20,16,10,0.06)',
+                  boxShadow: '0 2px 8px rgba(20,18,40,0.06)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -994,7 +994,7 @@ export default function TimelineView() {
                       letterSpacing: '-0.01em',
                       transition: 'all 0.2s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,110,66,0.2)'; e.currentTarget.style.borderColor = 'rgba(224,110,66,0.5)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 20%, transparent)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 50%, transparent)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
                   >
                     「すべて」に切り替える
@@ -1135,7 +1135,7 @@ export default function TimelineView() {
                             opacity: isHovered ? 1 : 0.72,
                             transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, transform 0.1s',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,110,66,0.20)'; e.currentTarget.style.borderColor = 'rgba(224,110,66,0.45)' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 20%, transparent)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, transparent)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
                           onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
                           onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
@@ -1234,9 +1234,9 @@ export default function TimelineView() {
                                   width: COL_WIDTH,
                                   height: ROW_HEIGHT,
                                   background: isTodayCol
-                                    ? (isDark ? 'rgba(112,135,127,0.16)' : 'rgba(112,135,127,0.10)')
-                                    : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(20,16,10,0.03)'),
-                                  borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(20,16,10,0.05)'}`,
+                                    ? (isDark ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)')
+                                    : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(20,18,40,0.03)'),
+                                  borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(20,18,40,0.05)'}`,
                                   pointerEvents: 'none',
                                 }}
                               />
@@ -1286,14 +1286,14 @@ export default function TimelineView() {
                                   zIndex: isDragging ? 10 : 2,
                                   transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
                                   borderLeft: `3px solid ${color}`,
-                                  boxShadow: isDragging ? `0 6px 16px ${color}38` : `0 1px 4px ${color}18`,
+                                  boxShadow: isDragging ? `0 6px 16px ${withAlpha(color, '38')}` : `0 1px 4px ${withAlpha(color, '18')}`,
                                   userSelect: 'none',
                                 }}
                                 onMouseEnter={e => {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
                                     el.style.transform = 'translateY(-50%) translateY(-2px)'
-                                    el.style.boxShadow = `0 4px 12px ${color}28`
+                                    el.style.boxShadow = `0 4px 12px ${withAlpha(color, '28')}`
                                     el.style.zIndex = '3'
                                   }
                                 }}
@@ -1301,7 +1301,7 @@ export default function TimelineView() {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
                                     el.style.transform = 'translateY(-50%)'
-                                    el.style.boxShadow = `0 1px 4px ${color}18`
+                                    el.style.boxShadow = `0 1px 4px ${withAlpha(color, '18')}`
                                     el.style.zIndex = '2'
                                   }
                                 }}
@@ -1339,7 +1339,7 @@ export default function TimelineView() {
                                 {occurrenceLabel && (
                                   <span style={{
                                     fontSize: 10, fontWeight: 700, color,
-                                    background: `${color}22`,
+                                    background: `${withAlpha(color, '22')}`,
                                     borderRadius: 4, padding: '2px 5px',
                                     flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
                                     pointerEvents: 'none',
@@ -1415,9 +1415,9 @@ export default function TimelineView() {
             height: 56,
             borderRadius: '50%',
             border: 'none',
-            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-            color: '#ffffff',
-            boxShadow: '0 6px 18px rgba(224,110,66,0.42)',
+            background: 'linear-gradient(135deg, var(--accent-solid) 0%, var(--accent-solid-2) 100%)',
+            color: 'var(--on-accent)',
+            boxShadow: '0 6px 18px color-mix(in srgb, var(--accent) 42%, transparent)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -1427,11 +1427,11 @@ export default function TimelineView() {
             transition: 'box-shadow 0.2s, transform 0.15s',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(224,110,66,0.55)'
+            e.currentTarget.style.boxShadow = '0 8px 24px color-mix(in srgb, var(--accent) 55%, transparent)'
             e.currentTarget.style.transform = 'translateY(-2px)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 6px 18px rgba(224,110,66,0.42)'
+            e.currentTarget.style.boxShadow = '0 6px 18px color-mix(in srgb, var(--accent) 42%, transparent)'
             e.currentTarget.style.transform = 'translateY(0)'
           }}
           onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)' }}

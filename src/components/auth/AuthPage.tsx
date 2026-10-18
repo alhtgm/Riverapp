@@ -33,8 +33,8 @@ export default function AuthPage() {
 
   const inputBase: React.CSSProperties = {
     width: '100%',
-    background: '#FAFAF8',
-    border: '1px solid #E3DDD5',
+    background: '#F6F5F1',
+    border: '1px solid #DCDAE3',
     borderRadius: 8,
     padding: '10px 12px',
     fontSize: 15,
@@ -57,7 +57,7 @@ export default function AuthPage() {
   return (
     <div style={{
       minHeight: '100svh',
-      background: 'linear-gradient(145deg, #1a1235 0%, #2f2963 50%, #1e1845 100%)',
+      background: 'linear-gradient(145deg, var(--hero-1) 0%, var(--brand-deep) 50%, var(--hero-3) 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -73,7 +73,7 @@ export default function AuthPage() {
         left: '-10%',
         width: 600,
         height: 600,
-        background: 'radial-gradient(circle, rgba(224,110,66,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
       <div style={{
@@ -82,7 +82,7 @@ export default function AuthPage() {
         right: '-5%',
         width: 500,
         height: 500,
-        background: 'radial-gradient(circle, rgba(112,135,127,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -100,7 +100,7 @@ export default function AuthPage() {
 
         {/* Card header band */}
         <div style={{
-          background: 'linear-gradient(135deg, #2f2963 0%, #454372 100%)',
+          background: 'linear-gradient(135deg, var(--brand-deep) 0%, var(--brand-header) 100%)',
           padding: '32px 36px 28px',
         }}>
           {/* Logo */}
@@ -110,12 +110,12 @@ export default function AuthPage() {
               width={36}
               height={36}
               alt="River"
-              style={{ borderRadius: 10, objectFit: 'cover', boxShadow: '0 4px 12px rgba(112,135,127,0.4)' }}
+              style={{ borderRadius: 10, objectFit: 'cover', boxShadow: '0 4px 12px rgba(13,11,40,0.35)' }}
             />
             <span style={{
               fontSize: 20,
               fontWeight: 700,
-              color: '#FFFFFF',
+              color: 'var(--on-brand)',
               letterSpacing: '-0.04em',
             }}>
               River
@@ -159,14 +159,14 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="you@example.com"
                 onFocus={e => {
-                  e.target.style.borderColor = '#E06E42'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.18)'
+                  e.target.style.borderColor = 'var(--accent)'
+                  e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)'
                   e.target.style.background = '#FFFFFF'
                 }}
                 onBlur={e => {
-                  e.target.style.borderColor = '#E3DDD5'
+                  e.target.style.borderColor = '#DCDAE3'
                   e.target.style.boxShadow = 'none'
-                  e.target.style.background = '#FAFAF8'
+                  e.target.style.background = '#F6F5F1'
                 }}
               />
             </div>
@@ -182,14 +182,14 @@ export default function AuthPage() {
                 style={inputBase}
                 placeholder="6文字以上"
                 onFocus={e => {
-                  e.target.style.borderColor = '#E06E42'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(224,110,66,0.18)'
+                  e.target.style.borderColor = 'var(--accent)'
+                  e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)'
                   e.target.style.background = '#FFFFFF'
                 }}
                 onBlur={e => {
-                  e.target.style.borderColor = '#E3DDD5'
+                  e.target.style.borderColor = '#DCDAE3'
                   e.target.style.boxShadow = 'none'
-                  e.target.style.background = '#FAFAF8'
+                  e.target.style.background = '#F6F5F1'
                 }}
               />
             </div>
@@ -225,8 +225,8 @@ export default function AuthPage() {
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? '#7D766E' : 'linear-gradient(135deg, #E06E42 0%, #C2582F 100%)',
-                color: '#FFFFFF',
+                background: loading ? '#6A6780' : 'linear-gradient(135deg, var(--accent-solid) 0%, var(--accent-solid-2) 100%)',
+                color: 'var(--on-accent)',
                 border: 'none',
                 borderRadius: 10,
                 padding: '12px 16px',
@@ -234,20 +234,20 @@ export default function AuthPage() {
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 letterSpacing: '-0.02em',
-                boxShadow: loading ? 'none' : '0 4px 12px rgba(224,110,66,0.35)',
+                boxShadow: loading ? 'none' : '0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent)',
                 transition: 'all 0.15s',
                 marginTop: 4,
                 fontFamily: 'inherit',
               }}
               onMouseEnter={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(224,110,66,0.48)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px color-mix(in srgb, var(--accent) 48%, transparent)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
                 }
               }}
               onMouseLeave={e => {
                 if (!loading) {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(224,110,66,0.35)'
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent)'
                   ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
                 }
               }}
@@ -260,7 +260,7 @@ export default function AuthPage() {
             textAlign: 'center',
             marginTop: 20,
             fontSize: 13,
-            color: '#7D766E',
+            color: '#6A6780',
             letterSpacing: '-0.01em',
           }}>
             {mode === 'login' ? 'アカウントをお持ちでない方は ' : 'すでにアカウントをお持ちの方は '}
@@ -269,7 +269,7 @@ export default function AuthPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#E06E42',
+                color: 'var(--accent-solid)',
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 600,

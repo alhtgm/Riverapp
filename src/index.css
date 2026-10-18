@@ -1,78 +1,109 @@
 ﻿@import "tailwindcss";
 
 :root {
-  /* Warm neutrals — Muji/SmartHR Stone scale
-     (2026-07 redesign: コントラストをWCAG AA基準に引き上げ) */
-  --bg:              #F5F2EC;
-  --bg-secondary:    #EAE4DA;
+  /* 「夜明けの川」パレット（2026-10 刷新、docs/design-refresh.md）
+     文字色はすべて背景に対して WCAG AA 4.5:1 以上 */
+
+  /* Brand — ロゴの紺 */
+  --brand:           #3E3A78;
+  --brand-soft:      #E9E8F5;
+  --water:           #2A9BB5;  /* イラストの差し色。文字には使わない */
+  --brand-deep:      #2E2A63;  /* ヘッダー・ログイン画面のグラデーション（テーマで変えない） */
+  --brand-header:    #3E3A78;
+  --hero-1:          #17152F;
+  --hero-3:          #211E4A;
+  --saturday:        #3E3A78;
+  --on-brand:        #FFFFFF;  /* ヘッダー・見出し帯の上の文字色 */
+
+  /* Neutrals — 少し青みのある紙の白 */
+  --bg:              #F6F5F1;
+  --bg-secondary:    #ECEBE6;
   --surface:         #FFFFFF;
-  --surface-warm:    #FAF8F4;
+  --surface-warm:    #FAF9F6;
 
-  /* Text — warm tones, never pure black
-     secondary 8.2:1 / tertiary 4.9:1 on white */
-  --text-primary:    #211D1A;
-  --text-secondary:  #544E48;
-  --text-tertiary:   #7D766E;
-  --text-disabled:   #ABA49A;
+  /* Text — 紺みのある黒 */
+  --text-primary:    #1E1C2E;
+  --text-secondary:  #504D66;
+  --text-tertiary:   #6A6780;
+  --text-disabled:   #A6A4B4;
 
-  /* Borders — warm, clearly visible */
-  --border:          #D8D1C6;
-  --border-light:    #E7E1D7;
-  --border-strong:   #B5ACA0;
+  /* Borders */
+  --border:          #DCDAE3;
+  --border-light:    #E8E7EE;
+  --border-strong:   #B4B1C2;
 
-  /* Accent — warm orange (deepened for text/fill legibility) */
-  --accent:          #E06E42;
-  --accent-dark:     #C2582F;
-  --accent-bg:       rgba(224,110,66,0.10);
-  --accent-muted:    rgba(224,110,66,0.22);
+  /* Accent — 朝日のコーラル。面で使う。白文字を載せる・文字に使うときは accent-dark */
+  --accent:          #E8704F;
+  --accent-dark:     #C4532F;
+  --accent-bg:       rgba(232,112,79,0.10);
+  --accent-muted:    rgba(232,112,79,0.22);
+  --accent-solid:    #C4532F;  /* 白文字を載せる面（今日の丸・主ボタン）。テーマで変えない */
+  --accent-solid-2:  #A94424;
+  --on-accent:       #FFFFFF;  /* accent-solid の上の文字色 */
+
+  /* ステータス（矢印バー）。設定のテーマカラーを選ぶと、その色に寄せた値で上書きされる */
+  --st-todo:         #6E6B80;  --st-todo-bg:      #EEEDF2;
+  --st-progress:     #1C6BBD;  --st-progress-bg:  #E6F0FA;
+  --st-done:         #1B7D45;  --st-done-bg:      #E3F3EA;
+  --st-submitted:    #7448D0;  --st-submitted-bg: #EFEAFB;
+  --st-overdue:      #D0312D;  --st-overdue-bg:   #FBE9E8;
 
   /* Danger */
-  --danger:          #D42222;
-  --danger-bg:       #FDEEEE;
+  --danger:          #D0312D;
+  --danger-bg:       #FBE9E8;
 
   /* 共有先のタグ（パーティー・全体公開） */
-  --share:           #7233DE;
-  --share-bg:        rgba(124,58,237,0.12);
-  --public:          #047857;
-  --public-bg:       rgba(16,185,129,0.12);
+  --share:           #7448D0;
+  --share-bg:        rgba(116,72,208,0.12);
+  --public:          #1B7D45;
+  --public-bg:       rgba(27,125,69,0.12);
 
   /* Glassmorphism */
-  --header-glass: rgba(245,242,236,0.9);
-  --filter-glass: rgba(245,242,236,0.72);
+  --header-glass: rgba(246,245,241,0.9);
+  --filter-glass: rgba(246,245,241,0.72);
 
-  /* Shadows — layered, warm */
-  --shadow-xs:   0 1px 2px rgba(20,16,10,0.07);
-  --shadow-sm:   0 1px 3px rgba(20,16,10,0.06), 0 2px 8px rgba(20,16,10,0.06);
-  --shadow-md:   0 4px 16px rgba(20,16,10,0.09), 0 2px 4px rgba(20,16,10,0.05);
-  --shadow-lg:   0 8px 32px rgba(20,16,10,0.11), 0 2px 8px rgba(20,16,10,0.05);
-  --shadow-xl:   0 24px 64px rgba(20,16,10,0.16), 0 8px 20px rgba(20,16,10,0.08);
+  /* Shadows — 紺みの影 */
+  --shadow-xs:   0 1px 2px rgba(20,18,40,0.07);
+  --shadow-sm:   0 1px 3px rgba(20,18,40,0.06), 0 2px 8px rgba(20,18,40,0.06);
+  --shadow-md:   0 4px 16px rgba(20,18,40,0.09), 0 2px 4px rgba(20,18,40,0.05);
+  --shadow-lg:   0 8px 32px rgba(20,18,40,0.11), 0 2px 8px rgba(20,18,40,0.05);
+  --shadow-xl:   0 24px 64px rgba(20,18,40,0.16), 0 8px 20px rgba(20,18,40,0.08);
 }
 
 /* ─── Dark mode overrides ───────────────────────────── */
 [data-theme="dark"] {
-  --bg:              #181512;
-  --bg-secondary:    #242019;
-  --surface:         #2B2622;
-  --surface-warm:    #332D28;
-  --text-primary:    #F4F1EB;
-  --text-secondary:  #CBC5BC;
-  --text-tertiary:   #9B948B;
-  --text-disabled:   #625B53;
-  --border:          #47403A;
-  --border-light:    #37322C;
-  --border-strong:   #5C554D;
-  --accent:          #F29B6E;
-  --accent-dark:     #E27C4D;
-  --accent-bg:       rgba(242,155,110,0.16);
-  --accent-muted:    rgba(242,155,110,0.26);
-  --danger:          #F26565;
-  --danger-bg:       rgba(242,101,101,0.16);
-  --share:           #C4B5FD;
-  --share-bg:        rgba(167,139,250,0.18);
-  --public:          #6EE7B7;
-  --public-bg:       rgba(52,211,153,0.16);
-  --header-glass: rgba(24,21,18,0.9);
-  --filter-glass: rgba(24,21,18,0.72);
+  --brand:           #A7A3F0;
+  --brand-soft:      rgba(167,163,240,0.16);
+  --water:           #5BC0D6;
+  --saturday:        #A7A3F0;
+  --bg:              #13121C;
+  --bg-secondary:    #1A1926;
+  --surface:         #1E1C2B;
+  --surface-warm:    #252334;
+  --text-primary:    #EDECF6;
+  --text-secondary:  #BDBACF;
+  --text-tertiary:   #8F8CA6;
+  --text-disabled:   #5A5870;
+  --border:          #383650;
+  --border-light:    #2B2940;
+  --border-strong:   #4F4C68;
+  --accent:          #FF9273;
+  --accent-dark:     #F07A5A;
+  --accent-bg:       rgba(255,146,115,0.16);
+  --accent-muted:    rgba(255,146,115,0.26);
+  --st-todo:         #A5A2B8;  --st-todo-bg:      rgba(165,162,184,0.20);
+  --st-progress:     #5BA8F5;  --st-progress-bg:  rgba(91,168,245,0.22);
+  --st-done:         #4FC77F;  --st-done-bg:      rgba(79,199,127,0.22);
+  --st-submitted:    #B395F5;  --st-submitted-bg: rgba(179,149,245,0.22);
+  --st-overdue:      #FF6B66;  --st-overdue-bg:   rgba(255,107,102,0.20);
+  --danger:          #FF6B66;
+  --danger-bg:       rgba(255,107,102,0.16);
+  --share:           #B395F5;
+  --share-bg:        rgba(179,149,245,0.18);
+  --public:          #4FC77F;
+  --public-bg:       rgba(79,199,127,0.16);
+  --header-glass: rgba(19,18,28,0.9);
+  --filter-glass: rgba(19,18,28,0.72);
   --shadow-xs:   0 1px 2px rgba(0,0,0,0.4);
   --shadow-sm:   0 1px 3px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
   --shadow-md:   0 4px 16px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);

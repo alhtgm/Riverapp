@@ -58,13 +58,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               alignItems: 'center',
               gap: 10,
               padding: '11px 16px',
-              background: toast.type === 'error' ? '#FDECEC' : '#211D1A',
-              color: toast.type === 'error' ? '#D42222' : '#FFFFFF',
+              background: toast.type === 'error' ? '#FBE9E8' : '#1E1C2E',
+              color: toast.type === 'error' ? '#D0312D' : '#FFFFFF',
               borderRadius: 10,
               fontSize: 14,
               fontWeight: 500,
               letterSpacing: '-0.02em',
-              boxShadow: '0 4px 20px rgba(20,16,10,0.18), 0 1px 4px rgba(20,16,10,0.1)',
+              boxShadow: '0 4px 20px rgba(20,18,40,0.18), 0 1px 4px rgba(20,18,40,0.1)',
               border: toast.type === 'error' ? '1px solid rgba(220,38,38,0.25)' : 'none',
               pointerEvents: 'auto',
               animation: 'toastIn 0.22s cubic-bezier(0.34,1.56,0.64,1)',
@@ -74,7 +74,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             }}
           >
             {toast.type === 'info' ? (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: '#F4A27E' }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: '#FF9273' }}>
                 <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             ) : (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
                 <circle cx="7" cy="7" r="6.5" stroke="rgba(220,38,38,0.4)" strokeWidth="1"/>
-                <path d="M7 4v4M7 9.5v.5" stroke="#D42222" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M7 4v4M7 9.5v.5" stroke="#D0312D" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             )}
             {toast.message}

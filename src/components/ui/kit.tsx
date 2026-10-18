@@ -160,7 +160,7 @@ export function Field({ label, help, error, required, children, group = false }:
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 
 const BUTTON_COLORS: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' },
+  primary: { background: 'var(--accent-solid)', color: 'var(--on-accent)', border: '1px solid var(--accent-solid)' },
   secondary: { background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' },
   danger: { background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.3)' },
   ghost: { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid transparent' },
@@ -242,10 +242,10 @@ type Tone = 'neutral' | 'accent' | 'success' | 'info' | 'danger' | 'purple'
 const TONES: Record<Tone, { fg: string; bg: string }> = {
   neutral: { fg: 'var(--text-secondary)', bg: 'var(--bg-secondary)' },
   accent: { fg: 'var(--accent-dark)', bg: 'var(--accent-bg)' },
-  success: { fg: '#14913F', bg: 'rgba(22,163,74,0.12)' },
-  info: { fg: '#0779A0', bg: 'rgba(8,145,178,0.12)' },
+  success: { fg: 'var(--st-done)', bg: 'var(--st-done-bg)' },
+  info: { fg: 'var(--st-progress)', bg: 'var(--st-progress-bg)' },
   danger: { fg: 'var(--danger)', bg: 'var(--danger-bg)' },
-  purple: { fg: '#7233DE', bg: 'rgba(124,58,237,0.12)' },
+  purple: { fg: 'var(--st-submitted)', bg: 'var(--st-submitted-bg)' },
 }
 
 export function Badge({ tone = 'neutral', solid = false, children }: { tone?: Tone; solid?: boolean; children: ReactNode }) {

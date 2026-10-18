@@ -41,7 +41,7 @@ export default function ColorPicker({ value, onChange, onClose, position }: Prop
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 12,
-        boxShadow: '0 8px 32px rgba(20,16,10,0.14), 0 2px 8px rgba(20,16,10,0.08)',
+        boxShadow: '0 8px 32px rgba(20,18,40,0.14), 0 2px 8px rgba(20,18,40,0.08)',
         padding: 12,
         zIndex: 300,
         width: 172,

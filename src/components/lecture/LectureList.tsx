@@ -98,8 +98,8 @@ export default function LectureList({ lectures, onChanged, onOpenLecture, emptyM
                       {t.title}
                     </span>
                     <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0, fontSize: 11, fontWeight: 700 }}>
-                      <span style={{ color: '#0779A0' }} title="取り組み中">● {counts[t.id]?.inProgress ?? 0}</span>
-                      <span style={{ color: '#14913F' }} title="完了・提出済み">✓ {counts[t.id]?.done ?? 0}</span>
+                      <span style={{ color: 'var(--st-progress)' }} title="取り組み中">● {counts[t.id]?.inProgress ?? 0}</span>
+                      <span style={{ color: 'var(--st-done)' }} title="完了・提出済み">✓ {counts[t.id]?.done ?? 0}</span>
                     </span>
                   </div>
                 ))}

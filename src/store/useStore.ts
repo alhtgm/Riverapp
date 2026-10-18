@@ -40,14 +40,14 @@ interface TaskStateRow {
   memo: string | null
 }
 
-export interface LectureInput {
+interface LectureInput {
   title: string
   year: number
   term: LectureTerm
   professor?: string | null
 }
 
-export type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
+type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
 
 type TaskInput = Pick<Task, 'subject_id' | 'title' | 'start_date' | 'due_date' | 'due_time' | 'status' | 'memo'> &
   Partial<Pick<Task, 'description' | 'url'>>

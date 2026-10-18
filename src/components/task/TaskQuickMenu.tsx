@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Task, TaskStatus } from '../../types'
-import { STATUS_CONFIG, STATUS_ORDER, isOverdue, formatDate } from '../../types'
+import { STATUS_CONFIG, STATUS_ORDER, isOverdue, formatDate, withAlpha } from '../../types'
 import { useStore } from '../../store/useStore'
 import { PeopleRow } from '../lecture/ProgressPeople'
 
@@ -56,7 +56,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 12,
-        boxShadow: '0 8px 32px rgba(20,16,10,0.12), 0 2px 8px rgba(20,16,10,0.06)',
+        boxShadow: '0 8px 32px rgba(20,18,40,0.12), 0 2px 8px rgba(20,18,40,0.06)',
         zIndex: 200,
         overflow: 'hidden',
         animation: 'quickMenuIn 0.22s cubic-bezier(0.16,1,0.3,1)',
@@ -122,7 +122,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
                   alignItems: 'center',
                   gap: 8,
                   background: isActive ? btnBg : 'transparent',
-                  border: isActive ? `1px solid ${btnColor}22` : '1px solid transparent',
+                  border: isActive ? `1px solid ${withAlpha(btnColor, '22')}` : '1px solid transparent',
                   borderRadius: 7,
                   padding: '6px 8px',
                   cursor: 'pointer',
@@ -134,7 +134,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
                 onMouseEnter={e => {
                   if (!isActive) {
                     (e.currentTarget as HTMLButtonElement).style.background = btnBg
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = btnColor + '22'
+                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = withAlpha(btnColor, '22')
                   }
                 }}
                 onMouseLeave={e => {
@@ -150,7 +150,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
                   borderRadius: '50%',
                   background: btnColor,
                   flexShrink: 0,
-                  boxShadow: isActive ? `0 1px 4px ${btnColor}44` : 'none',
+                  boxShadow: isActive ? `0 1px 4px ${withAlpha(btnColor, '44')}` : 'none',
                 }} />
                 <span style={{
                   fontSize: 13,
@@ -183,7 +183,7 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
               padding: '5px 8px',
               borderRadius: 7,
               background: isDark ? STATUS_CONFIG.overdue.darkBg : STATUS_CONFIG.overdue.bg,
-              border: `1px solid ${(isDark ? STATUS_CONFIG.overdue.darkColor : STATUS_CONFIG.overdue.color)}22`,
+              border: `1px solid ${withAlpha((isDark ? STATUS_CONFIG.overdue.darkColor : STATUS_CONFIG.overdue.color), '22')}`,
               marginTop: 2,
             }}>
               <div style={{
