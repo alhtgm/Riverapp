@@ -291,6 +291,34 @@ export function SegmentedButton<K extends string>({ options, value, onChange, la
   )
 }
 
+/**
+ * スイッチ（すぐに反映されるオン/オフ）。文字の部分を押しても切り替わる。
+ * 保存ボタンを押すまで反映されない選択肢には、チェックボックスやセグメントボタンを使う
+ */
+export function Switch({ checked, onChange, label, disabled }: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
+  return (
+    <label className="m3-switch-row">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        className="m3-switch m3-state m3-target"
+        onClick={() => onChange(!checked)}
+      >
+        <span className="m3-switch__handle" />
+      </button>
+      <span className="m3-switch-row__label">{label}</span>
+    </label>
+  )
+}
+
 // ─── 重ねて開く画面（ダイアログ・ボトムシート）─────────────────
 
 /** 開いている間: Esc で閉じる・背景のスクロールを止める・閉じたら元の場所にフォーカスを戻す */

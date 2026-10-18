@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from 'react'
 import {
   BottomSheet, Button, Card, Chip, Dialog, Fab, IconButton, NavigationBar, NavigationRail,
-  SegmentedButton, SelectField, Snackbar, TextArea, TextField, type NavDestination,
+  SegmentedButton, SelectField, Snackbar, Switch, TextArea, TextField, type NavDestination,
 } from '../components/ui/m3'
 import { useSnackbar } from '../components/ui/useSnackbar'
 import { applyTheme, getStoredTheme, type ThemeMode } from '../lib/theme'
@@ -59,6 +59,7 @@ export default function UiGallery() {
   const [dest, setDest] = useState<Dest>('timeline')
   const [title, setTitle] = useState('')
   const [mode, setMode] = useState<'single' | 'recurring' | 'template'>('single')
+  const [on, setOn] = useState(true)
   const snackbar = useSnackbar()
   const size = useWindowSizeClass()
 
@@ -175,10 +176,14 @@ export default function UiGallery() {
           </Row>
         </Section>
 
-        <Section title="セグメントボタン" note="フォームの中で 2〜5 個から 1 つを選ぶ。高さ 40px・選ばれたものにチェック">
+        <Section title="セグメントボタンとスイッチ" note="セグメントボタンは 2〜5 個から 1 つを選ぶ（高さ 40px）。スイッチはすぐ反映されるオン/オフ（52×32px）">
           <Row>
             <SegmentedButton label="追加のしかた" value={mode} onChange={setMode}
               options={[{ key: 'single', label: '単発' }, { key: 'recurring', label: '繰り返し' }, { key: 'template', label: 'テンプレート' }]} />
+          </Row>
+          <Row>
+            <Switch checked={on} onChange={setOn} label="以降すべての課題に適用" />
+            <Switch checked={false} onChange={() => {}} label="使えないスイッチ" disabled />
           </Row>
         </Section>
 
