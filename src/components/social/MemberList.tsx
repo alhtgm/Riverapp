@@ -5,6 +5,7 @@ import { LIMITS } from '../../lib/limits'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import { Avatar, Badge, Button, Confirm, List, ListItem, Section } from '../ui/kit'
+import { IconButton } from '../ui/m3'
 import type { OpenVote } from '../../types'
 
 interface Props {
@@ -99,10 +100,11 @@ export default function MemberList({ targetType, targetId, members, onOpenProfil
       )
     }
     return (
-      <Button size="sm" variant="ghost" aria-label="その他の操作" title="その他の操作" style={{ color: 'var(--text-tertiary)', minWidth: 30, padding: 0 }}
-        onClick={() => setMenuFor(userId)}>
-        …
-      </Button>
+      <IconButton label="その他の操作" onClick={() => setMenuFor(userId)}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <circle cx="4.5" cy="10" r="1.6" /><circle cx="10" cy="10" r="1.6" /><circle cx="15.5" cy="10" r="1.6" />
+        </svg>
+      </IconButton>
     )
   }
 

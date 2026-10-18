@@ -25,8 +25,10 @@ export type ButtonVariant = 'filled' | 'tonal' | 'outlined' | 'text'
  * ボタン。filled は画面の主要な操作（1 画面に基本 1 つ）、tonal は次に大事な操作、
  * outlined は補助、text はいちばん控えめな操作（キャンセルなど）に使う。
  */
-export function Button({ variant = 'filled', icon, danger = false, block = false, loading = false, className, children, disabled, type = 'button', ...rest }: {
+export function Button({ variant = 'filled', size = 'sm', icon, danger = false, block = false, loading = false, className, children, disabled, type = 'button', ...rest }: {
   variant?: ButtonVariant
+  /** sm = 高さ 40px（標準）、xs = 32px（一覧の行の中など） */
+  size?: 'xs' | 'sm'
   /** 文字の左に置くアイコン（18px 程度） */
   icon?: ReactNode
   /** 削除など取り消せない操作 */
@@ -38,7 +40,7 @@ export function Button({ variant = 'filled', icon, danger = false, block = false
   return (
     <button
       type={type}
-      className={cx('m3-btn', 'm3-state', 'm3-target', `m3-btn--${variant}`, (icon || loading) && 'm3-btn--icon', danger && 'm3-btn--danger', block && 'm3-btn--block', className)}
+      className={cx('m3-btn', 'm3-state', 'm3-target', `m3-btn--${variant}`, (icon || loading) && 'm3-btn--icon', size === 'xs' && 'm3-btn--xs', danger && 'm3-btn--danger', block && 'm3-btn--block', className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}

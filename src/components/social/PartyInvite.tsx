@@ -22,7 +22,7 @@ export function InviteToParties({ userId }: { userId: string }) {
               : st === 'invited' ? <Badge tone="info">招待中</Badge>
                 : st === 'excluded' ? <Badge tone="danger">除外</Badge>
                   : (
-                    <Button size="sm" variant="primary" style={{ minHeight: 24, padding: '0 10px', borderRadius: 9999 }}
+                    <Button size="sm" variant="primary"
                       disabled={!loaded || busy || full} title={full ? '満員のため招待できません' : undefined}
                       onClick={() => void invite(p.id, [userId])}>
                       招待

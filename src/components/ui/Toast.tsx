@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import './m3.css'
 
 /** info はほかの人の操作で届いたお知らせ（フレンド申請など）。少し長めに表示する */
 type ToastType = 'success' | 'error' | 'info'
@@ -15,10 +16,22 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue>({ showToast: () => {} })
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   return useContext(ToastContext)
 }
 
+/** 反転した面（スナックバー）の上でも読めるよう、アイコンの色を背景側に寄せる */
+const iconColor: Record<ToastType, string> = {
+  success: 'color-mix(in oklab, var(--st-done) 60%, var(--surface))',
+  error: 'color-mix(in oklab, var(--danger) 60%, var(--surface))',
+  info: 'color-mix(in oklab, var(--accent) 60%, var(--surface))',
+}
+
+/**
+ * 画面下に短く出るお知らせ（M3 のスナックバー。見た目は m3.css の .m3-snackbar）。
+ * 右下の「課題を追加」ボタンにかぶらないよう、その上に出す。
+ */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const nextId = useRef(0)
@@ -28,77 +41,42 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => [...prev, { id, message, type }])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
-    }, type === 'info' ? 5000 : 3200)
+    }, type === 'info' ? 5000 : 4000)
   }, [])
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       <div
-        style={{
-          position: 'fixed',
-          // 右下の「課題を追加」ボタンの上に出す
-          bottom: 92,
-          right: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          zIndex: 9999,
-          pointerEvents: 'none',
-        }}
+        className="m3-snackbar-host"
+        style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', zIndex: 9999 }}
         aria-live="polite"
         aria-atomic="false"
       >
         {toasts.map(toast => (
-          <div
-            key={toast.id}
-            role="status"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '11px 16px',
-              background: toast.type === 'error' ? '#FBE9E8' : '#1E1C2E',
-              color: toast.type === 'error' ? '#D0312D' : '#FFFFFF',
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 500,
-              letterSpacing: '-0.02em',
-              boxShadow: '0 4px 20px rgba(20,18,40,0.18), 0 1px 4px rgba(20,18,40,0.1)',
-              border: toast.type === 'error' ? '1px solid rgba(220,38,38,0.25)' : 'none',
-              pointerEvents: 'auto',
-              animation: 'toastIn 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-              fontFamily: 'inherit',
-              minWidth: 160,
-              maxWidth: 320,
-            }}
-          >
-            {toast.type === 'info' ? (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: '#FF9273' }}>
-                <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            ) : toast.type === 'success' ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-                <circle cx="7" cy="7" r="6.5" stroke="rgba(255,255,255,0.35)" strokeWidth="1"/>
-                <path d="M4 7l2 2 4-4" stroke="#4ADE80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-                <circle cx="7" cy="7" r="6.5" stroke="rgba(220,38,38,0.4)" strokeWidth="1"/>
-                <path d="M7 4v4M7 9.5v.5" stroke="#D0312D" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            )}
-            {toast.message}
+          <div key={toast.id} className="m3-snackbar" role={toast.type === 'error' ? 'alert' : 'status'} style={{ paddingRight: 'var(--space-4)' }}>
+            <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0, color: iconColor[toast.type] }}>
+              {toast.type === 'info' ? (
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              ) : toast.type === 'success' ? (
+                <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6.2" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="6.2" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M7 4v4M7 9.5v.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              )}
+            </span>
+            <span className="m3-snackbar__text">{toast.message}</span>
           </div>
         ))}
       </div>
-      <style>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateY(10px) scale(0.95); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </ToastContext.Provider>
   )
 }

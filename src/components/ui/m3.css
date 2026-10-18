@@ -91,6 +91,10 @@
 .m3-btn--tonal:disabled { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .m3-btn--outlined:disabled { border-color: color-mix(in srgb, var(--text-primary) 12%, transparent); }
 .m3-btn--block { width: 100%; }
+/* 小さいボタン（M3 Expressive の XS: 高さ 32px）。一覧の行の中など、場所が限られるところ用。押せる範囲は 48px のまま */
+.m3-btn--xs { height: 32px; padding: 0 var(--space-3); gap: var(--space-1); }
+.m3-btn--xs.m3-btn--icon { padding-left: var(--space-2); }
+.m3-btn--xs.m3-btn--text { padding: 0 var(--space-2); }
 
 .m3-spinner {
   width: 18px;
@@ -452,4 +456,81 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 /* 動きを減らす設定では、表示時のアニメーションもやめる */
 @media (prefers-reduced-motion: reduce) {
   .m3-scrim, .m3-dialog, .m3-sheet, .m3-snackbar, .m3-spinner { animation: none; }
+}
+
+/* ─── 画面の上に重ねて開くパネル（Sheet.tsx）────────────────────────
+   PC・タブレット: 中央のダイアログ（角 28px）／スマホ（600px 未満）: 下から出るシート（上の角 28px・つまみ付き） */
+.m3-modal-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--scrim);
+  animation: m3-fade-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate);
+}
+.m3-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: min(88svh, 900px);
+  border-radius: var(--shape-xl);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-3);
+  animation: m3-dialog-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate);
+}
+.m3-modal__handle-area { display: none; }
+.m3-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.m3-modal__title {
+  margin: 0;
+  font: var(--type-title-large-weight) var(--type-title-large-size) / var(--type-title-large-line) var(--font-family-base);
+  font-weight: var(--type-weight-emphasized);
+  letter-spacing: var(--type-title-large-tracking);
+}
+.m3-modal__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font: var(--type-body-medium-weight) var(--type-body-medium-size) / var(--type-body-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-body-medium-tracking);
+}
+.m3-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+.m3-modal__body > * { flex-shrink: 0; }
+.m3-modal__footer {
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 599px) {
+  .m3-modal-wrap { align-items: flex-end; padding: 0; }
+  .m3-modal {
+    width: 100vw !important;
+    max-height: 92svh;
+    border-radius: var(--shape-xl) var(--shape-xl) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation-name: m3-sheet-in;
+  }
+  .m3-modal[data-fixed-height] { height: 92svh !important; }
+  .m3-modal__handle-area { display: flex; justify-content: center; padding: var(--space-3) 0 0; flex-shrink: 0; }
+  .m3-modal__header { padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4); }
+  .m3-modal__body { padding: var(--space-4); }
+  .m3-modal__footer { padding: var(--space-3) var(--space-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-modal-wrap, .m3-modal { animation: none; }
 }
