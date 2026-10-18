@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from 'react'
 import {
   BottomSheet, Button, Card, Chip, Dialog, Fab, IconButton, NavigationBar, NavigationRail,
-  SelectField, Snackbar, TextArea, TextField, type NavDestination,
+  SegmentedButton, SelectField, Snackbar, TextArea, TextField, type NavDestination,
 } from '../components/ui/m3'
 import { useSnackbar } from '../components/ui/useSnackbar'
 import { applyTheme, getStoredTheme, type ThemeMode } from '../lib/theme'
@@ -58,6 +58,7 @@ export default function UiGallery() {
   const [tags, setTags] = useState(['ゼミ', 'サークル', 'アルバイト'])
   const [dest, setDest] = useState<Dest>('timeline')
   const [title, setTitle] = useState('')
+  const [mode, setMode] = useState<'single' | 'recurring' | 'template'>('single')
   const snackbar = useSnackbar()
   const size = useWindowSizeClass()
 
@@ -171,6 +172,13 @@ export default function UiGallery() {
           <Row>
             <Chip icon={icons.calendar}>今日へ移動</Chip>
             <Chip disabled>使えない</Chip>
+          </Row>
+        </Section>
+
+        <Section title="セグメントボタン" note="フォームの中で 2〜5 個から 1 つを選ぶ。高さ 40px・選ばれたものにチェック">
+          <Row>
+            <SegmentedButton label="追加のしかた" value={mode} onChange={setMode}
+              options={[{ key: 'single', label: '単発' }, { key: 'recurring', label: '繰り返し' }, { key: 'template', label: 'テンプレート' }]} />
           </Row>
         </Section>
 

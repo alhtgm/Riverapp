@@ -256,6 +256,41 @@ export function Chip({ selected, icon, onRemove, removeLabel, className, childre
   )
 }
 
+/**
+ * セグメントボタン（2〜5 個から 1 つを選ぶ切り替え）。選ばれているものにはチェックが付く。
+ * 画面全体を切り替えるタブとは違い、フォームの中の選択肢に使う（例: 単発 / 繰り返し）
+ */
+export function SegmentedButton<K extends string>({ options, value, onChange, label, block = false }: {
+  options: { key: K; label: string }[]
+  value: K
+  onChange: (key: K) => void
+  /** 読み上げ用のまとまりの名前 */
+  label: string
+  /** 横幅いっぱいに広げる */
+  block?: boolean
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className={cx('m3-segmented', block && 'm3-segmented--block')}>
+      {options.map(o => {
+        const selected = o.key === value
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            className={cx('m3-segment', 'm3-state', 'm3-target', selected && 'm3-segment--selected')}
+            onClick={() => onChange(o.key)}
+          >
+            {selected && checkIcon}
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── 重ねて開く画面（ダイアログ・ボトムシート）─────────────────
 
 /** 開いている間: Esc で閉じる・背景のスクロールを止める・閉じたら元の場所にフォーカスを戻す */

@@ -6,6 +6,9 @@ import { subjectInSemester } from '../../lib/semester'
 import { useToast } from '../ui/Toast'
 import MiniCalendar from '../ui/MiniCalendar'
 import NewLectureForm from '../lecture/NewLectureForm'
+import Sheet from '../ui/Sheet'
+import { Notice } from '../ui/kit'
+import { Button, Chip, SegmentedButton, SelectField, TextArea, TextField } from '../ui/m3'
 
 interface Props {
   subjects: Subject[]
@@ -129,41 +132,6 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: 'var(--surface-warm)',
-    border: '1px solid var(--border)',
-    borderRadius: 8,
-    padding: '9px 12px',
-    fontSize: 14,
-    color: 'var(--text-primary)',
-    outline: 'none',
-    width: '100%',
-    fontFamily: 'inherit',
-    letterSpacing: '-0.01em',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 12,
-    fontWeight: 700,
-    color: 'var(--text-secondary)',
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase',
-    marginBottom: 6,
-    display: 'block',
-  }
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = 'var(--accent)'
-    e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent)'
-    e.target.style.background = 'var(--surface)'
-  }
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = 'var(--border)'
-    e.target.style.boxShadow = 'none'
-    e.target.style.background = 'var(--surface-warm)'
-  }
-
   // 締切日クイックボタン: 今日から N 日後を締切に設定
   const applyDuePreset = (days: number) => {
     setDueDate(dateStringFromTodayOffset(days))
@@ -175,439 +143,169 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
     ? DUE_PRESETS.find(p => p.days === offsetFromToday(dueDate))?.days
     : undefined
 
-  // 締切日プリセット用ピル（繰り返しの発生間隔ピルと同じ見た目）
-  const pillStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? 'var(--accent-bg)' : 'var(--bg-secondary)',
-    color: active ? 'var(--accent)' : 'var(--text-secondary)',
-    border: `1px solid ${active ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
-    borderRadius: 9999,
-    padding: '5px 14px',
-    fontSize: 13,
-    fontWeight: active ? 600 : 400,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    fontFamily: 'inherit',
-    letterSpacing: '-0.01em',
-    boxShadow: active ? '0 2px 6px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
-  })
+  const preview = mode === 'recurring' ? recurringPreview() : null
 
   return (
-    <>
-      <div
-        style={{ position: 'fixed', inset: 0, background: 'rgba(20,18,40,0.3)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', zIndex: 200 }}
-        onClick={onClose}
-      />
-      <div style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        boxShadow: '0 24px 64px rgba(20,18,40,0.14), 0 8px 20px rgba(20,18,40,0.07)',
-        zIndex: 210,
-        width: 'min(520px, calc(100vw - 32px))',
-        maxHeight: 'calc(100svh - 48px)',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-
-        {/* Header */}
-        <div style={{
-          padding: '18px 22px',
-          borderBottom: '1px solid var(--border-light)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          background: 'var(--surface)',
-          zIndex: 1,
-          borderRadius: '16px 16px 0 0',
-        }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-            {'課題を追加'}
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="モーダルを閉じる"
-            style={{
-              background: 'var(--bg-secondary)',
-              border: 'none',
-              borderRadius: 6,
-              width: 28,
-              height: 28,
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.12s',
-              fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </button>
+    <Sheet
+      title="課題を追加"
+      onClose={onClose}
+      zIndex={210}
+      footer={
+        <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+          <Button variant="text" onClick={onClose}>キャンセル</Button>
+          <Button type="submit" form={FORM_ID} loading={saving}>{saving ? '保存中' : '追加'}</Button>
         </div>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+        {errorMsg && <Notice tone="danger">{errorMsg}</Notice>}
 
-        <form onSubmit={handleSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <SegmentedButton
+          label="追加のしかた"
+          options={[{ key: 'single', label: '単発' }, { key: 'recurring', label: '繰り返し' }]}
+          value={mode}
+          onChange={setMode}
+        />
 
-          {errorMsg && (
-            <div style={{ padding: '12px 16px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-              {errorMsg}
-            </div>
-          )}
+        <TextField label="タイトル" value={title} onChange={e => setTitle(e.target.value)} placeholder="未入力の場合「課題」" />
 
-          {/* Mode toggle */}
-          {(
-            <div style={{
-              display: 'inline-flex',
-              background: 'var(--bg-secondary)',
-              borderRadius: 10,
-              padding: 3,
-              gap: 2,
-              alignSelf: 'flex-start',
-            }}>
-              {(['single', 'recurring'] as Mode[]).map(m => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  style={{
-                    background: mode === m ? 'var(--surface)' : 'transparent',
-                    color: mode === m ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: 7,
-                    padding: '6px 18px',
-                    fontSize: 13,
-                    fontWeight: mode === m ? 600 : 400,
-                    cursor: 'pointer',
-                    boxShadow: mode === m ? '0 1px 4px rgba(20,18,40,0.1)' : 'none',
-                    transition: 'all 0.25s',
-                    letterSpacing: '-0.01em',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {m === 'single' ? '単発' : '繰り返し'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Title */}
-          <div>
-            <label style={labelStyle}>タイトル</label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              style={inputStyle}
-              placeholder="未入力の場合「課題」"
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-            />
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label style={labelStyle}>講義</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SelectField
+                label="講義"
                 value={subjectId}
                 onChange={e => setSubjectId(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  flex: 1,
-                  cursor: 'pointer',
-                  appearance: 'auto',
-                }}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
               >
                 {options.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {options.length === 0 && <option value="">講義がありません（「+ 講義」から作成）</option>}
-              </select>
-              {(
-                <button
-                  type="button"
-                  onClick={() => setShowNewSubject(!showNewSubject)}
-                  style={{
-                    background: showNewSubject ? 'var(--accent-bg)' : 'var(--bg-secondary)',
-                    border: `1px solid ${showNewSubject ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
-                    borderRadius: 8,
-                    padding: '0 12px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    color: showNewSubject ? 'var(--accent)' : 'var(--text-secondary)',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                    fontFamily: 'inherit',
-                    letterSpacing: '-0.01em',
-                    height: 38,
-                    flexShrink: 0,
-                  }}
-                >
-                  + 講義
-                </button>
+                {options.length === 0 && <option value="">講義がありません（「講義」ボタンから作成）</option>}
+              </SelectField>
+            </div>
+            <Button
+              variant={showNewSubject ? 'tonal' : 'outlined'}
+              icon={plusIcon}
+              onClick={() => setShowNewSubject(!showNewSubject)}
+              aria-expanded={showNewSubject}
+              style={{ marginTop: 'var(--space-2)' }}
+            >
+              講義
+            </Button>
+          </div>
+          <p style={{ ...typeBodySmall, color: 'var(--text-secondary)', margin: 'calc(-1 * var(--space-2)) 0 0', padding: '0 var(--space-4)' }}>
+            課題名・開始日・締切は講義の参加者全員に共有されます。ステータス・メモはあなただけのものです。
+          </p>
+          {showNewSubject && (
+            <NewLectureForm
+              onReady={id => { setSubjectId(id); setShowNewSubject(false) }}
+              onCancel={() => setShowNewSubject(false)}
+            />
+          )}
+        </div>
+
+        {mode === 'single' ? (
+          <>
+            <TextField label="開始日" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+
+            <div role="group" aria-labelledby="add-task-due-label" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <span id="add-task-due-label" style={groupLabel}>締切日</span>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                {DUE_PRESETS.map(p => (
+                  <Chip key={p.days} selected={activePresetDays === p.days} onClick={() => applyDuePreset(p.days)}>
+                    {p.label}
+                  </Chip>
+                ))}
+                <Chip selected={showCustomDue} onClick={() => setShowCustomDue(true)}>その他</Chip>
+              </div>
+              {showCustomDue && (
+                <MiniCalendar value={dueDate} min={startDate} onChange={d => setDueDate(d)} />
               )}
+              <div style={{ ...typeBodySmall, color: 'var(--text-secondary)' }}>
+                締切日: <strong style={{ color: 'var(--text-primary)' }}>{formatDate(dueDate)}（{DAY_JA[parseLocalDate(dueDate).getDay()]}）</strong>
+                {dueDate < startDate && <span style={{ color: 'var(--danger)', marginLeft: 'var(--space-2)' }}>※開始日より前です</span>}
+              </div>
             </div>
 
-            {showNewSubject && (
-              <NewLectureForm
-                onReady={id => { setSubjectId(id); setShowNewSubject(false) }}
-                onCancel={() => setShowNewSubject(false)}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)' }}>
+              <div style={{ width: 180 }}>
+                <TextField label="締切時刻（任意）" type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} />
+              </div>
+              {dueTime && <Button variant="text" onClick={() => setDueTime('')} style={{ marginTop: 'var(--space-2)' }}>クリア</Button>}
+            </div>
+
+            <TextArea label="メモ（任意）" value={memo} onChange={e => setMemo(e.target.value)} rows={3} placeholder="自分だけが見られるメモ" />
+          </>
+        ) : (
+          <>
+            <TextField label="繰り返し開始日" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+
+            <div role="group" aria-labelledby="add-task-interval-label" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <span id="add-task-interval-label" style={groupLabel}>発生間隔</span>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                {INTERVALS.map(iv => (
+                  <Chip key={iv.weeks} selected={intervalWeeks === iv.weeks} onClick={() => setIntervalWeeks(iv.weeks)}>
+                    {iv.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <TextField
+                label="締切（発生から何日後）"
+                type="number"
+                min={1}
+                value={durationDays === 0 ? '' : durationDays}
+                onChange={e => {
+                  const n = parseInt(e.target.value, 10)
+                  setDurationDays(isNaN(n) ? 0 : n)
+                }}
+                required
               />
+              <TextField
+                label="回数"
+                type="number"
+                min={1}
+                max={52}
+                value={count === 0 ? '' : count}
+                onChange={e => {
+                  const n = parseInt(e.target.value, 10)
+                  setCount(isNaN(n) ? 0 : n)
+                }}
+                required
+              />
+            </div>
+
+            {preview && (
+              <div style={{ background: 'var(--accent-bg)', color: 'var(--accent-dark)', borderRadius: 'var(--shape-md)', padding: 'var(--space-3) var(--space-4)', ...typeBodyMedium }}>
+                {preview}
+              </div>
             )}
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '6px 0 0', lineHeight: 1.5 }}>
-              課題名・開始日・締切は講義の参加者全員に共有されます。ステータス・メモはあなただけのものです。
-            </p>
-          </div>
-
-          {effectiveMode === 'single' ? (
-            <>
-              <div>
-                <label style={labelStyle}>開始日</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
-              </div>
-              <div>
-                <label style={labelStyle}>締切日</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {DUE_PRESETS.map(p => (
-                    <button
-                      key={p.days}
-                      type="button"
-                      onClick={() => applyDuePreset(p.days)}
-                      style={pillStyle(activePresetDays === p.days)}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomDue(true)}
-                    style={pillStyle(showCustomDue)}
-                  >
-                    その他
-                  </button>
-                </div>
-
-                {showCustomDue && (
-                  <MiniCalendar
-                    value={dueDate}
-                    min={startDate}
-                    onChange={d => setDueDate(d)}
-                  />
-                )}
-
-                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', letterSpacing: '-0.01em' }}>
-                  締切日: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{formatDate(dueDate)}（{DAY_JA[parseLocalDate(dueDate).getDay()]}）</span>
-                  {dueDate < startDate && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>※開始日より前です</span>}
-                </div>
-              </div>
-              <div>
-                <label style={labelStyle}>締切時刻（任意）</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <input
-                    type="time"
-                    value={dueTime}
-                    onChange={e => setDueTime(e.target.value)}
-                    style={{ ...inputStyle, width: 'auto' }}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                  {dueTime && (
-                    <button
-                      type="button"
-                      onClick={() => setDueTime('')}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 11, color: 'var(--text-tertiary)', padding: 0, fontFamily: 'inherit',
-                      }}
-                    >
-                      クリア
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label style={labelStyle}>メモ（任意）</label>
-                <textarea
-                  value={memo}
-                  onChange={e => setMemo(e.target.value)}
-                  rows={3}
-                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-                  placeholder="メモを入力..."
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <label style={labelStyle}>繰り返し開始日</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
-              </div>
-
-              <div>
-                <label style={labelStyle}>発生間隔</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {INTERVALS.map(iv => (
-                    <button
-                      key={iv.weeks}
-                      type="button"
-                      onClick={() => setIntervalWeeks(iv.weeks)}
-                      style={{
-                        background: intervalWeeks === iv.weeks ? 'var(--accent-bg)' : 'var(--bg-secondary)',
-                        color: intervalWeeks === iv.weeks ? 'var(--accent)' : 'var(--text-secondary)',
-                        border: `1px solid ${intervalWeeks === iv.weeks ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
-                        borderRadius: 9999,
-                        padding: '5px 14px',
-                        fontSize: 13,
-                        fontWeight: intervalWeeks === iv.weeks ? 600 : 400,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        fontFamily: 'inherit',
-                        letterSpacing: '-0.01em',
-                        boxShadow: intervalWeeks === iv.weeks ? '0 2px 6px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
-                      }}
-                    >
-                      {iv.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>締切オフセット（日数）</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={durationDays === 0 ? '' : durationDays}
-                    onChange={e => {
-                      const n = parseInt(e.target.value, 10)
-                      setDurationDays(isNaN(n) ? 0 : n)
-                    }}
-                    required
-                    style={inputStyle}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>回数</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={52}
-                    value={count === 0 ? '' : count}
-                    onChange={e => {
-                      const n = parseInt(e.target.value, 10)
-                      setCount(isNaN(n) ? 0 : n)
-                    }}
-                    required
-                    style={inputStyle}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                </div>
-              </div>
-
-              {(() => {
-                const preview = recurringPreview()
-                return preview ? (
-                  <div style={{
-                    background: 'var(--accent-bg)',
-                    border: '1px solid var(--accent-muted)',
-                    borderRadius: 10,
-                    padding: '11px 14px',
-                    fontSize: 13,
-                    color: 'var(--accent)',
-                    fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.5,
-                  }}>
-                    {preview}
-                  </div>
-                ) : null
-              })()}
-            </>
-          )}
-
-          {/* Footer */}
-          <div style={{
-            display: 'flex',
-            gap: 8,
-            justifyContent: 'flex-end',
-            paddingTop: 8,
-            borderTop: '1px solid var(--border-light)',
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '9px 18px',
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                fontFamily: 'inherit',
-                letterSpacing: '-0.02em',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--border-light)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
-            >
-              キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                background: saving ? 'var(--text-tertiary)' : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '9px 24px',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                transition: 'all 0.25s',
-                letterSpacing: '-0.02em',
-                fontFamily: 'inherit',
-                boxShadow: saving ? 'none' : '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)',
-              }}
-              onMouseEnter={e => {
-                if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 5px 16px color-mix(in srgb, var(--accent) 42%, transparent)'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                }
-              }}
-              onMouseLeave={e => {
-                if (!saving) {
-                  e.currentTarget.style.boxShadow = '0 3px 10px color-mix(in srgb, var(--accent) 30%, transparent)'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }
-              }}
-            >
-              {saving ? '保存中...' : '追加'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </>
+          </>
+        )}
+      </form>
+    </Sheet>
   )
 }
+
+const FORM_ID = 'add-task-form'
+
+/** チップのまとまりなどに付ける見出し（入力欄のラベルと同じ役割） */
+const groupLabel: React.CSSProperties = {
+  fontSize: 'var(--type-label-large-size)', lineHeight: 'var(--type-label-large-line)',
+  fontWeight: 'var(--type-label-large-weight)', letterSpacing: 'var(--type-label-large-tracking)',
+  color: 'var(--text-secondary)',
+}
+const typeBodySmall: React.CSSProperties = {
+  fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)', letterSpacing: 'var(--type-body-small-tracking)',
+}
+const typeBodyMedium: React.CSSProperties = {
+  fontSize: 'var(--type-body-medium-size)', lineHeight: 'var(--type-body-medium-line)', letterSpacing: 'var(--type-body-medium-tracking)',
+}
+
+const plusIcon = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="M9 4v10M4 9h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)

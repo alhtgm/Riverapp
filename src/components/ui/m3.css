@@ -534,3 +534,28 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 @media (prefers-reduced-motion: reduce) {
   .m3-modal-wrap, .m3-modal { animation: none; }
 }
+
+/* ─── セグメントボタン（2〜5 個から 1 つを選ぶ切り替え。高さ 40px・両端が丸い）──────── */
+.m3-segmented { display: inline-flex; max-width: 100%; }
+.m3-segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 48px;
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  margin-left: -1px;
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.m3-segment:first-child { margin-left: 0; border-radius: var(--shape-full) 0 0 var(--shape-full); }
+.m3-segment:last-child { border-radius: 0 var(--shape-full) var(--shape-full) 0; }
+.m3-segment--selected { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-segmented--block { display: flex; width: 100%; }
+.m3-segmented--block .m3-segment { flex: 1; }
