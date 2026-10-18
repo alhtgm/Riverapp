@@ -81,6 +81,9 @@
   --elevation-4: 0 2px 3px rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);  /* 8dp: ホバー時に一段上げるときだけ */
   --elevation-5: 0 4px 4px rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);  /* 12dp: ホバー時に一段上げるときだけ */
 
+  /* ダイアログやシートの後ろを暗くする幕（M3 の scrim: 黒 32%） */
+  --scrim: rgb(0 0 0 / 0.32);
+
   /* 押したとき・マウスを乗せたときなどに重ねる「状態レイヤー」の濃さ（M3 の state layer） */
   --state-hover-opacity: 0.08;
   --state-focus-opacity: 0.10;
