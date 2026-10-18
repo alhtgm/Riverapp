@@ -1,4 +1,5 @@
 ﻿@import "tailwindcss";
+@import "./theme/tokens.css";  /* M3 の角丸・文字・余白・影・動きのトークン */
 
 :root {
   /* 「夜明けの川」パレット（2026-10 刷新、docs/design-refresh.md）
@@ -116,16 +117,11 @@
 
 * { box-sizing: border-box; }
 
+/* ボタンや入力欄はブラウザ既定の書体になるので、本文と同じ書体を使う */
+button, input, select, textarea { font-family: inherit; }
+
 body {
-  font-family:
-    Inter,
-    -apple-system,
-    "Hiragino Kaku Gothic ProN",
-    "Hiragino Sans",
-    Meiryo,
-    "Yu Gothic",
-    YuGothic,
-    sans-serif;
+  font-family: var(--font-family-base);  /* theme/tokens.css */
   color: var(--text-primary);
   background: var(--bg);
   margin: 0;

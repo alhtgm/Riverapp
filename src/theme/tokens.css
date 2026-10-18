@@ -1,0 +1,160 @@
+/*
+ * River のデザインの土台（トークン）— Material Design 3 に準拠
+ * 出典: m3.material.io（Shape / Typography / Layout / Elevation / Motion）
+ *
+ * 色はここでは扱わない（index.css と src/lib/palette.ts の CSS 変数をそのまま使う）。
+ * 画面幅の区切りは CSS 変数を @media に使えないため、src/theme/breakpoints.ts に数値で置いてある。
+ */
+
+:root {
+  /* ─── 角の丸み（shape）─────────────────────────────────
+     M3 の corner スケール。カッコ内は M3 公式のトークン名 */
+  --shape-none: 0;           /* (none)  全面に広がる要素 */
+  --shape-xs: 4px;           /* (extra-small) 小さいタグ、ツールチップ、スナックバー */
+  --shape-sm: 8px;           /* (small) チップ、メニュー、小さめの入力欄 */
+  --shape-md: 12px;          /* (medium) カード */
+  --shape-lg: 16px;          /* (large) FAB、大きいカード、ナビゲーションの引き出し */
+  --shape-lg-plus: 20px;     /* (large-increased) Expressive で追加された段階 */
+  --shape-xl: 28px;          /* (extra-large) ダイアログ、ボトムシート */
+  --shape-xl-plus: 32px;     /* (extra-large-increased) Expressive で追加された段階 */
+  --shape-2xl: 48px;         /* (extra-extra-large) Expressive で追加された段階 */
+  --shape-full: 9999px;      /* (full) ボタン、チップ、バッジ、検索バー */
+
+  /* ─── 文字（typography）────────────────────────────────
+     M3 の 15 段階。数値は公式どおり（size / line-height / weight / tracking）。
+     書体は Noto Sans JP（index.html で Google Fonts から読み込む）。読み込み前・オフライン初回は端末のフォント */
+  --font-family-base: "Noto Sans JP", -apple-system, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", YuGothic, Meiryo, sans-serif;
+
+  --type-display-large-size: 57px;   --type-display-large-line: 64px;   --type-display-large-weight: 400;  --type-display-large-tracking: -0.25px;
+  --type-display-medium-size: 45px;  --type-display-medium-line: 52px;  --type-display-medium-weight: 400; --type-display-medium-tracking: 0;
+  --type-display-small-size: 36px;   --type-display-small-line: 44px;   --type-display-small-weight: 400;  --type-display-small-tracking: 0;
+
+  --type-headline-large-size: 32px;  --type-headline-large-line: 40px;  --type-headline-large-weight: 400; --type-headline-large-tracking: 0;
+  --type-headline-medium-size: 28px; --type-headline-medium-line: 36px; --type-headline-medium-weight: 400; --type-headline-medium-tracking: 0;
+  --type-headline-small-size: 24px;  --type-headline-small-line: 32px;  --type-headline-small-weight: 400; --type-headline-small-tracking: 0;
+
+  --type-title-large-size: 22px;     --type-title-large-line: 28px;     --type-title-large-weight: 400;    --type-title-large-tracking: 0;
+  --type-title-medium-size: 16px;    --type-title-medium-line: 24px;    --type-title-medium-weight: 500;   --type-title-medium-tracking: 0.15px;
+  --type-title-small-size: 14px;     --type-title-small-line: 20px;     --type-title-small-weight: 500;    --type-title-small-tracking: 0.1px;
+
+  --type-body-large-size: 16px;      --type-body-large-line: 24px;      --type-body-large-weight: 400;     --type-body-large-tracking: 0.5px;
+  --type-body-medium-size: 14px;     --type-body-medium-line: 20px;     --type-body-medium-weight: 400;    --type-body-medium-tracking: 0.25px;
+  --type-body-small-size: 12px;      --type-body-small-line: 16px;      --type-body-small-weight: 400;     --type-body-small-tracking: 0.4px;
+
+  --type-label-large-size: 14px;     --type-label-large-line: 20px;     --type-label-large-weight: 500;    --type-label-large-tracking: 0.1px;
+  --type-label-medium-size: 12px;    --type-label-medium-line: 16px;    --type-label-medium-weight: 500;   --type-label-medium-tracking: 0.5px;
+  --type-label-small-size: 11px;     --type-label-small-line: 16px;     --type-label-small-weight: 500;    --type-label-small-tracking: 0.5px;
+
+  /* 強調版（emphasized）は太さだけを上げる。見出しや選択中の項目に使う */
+  --type-weight-emphasized: 700;
+
+  /* ─── 余白（spacing）──────────────────────────────────
+     4px 単位。M3 は 8dp を基本の刻みにしているので、普段は偶数番（8 の倍数）を優先し、
+     細かい調整にだけ 4px の段階を使う */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* 画面の左右の余白（compact 16px、medium 以上 24px） */
+  --space-screen-margin: 16px;
+  /* 段組みのすき間（compact 8px、medium・expanded 16px、large 以上 24px） */
+  --space-gutter: 8px;
+
+  /* 押せる範囲の最小サイズ（見た目が小さくても、この大きさは確保する） */
+  --touch-target-min: 48px;
+
+  /* ─── 高さ・影（elevation）─────────────────────────────
+     M3 は 6 段階（Level 0〜5）。重なりは基本「背景の濃さ」で表し、影は弱く添えるだけ。
+     値は M3 の Web 実装（Material Web）の影に合わせている */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15);   /* 1dp: 浮いたカード、モーダルのシート */
+  --elevation-2: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);   /* 3dp: メニュー、ナビゲーションバー */
+  --elevation-3: 0 1px 3px rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);   /* 6dp: FAB、ダイアログ */
+  --elevation-4: 0 2px 3px rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);  /* 8dp: ホバー時に一段上げるときだけ */
+  --elevation-5: 0 4px 4px rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);  /* 12dp: ホバー時に一段上げるときだけ */
+
+  /* 押したとき・マウスを乗せたときなどに重ねる「状態レイヤー」の濃さ（M3 の state layer） */
+  --state-hover-opacity: 0.08;
+  --state-focus-opacity: 0.10;
+  --state-pressed-opacity: 0.10;
+  --state-dragged-opacity: 0.16;
+  --state-disabled-content-opacity: 0.38;
+  --state-disabled-container-opacity: 0.12;
+
+  /* ─── 動き（motion）──────────────────────────────────
+     時間は M3 の 16 段階。動き方（easing）は M3 の 6 種類 */
+  --motion-duration-short1: 50ms;
+  --motion-duration-short2: 100ms;
+  --motion-duration-short3: 150ms;
+  --motion-duration-short4: 200ms;
+  --motion-duration-medium1: 250ms;
+  --motion-duration-medium2: 300ms;
+  --motion-duration-medium3: 350ms;
+  --motion-duration-medium4: 400ms;
+  --motion-duration-long1: 450ms;
+  --motion-duration-long2: 500ms;
+  --motion-duration-long3: 550ms;
+  --motion-duration-long4: 600ms;
+  --motion-duration-extra-long1: 700ms;
+  --motion-duration-extra-long2: 800ms;
+  --motion-duration-extra-long3: 900ms;
+  --motion-duration-extra-long4: 1000ms;
+
+  --motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);               /* 画面内で動く（基本） */
+  --motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1); /* 表示されるとき */
+  --motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15); /* 消えるとき */
+  --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);                 /* 小さな切り替え */
+  --motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+}
+
+/* 画面幅に合わせた余白（区切りは breakpoints.ts と同じ値） */
+@media (min-width: 600px) {
+  :root {
+    --space-screen-margin: 24px;
+    --space-gutter: 16px;
+  }
+}
+@media (min-width: 1200px) {
+  :root {
+    --space-gutter: 24px;
+  }
+}
+
+/* 動きを減らす設定の人には、トークンを使った動きをほぼ止める */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-short1: 0ms;  --motion-duration-short2: 0ms;  --motion-duration-short3: 0ms;  --motion-duration-short4: 0ms;
+    --motion-duration-medium1: 0ms; --motion-duration-medium2: 0ms; --motion-duration-medium3: 0ms; --motion-duration-medium4: 0ms;
+    --motion-duration-long1: 0ms;   --motion-duration-long2: 0ms;   --motion-duration-long3: 0ms;   --motion-duration-long4: 0ms;
+    --motion-duration-extra-long1: 0ms; --motion-duration-extra-long2: 0ms; --motion-duration-extra-long3: 0ms; --motion-duration-extra-long4: 0ms;
+  }
+}
+
+/*
+ * 文字の役割をそのまま当てるためのクラス（例: <h2 className="type-title-large">）。
+ * インラインスタイルからは var(--type-title-large-size) などを個別に使ってもよい。
+ */
+.type-display-large   { font: var(--type-display-large-weight) var(--type-display-large-size) / var(--type-display-large-line) var(--font-family-base); letter-spacing: var(--type-display-large-tracking); }
+.type-display-medium  { font: var(--type-display-medium-weight) var(--type-display-medium-size) / var(--type-display-medium-line) var(--font-family-base); letter-spacing: var(--type-display-medium-tracking); }
+.type-display-small   { font: var(--type-display-small-weight) var(--type-display-small-size) / var(--type-display-small-line) var(--font-family-base); letter-spacing: var(--type-display-small-tracking); }
+.type-headline-large  { font: var(--type-headline-large-weight) var(--type-headline-large-size) / var(--type-headline-large-line) var(--font-family-base); letter-spacing: var(--type-headline-large-tracking); }
+.type-headline-medium { font: var(--type-headline-medium-weight) var(--type-headline-medium-size) / var(--type-headline-medium-line) var(--font-family-base); letter-spacing: var(--type-headline-medium-tracking); }
+.type-headline-small  { font: var(--type-headline-small-weight) var(--type-headline-small-size) / var(--type-headline-small-line) var(--font-family-base); letter-spacing: var(--type-headline-small-tracking); }
+.type-title-large     { font: var(--type-title-large-weight) var(--type-title-large-size) / var(--type-title-large-line) var(--font-family-base); letter-spacing: var(--type-title-large-tracking); }
+.type-title-medium    { font: var(--type-title-medium-weight) var(--type-title-medium-size) / var(--type-title-medium-line) var(--font-family-base); letter-spacing: var(--type-title-medium-tracking); }
+.type-title-small     { font: var(--type-title-small-weight) var(--type-title-small-size) / var(--type-title-small-line) var(--font-family-base); letter-spacing: var(--type-title-small-tracking); }
+.type-body-large      { font: var(--type-body-large-weight) var(--type-body-large-size) / var(--type-body-large-line) var(--font-family-base); letter-spacing: var(--type-body-large-tracking); }
+.type-body-medium     { font: var(--type-body-medium-weight) var(--type-body-medium-size) / var(--type-body-medium-line) var(--font-family-base); letter-spacing: var(--type-body-medium-tracking); }
+.type-body-small      { font: var(--type-body-small-weight) var(--type-body-small-size) / var(--type-body-small-line) var(--font-family-base); letter-spacing: var(--type-body-small-tracking); }
+.type-label-large     { font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base); letter-spacing: var(--type-label-large-tracking); }
+.type-label-medium    { font: var(--type-label-medium-weight) var(--type-label-medium-size) / var(--type-label-medium-line) var(--font-family-base); letter-spacing: var(--type-label-medium-tracking); }
+.type-label-small     { font: var(--type-label-small-weight) var(--type-label-small-size) / var(--type-label-small-line) var(--font-family-base); letter-spacing: var(--type-label-small-tracking); }
