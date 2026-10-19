@@ -148,13 +148,18 @@ function FieldShell({ label, supportingText, error, required, background, id, ch
 }
 
 /** 1 行の入力欄（outlined）。type="date" なども使える */
-export function TextField({ label, supportingText, error, required, background, id, className, ...rest }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+export function TextField({ label, supportingText, error, required, background, id, className, prefix, style, ...rest }: FieldProps & {
+  /** 入力欄の左に固定で出す文字（例: ユーザーIDの「@」） */
+  prefix?: string
+} & Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'>) {
   const autoId = useId()
   const fieldId = id ?? autoId
   return (
     <FieldShell {...{ label, supportingText, error, required, background }} id={fieldId}>
+      {prefix && <span className="m3-field__prefix" aria-hidden="true">{prefix}</span>}
       <input
         id={fieldId}
+        style={prefix ? { paddingLeft: `calc(var(--space-4) + ${prefix.length + 0.6}em)`, ...style } : style}
         className={cx('m3-field__control', className)}
         required={required}
         aria-invalid={!!error || undefined}

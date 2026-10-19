@@ -215,6 +215,15 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
   white-space: nowrap;
 }
 .m3-field:focus-within .m3-field__label { color: var(--accent-dark); }
+.m3-field__prefix {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font: var(--type-body-large-weight) var(--type-body-large-size) / var(--type-body-large-line) var(--font-family-base);
+  pointer-events: none;
+}
 .m3-field__support {
   padding: 0 var(--space-4);
   color: var(--text-secondary);
