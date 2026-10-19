@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Sheet from '../ui/Sheet'
 import { Button, Section } from '../ui/kit'
-import { inputStyle } from '../ui/styles'
+import { SegmentedButton, TextField } from '../ui/m3'
 import { STATUS_CONFIG } from '../../types'
 import { useStore } from '../../store/useStore'
 import {
@@ -24,14 +24,14 @@ const PATTERNS: { id: PalettePattern; label: string; description: string }[] = [
 ]
 
 const sunIcon = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" />
     <path d="M8 1.5v1.5M8 13v1.5M14.5 8H13M3 8H1.5M12.6 3.4l-1 1M4.4 11.6l-1 1M12.6 12.6l-1-1M4.4 4.4l-1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
 const moonIcon = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M13.5 9.8A5.8 5.8 0 016.2 2.5a5.8 5.8 0 107.3 7.3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
   </svg>
 )
@@ -64,112 +64,103 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
       width={480}
       zIndex={320}
       footer={
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <Button onClick={() => update(null)} disabled={!palette}>標準の配色に戻す</Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+          <Button variant="ghost" onClick={() => update(null)} disabled={!palette}>標準の配色に戻す</Button>
           <Button variant="primary" onClick={onClose}>閉じる</Button>
         </div>
       }
     >
       <Section title="表示モード">
-        <div role="radiogroup" aria-label="表示モード" style={{ display: 'flex', gap: 8 }}>
-          {([
-            { dark: false, label: 'ライト', icon: sunIcon },
-            { dark: true, label: 'ダーク', icon: moonIcon },
-          ]).map(m => {
-            const selected = isDark === m.dark
-            return (
-              <button
-                key={m.label}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => { if (!selected) toggleTheme() }}
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-                  border: selected ? '1.5px solid var(--accent-dark)' : '1px solid var(--border)',
-                  background: selected ? 'var(--accent-bg)' : 'var(--surface)',
-                  color: selected ? 'var(--accent-dark)' : 'var(--text-secondary)',
-                }}
-              >
-                {m.icon}
-                {m.label}
-              </button>
-            )
-          })}
-        </div>
+        <SegmentedButton
+          label="表示モード"
+          block
+          value={isDark ? 'dark' : 'light'}
+          onChange={mode => { if ((mode === 'dark') !== isDark) toggleTheme() }}
+          options={[
+            { key: 'light', label: 'ライト', icon: sunIcon },
+            { key: 'dark', label: 'ダーク', icon: moonIcon },
+          ]}
+        />
       </Section>
 
       <Section title="テーマカラー" description="1 色選ぶと、相性のいい色でサイト全体を塗り分けます">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <div role="radiogroup" aria-label="テーマカラーの候補" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
           {PRESETS.map(c => {
             const selected = current.base.toUpperCase() === c && (palette !== null || c === DEFAULT_BASE)
             return (
               <button
                 key={c}
                 type="button"
-                onClick={() => (c === DEFAULT_BASE && current.pattern === 'complementary' ? update(null) : pickColor(c))}
+                role="radio"
+                aria-checked={selected}
                 aria-label={`色 ${c}`}
-                aria-pressed={selected}
+                className="m3-state m3-target"
+                onClick={() => (c === DEFAULT_BASE && current.pattern === 'complementary' ? update(null) : pickColor(c))}
                 style={{
-                  width: 32, height: 32, borderRadius: 9999, background: c, cursor: 'pointer',
-                  border: '2px solid var(--surface)',
+                  width: 40, height: 40, borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
+                  border: '3px solid var(--surface)',
                   boxShadow: selected ? '0 0 0 2px var(--text-primary)' : '0 0 0 1px var(--border)',
                 }}
               />
             )
           })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
           <input
             type="color"
             value={current.base}
             onChange={e => pickColor(e.target.value)}
             aria-label="好きな色を選ぶ"
-            style={{ width: 44, height: 36, padding: 2, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer' }}
+            className="m3-state"
+            style={{ width: 56, height: 56, padding: 'var(--space-1)', border: '1px solid var(--border-strong)', borderRadius: 'var(--shape-xs)', background: 'var(--surface)', cursor: 'pointer', flexShrink: 0 }}
           />
-          <input
-            value={hexDraft}
-            onChange={e => {
-              const v = e.target.value.trim()
-              setHexDraft(v)
-              const hex = v.startsWith('#') ? v : `#${v}`
-              if (isHex(hex)) pickColor(hex)
-            }}
-            aria-label="カラーコード"
-            placeholder="#3E3A78"
-            maxLength={7}
-            style={{ ...inputStyle, width: 120, fontFamily: 'ui-monospace, monospace' }}
-          />
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>好きな色も選べます</span>
+          <div style={{ width: 180 }}>
+            <TextField
+              label="カラーコード"
+              value={hexDraft}
+              onChange={e => {
+                const v = e.target.value.trim()
+                setHexDraft(v)
+                const hex = v.startsWith('#') ? v : `#${v}`
+                if (isHex(hex)) pickColor(hex)
+              }}
+              placeholder="#3E3A78"
+              maxLength={7}
+              supportingText="好きな色も選べます"
+              style={{ fontFamily: 'ui-monospace, monospace' }}
+            />
+          </div>
         </div>
       </Section>
 
       <Section title="配色パターン">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div role="radiogroup" aria-label="配色パターン" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {PATTERNS.map(p => {
             const selected = current.pattern === p.id
             return (
               <button
                 key={p.id}
                 type="button"
+                role="radio"
+                aria-checked={selected}
+                className="m3-state"
                 onClick={() => pickPattern(p.id)}
-                aria-pressed={selected}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10,
-                  border: selected ? '1.5px solid var(--accent-dark)' : '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3) var(--space-4)',
+                  borderRadius: 'var(--shape-md)', minHeight: 64,
+                  border: selected ? '2px solid var(--accent-dark)' : '1px solid var(--border)',
                   background: selected ? 'var(--accent-bg)' : 'var(--surface)', color: 'var(--text-primary)',
-                  cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  cursor: 'pointer', textAlign: 'left',
                 }}
               >
-                <span style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+                <span style={{ display: 'flex', borderRadius: 'var(--shape-sm)', overflow: 'hidden', flexShrink: 0 }}>
                   {previewSwatches({ base: current.base, pattern: p.id }).map((c, i) => (
-                    <span key={i} style={{ width: 16, height: 28, background: c }} />
+                    <span key={i} style={{ width: 16, height: 32, background: c }} />
                   ))}
                 </span>
                 <span>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>{p.label}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)' }}>{p.description}</span>
+                  <span style={{ display: 'block', ...typeRole('title-small') }}>{p.label}</span>
+                  <span style={{ display: 'block', ...typeRole('body-small'), color: 'var(--text-secondary)' }}>{p.description}</span>
                 </span>
               </button>
             )
@@ -178,11 +169,11 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
       </Section>
 
       <Section title="課題のステータス" description="テーマカラーと配色パターンに合わせて色が変わります（どの組み合わせでも見分けられるよう自動で調整）">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
           {(['todo', 'in_progress', 'done', 'submitted', 'overdue'] as const).map(s => (
             <span key={s} style={{
               background: STATUS_CONFIG[s].bg, color: STATUS_CONFIG[s].color, borderLeft: `3px solid ${STATUS_CONFIG[s].color}`,
-              borderRadius: 6, padding: '5px 10px', fontSize: 12, fontWeight: 700,
+              borderRadius: 'var(--shape-xs)', padding: 'var(--space-1) var(--space-3)', ...typeRole('label-medium'),
             }}>
               {STATUS_CONFIG[s].label}
             </span>
@@ -191,4 +182,14 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
       </Section>
     </Sheet>
   )
+}
+
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+function typeRole(role: string): React.CSSProperties {
+  return {
+    fontSize: `var(--type-${role}-size)`,
+    lineHeight: `var(--type-${role}-line)`,
+    fontWeight: `var(--type-${role}-weight)`,
+    letterSpacing: `var(--type-${role}-tracking)`,
+  }
 }

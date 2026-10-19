@@ -1,5 +1,6 @@
 import type { Subject } from '../../types'
 import { formatDate, parseLocalDate } from '../../types'
+import { IconButton } from '../ui/m3'
 
 const WEEK_JA = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -20,99 +21,94 @@ interface Props {
   onClose: () => void
 }
 
-/** 課題の完了/期限切れ時に画面右下へ出す「次の課題を追加しますか？」カード */
+const type = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
+
+/**
+ * 課題の完了/期限切れ時に画面右下へ出す「次の課題を追加しますか？」カード。
+ * 右下の FAB の場所に出る（M3: 角 16px・影 Level 3）。
+ */
 export default function ReAddCard({ subject, templates, onAdd, onClose }: Props) {
   return (
-    <>
-      <style>{`@keyframes reAddIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
-      <div
-        role="dialog"
-        aria-label={`${subject.name}の課題を追加`}
-        style={{
-          position: 'fixed',
-          bottom: 20,
-          right: 20,
-          width: 340,
-          maxWidth: 'calc(100vw - 32px)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 16,
-          boxShadow: 'var(--shadow-xl)',
-          zIndex: 140,
-          overflow: 'hidden',
-          animation: 'reAddIn 0.3s cubic-bezier(0.16,1,0.3,1)',
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '14px 16px',
-          borderBottom: '1px solid var(--border-light)',
-          background: 'var(--surface-warm)',
-        }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: subject.color, flexShrink: 0, boxShadow: `0 0 0 3px ${subject.color}22` }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {subject.name}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            style={{
-              background: 'var(--bg-secondary)', border: 'none', borderRadius: 7,
-              width: 28, height: 28, cursor: 'pointer', color: 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--border)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-          </button>
+    <div
+      role="dialog"
+      aria-label={`${subject.name}の課題を追加`}
+      style={{
+        position: 'fixed',
+        bottom: 'calc(var(--space-4) + env(safe-area-inset-bottom))',
+        right: 'var(--space-4)',
+        width: 360,
+        maxWidth: 'calc(100vw - 32px)',
+        background: 'var(--surface)',
+        borderRadius: 'var(--shape-lg)',
+        boxShadow: 'var(--elevation-3)',
+        zIndex: 140,
+        overflow: 'hidden',
+        animation: 'm3-snackbar-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate)',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-3)',
+        padding: 'var(--space-2) var(--space-2) var(--space-2) var(--space-4)',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 'var(--shape-full)', background: subject.color, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, ...type('title-small'), color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {subject.name}
         </div>
+        <IconButton label="閉じる" onClick={onClose}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </IconButton>
+      </div>
 
-        {/* Prompt */}
-        <div style={{ padding: '13px 16px 6px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            次の課題を追加しますか？
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3, letterSpacing: '-0.01em', lineHeight: 1.5 }}>
-            項目を押すと、翌週の同じ曜日で追加します
-          </div>
+      {/* Prompt */}
+      <div style={{ padding: 'var(--space-3) var(--space-4) var(--space-2)' }}>
+        <div style={{ ...type('title-medium'), color: 'var(--text-primary)' }}>
+          次の課題を追加しますか？
         </div>
-
-        {/* Template list */}
-        <div style={{ padding: '6px 10px 12px', display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 264, overflowY: 'auto' }}>
-          {templates.map(t => (
-            <button
-              key={t.key}
-              onClick={() => onAdd(t)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-                background: 'transparent', border: '1px solid var(--border-light)', borderRadius: 10,
-                padding: '10px 11px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border-light)' }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>
-                  {t.title}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, letterSpacing: '-0.01em' }}>
-                  次回 {formatDate(t.nextDue)}（{WEEK_JA[parseLocalDate(t.nextDue).getDay()]}）{t.dueTime ? ` ${t.dueTime}` : ''}
-                </div>
-              </div>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent)' }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
-              </div>
-            </button>
-          ))}
+        <div style={{ ...type('body-small'), color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
+          項目を押すと、翌週の同じ曜日で追加します
         </div>
       </div>
-    </>
+
+      {/* Template list */}
+      <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: 280, overflowY: 'auto' }}>
+        {templates.map(t => (
+          <button
+            key={t.key}
+            type="button"
+            className="m3-state"
+            onClick={() => onAdd(t)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', minHeight: 56,
+              background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--shape-md)',
+              padding: 'var(--space-2) var(--space-2) var(--space-2) var(--space-4)', cursor: 'pointer', color: 'var(--text-primary)',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ ...type('body-large'), fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t.title}
+              </div>
+              <div style={{ ...type('body-small'), color: 'var(--text-secondary)' }}>
+                次回 {formatDate(t.nextDue)}（{WEEK_JA[parseLocalDate(t.nextDue).getDay()]}）{t.dueTime ? ` ${t.dueTime}` : ''}
+              </div>
+            </div>
+            <span aria-hidden="true" style={{
+              width: 40, height: 40, borderRadius: 'var(--shape-full)', background: 'var(--accent-solid)', color: 'var(--on-accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

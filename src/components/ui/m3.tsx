@@ -261,7 +261,8 @@ export function Chip({ selected, icon, onRemove, removeLabel, className, childre
  * 画面全体を切り替えるタブとは違い、フォームの中の選択肢に使う（例: 単発 / 繰り返し）
  */
 export function SegmentedButton<K extends string>({ options, value, onChange, label, block = false }: {
-  options: { key: K; label: string }[]
+  /** icon は選ばれていないときに文字の左に出る（選ばれるとチェックに変わる） */
+  options: { key: K; label: string; icon?: ReactNode }[]
   value: K
   onChange: (key: K) => void
   /** 読み上げ用のまとまりの名前 */
@@ -282,7 +283,7 @@ export function SegmentedButton<K extends string>({ options, value, onChange, la
             className={cx('m3-segment', 'm3-state', 'm3-target', selected && 'm3-segment--selected')}
             onClick={() => onChange(o.key)}
           >
-            {selected && checkIcon}
+            {selected ? checkIcon : o.icon}
             {o.label}
           </button>
         )
