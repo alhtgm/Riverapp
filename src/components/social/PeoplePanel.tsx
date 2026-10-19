@@ -9,6 +9,14 @@ import { inputStyle } from '../ui/styles'
 import { InviteToParties } from './PartyInvite'
 import type { UserSummary } from '../../types'
 
+/** 押すと次の画面へ進む行の右端の矢印 */
+const chevronRight = (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ color: 'var(--text-secondary)' }}>
+    <path d="M7.5 4.5L13 10l-5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+
 export type PeopleTab = 'friends' | 'parties'
 
 interface Props {
@@ -27,7 +35,7 @@ const SUBTITLE: Record<PeopleTab, string> = {
 function HandleInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div style={{ position: 'relative', flex: 1 }}>
-      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
+      <span aria-hidden="true" style={{ position: 'absolute', left: 'var(--space-4)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: 'var(--type-body-large-size)' }}>@</span>
       <input
         value={value}
         onChange={e => onChange(e.target.value.replace(/^@/, ''))}
@@ -35,7 +43,7 @@ function HandleInput({ value, onChange, placeholder }: { value: string; onChange
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
-        style={{ ...inputStyle, paddingLeft: 28 }}
+        style={{ ...inputStyle, paddingLeft: 'calc(var(--space-4) + 18px)' }}
       />
     </div>
   )
@@ -226,7 +234,7 @@ function PartiesTab({ onOpenParty }: { onOpenParty: (partyId: string) => void })
                 title={p.name}
                 subtitle={`メンバー ${p.member_count}/${LIMITS.partyMaxMembers}人`}
                 onClick={() => onOpenParty(p.id)}
-                trailing={<span style={{ color: 'var(--text-tertiary)', fontSize: 18 }}>›</span>}
+                trailing={chevronRight}
               />
             ))}
           </List>

@@ -78,7 +78,7 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
   }
 
   return (
-    <div style={{ marginTop: 8, padding: 14, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-warm)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ marginTop: 'var(--space-2)', padding: 'var(--space-4)', border: '1px solid var(--border)', borderRadius: 'var(--shape-md)', background: 'var(--surface-warm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <SectionHeader title="新しい講義を作る" description="同じ講義がすでにあれば、作らずに参加できます" />
       <Field label="講義名" required>
         <input
@@ -90,7 +90,7 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
           style={inputStyle}
         />
       </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
         <Field label="年度" required>
           <input
             type="number" min={2000} max={2100} value={year}
@@ -109,7 +109,7 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
       </Field>
 
       {candidates && candidates.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <Notice tone="warning">似た講義が見つかりました。同じ講義なら、新しく作らずに参加すると課題を共有できます。</Notice>
           {candidates.map(c => (
             <LectureCard
@@ -122,17 +122,16 @@ export default function NewLectureForm({ onReady, onCancel }: Props) {
       )}
 
       {!candidates && (
-        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)', color: 'var(--text-secondary)' }}>
           作成時の公開範囲は「パーティー内」（所属しているすべてのパーティーに表示）です。講義の画面からあとで変更できます。
         </p>
       )}
-      {error && <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{error}</span>}
+      {error && <span role="alert" style={{ fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)', color: 'var(--danger)' }}>{error}</span>}
 
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        <Button variant="ghost" size="sm" onClick={onCancel}>キャンセル</Button>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+        <Button variant="ghost" onClick={onCancel}>キャンセル</Button>
         <Button
           variant={candidates ? 'secondary' : 'primary'}
-          size="sm"
           loading={busy}
           onClick={() => {
             if (!candidates) { void submit(); return }

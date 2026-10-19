@@ -87,9 +87,9 @@ export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <Avatar name={name} size={56} />
           <div style={{ flex: 1, minWidth: 160 }}>
-            <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              {user?.handle && <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{user.handle}</span>}
+            <div style={{ ...type('headline-small'), fontWeight: 'var(--type-weight-emphasized)', color: 'var(--text-primary)' }}>{name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
+              {user?.handle && <span style={{ ...type('body-medium'), color: 'var(--text-secondary)' }}>@{user.handle}</span>}
               {relation && <Badge tone={friend ? 'accent' : isBlocked ? 'danger' : 'neutral'}>{relation}</Badge>}
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
           description={isMe ? '「参加中」を押すと講義の画面を開きます' : '気になる講義があれば、参加または参加申請ができます'}
         >
           {lectures === null ? (
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+            <p style={{ ...type('body-medium'), color: 'var(--text-secondary)', margin: 0 }}>読み込み中...</p>
           ) : (
             <LectureList
               lectures={lectures}
@@ -159,17 +159,25 @@ export default function ProfileView({ userId, onClose, onOpenLecture }: Props) {
   )
 }
 
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const type = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
+
 function HandleInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
+      <span aria-hidden="true" style={{ position: 'absolute', left: 'var(--space-4)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: 'var(--type-body-large-size)' }}>@</span>
       <input
         value={value}
         onChange={e => onChange(e.target.value.replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, ''))}
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
-        style={{ ...inputStyle, paddingLeft: 28 }}
+        style={{ ...inputStyle, paddingLeft: 'calc(var(--space-4) + 18px)' }}
       />
     </div>
   )

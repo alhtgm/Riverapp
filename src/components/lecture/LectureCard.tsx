@@ -1,31 +1,40 @@
 import type { ReactNode } from 'react'
 import { TERM_LABEL, VISIBILITY_LABEL, type LectureSummary, type LectureVisibility } from '../../types'
+import '../ui/m3.css'
+
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const type = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
 
 const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon: ReactNode }> = {
   private: {
     fg: 'var(--text-secondary)',
     bg: 'var(--bg-secondary)',
     icon: (
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="3" y="7" width="10" height="7" rx="1.6" stroke="currentColor" strokeWidth="1.6" />
         <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
       </svg>
     ),
   },
   party: {
-    fg: '#7448D0',
-    bg: 'rgba(116,72,208,0.12)',
+    fg: 'var(--share)',
+    bg: 'var(--share-bg)',
     icon: (
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M8 2.2l1.7 3.4 3.8.5-2.7 2.7.6 3.8L8 10.8l-3.4 1.8.6-3.8L2.5 6.1l3.8-.5L8 2.2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
     ),
   },
   friends: {
-    fg: '#1C6BBD',
-    bg: 'rgba(28,107,189,0.12)',
+    fg: 'var(--st-progress)',
+    bg: 'var(--st-progress-bg)',
     icon: (
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.6" />
         <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.5" />
@@ -33,10 +42,10 @@ const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon
     ),
   },
   public: {
-    fg: '#1B7D45',
-    bg: 'rgba(27,125,69,0.12)',
+    fg: 'var(--public)',
+    bg: 'var(--public-bg)',
     icon: (
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
         <path d="M2 8h12M8 2c1.8 1.7 2.6 3.7 2.6 6S9.8 12.3 8 14c-1.8-1.7-2.6-3.7-2.6-6S6.2 3.7 8 2z" stroke="currentColor" strokeWidth="1.3" />
       </svg>
@@ -47,8 +56,8 @@ const VISIBILITY_STYLE: Record<LectureVisibility, { fg: string; bg: string; icon
 function Pill({ fg, bg, children }: { fg: string; bg: string; children: ReactNode }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 9999,
-      fontSize: 11, fontWeight: 700, color: fg, background: bg, whiteSpace: 'nowrap', letterSpacing: '0.01em',
+      display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', padding: '2px var(--space-2)', borderRadius: 'var(--shape-xs)',
+      ...type('label-medium'), color: fg, background: bg, whiteSpace: 'nowrap',
     }}>
       {children}
     </span>
@@ -59,8 +68,8 @@ function Pill({ fg, bg, children }: { fg: string; bg: string; children: ReactNod
 function Stat({ value, label }: { value: ReactNode; label: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
+      <span style={{ ...type('label-small'), color: 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ ...type('title-small'), color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{value}</span>
     </div>
   )
 }
@@ -85,24 +94,24 @@ export default function LectureCard({ lecture: l, action, expanded, onToggle, ch
   const vis = VISIBILITY_STYLE[l.visibility]
   return (
     <div style={{
-      border: '1px solid var(--border-light)', borderRadius: 12, background: 'var(--surface)',
-      boxShadow: 'var(--shadow-xs)', overflow: 'hidden',
+      border: '1px solid var(--border)', borderRadius: 'var(--shape-md)', background: 'var(--surface)',
+      overflow: 'hidden',
     }}>
-      <div style={{ padding: '12px 14px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
           <div style={{
-            flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
-            letterSpacing: '-0.02em', lineHeight: 1.35, wordBreak: 'break-word',
+            flex: 1, minWidth: 0, ...type('title-medium'), fontWeight: 'var(--type-weight-emphasized)',
+            color: 'var(--text-primary)', wordBreak: 'break-word',
           }}>
             {l.title}
           </div>
           {action}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <Pill fg="var(--accent-dark)" bg="var(--accent-bg)">{l.year}年度・{TERM_LABEL[l.term]}</Pill>
           {l.professor && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', ...type('body-small'), color: 'var(--text-secondary)' }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="8" cy="5" r="2.6" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M3 14c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
@@ -114,16 +123,16 @@ export default function LectureCard({ lecture: l, action, expanded, onToggle, ch
 
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        borderTop: '1px solid var(--border-light)', background: 'var(--surface-warm)',
+        borderTop: '1px solid var(--border)', background: 'var(--surface-warm)',
       }}>
-        <div style={{ padding: '8px 14px' }}>
+        <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
           <Stat
             label="参加"
             value={
               <>
                 {l.participant_count}人
                 {l.party_member_count !== null && (
-                  <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                  <span style={{ ...type('body-small'), color: 'var(--text-secondary)', marginLeft: 'var(--space-1)' }}>
                     メンバー{l.party_member_count}
                   </span>
                 )}
@@ -131,10 +140,10 @@ export default function LectureCard({ lecture: l, action, expanded, onToggle, ch
             }
           />
         </div>
-        <div style={{ padding: '8px 14px', borderLeft: '1px solid var(--border-light)' }}>
+        <div style={{ padding: 'var(--space-2) var(--space-4)', borderLeft: '1px solid var(--border)' }}>
           <Stat label="公開範囲" value={<Pill fg={vis.fg} bg={vis.bg}>{vis.icon}{VISIBILITY_LABEL[l.visibility]}</Pill>} />
         </div>
-        <div style={{ padding: '8px 14px', borderLeft: '1px solid var(--border-light)' }}>
+        <div style={{ padding: 'var(--space-2) var(--space-4)', borderLeft: '1px solid var(--border)' }}>
           <Stat
             label="参加申請"
             value={
@@ -151,20 +160,21 @@ export default function LectureCard({ lecture: l, action, expanded, onToggle, ch
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
+          className="m3-state"
           style={{
-            width: '100%', padding: '7px 14px', border: 'none', borderTop: '1px solid var(--border-light)',
-            background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-            color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', minHeight: 48, padding: '0 var(--space-4)', border: 'none', borderTop: '1px solid var(--border)',
+            background: 'var(--surface)', cursor: 'pointer', ...type('label-large'),
+            color: 'var(--accent-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
           }}
         >
           {expanded ? '課題を閉じる' : '課題と進捗を見る'}
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <svg width="14" height="14" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform var(--motion-duration-short4) var(--motion-easing-standard)' }}>
             <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       )}
       {expanded && children && (
-        <div style={{ borderTop: '1px solid var(--border-light)', padding: '10px 14px 12px', background: 'var(--surface)' }}>
+        <div style={{ borderTop: '1px solid var(--border)', padding: 'var(--space-3) var(--space-4) var(--space-4)', background: 'var(--surface)' }}>
           {children}
         </div>
       )}

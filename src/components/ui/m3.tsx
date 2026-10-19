@@ -234,7 +234,7 @@ export function Chip({ selected, icon, onRemove, removeLabel, className, childre
   if (onRemove) {
     // 入力チップは「本体」と「×」を別のボタンにする（ボタンの入れ子は不可のため）
     return (
-      <span className={cx('m3-chip', leading && 'm3-chip--leading', 'm3-chip--trailing', className)} style={{ cursor: 'default' }}>
+      <span className={cx('m3-chip', leading && 'm3-chip--leading', 'm3-chip--trailing', className)} style={{ cursor: 'default', ...rest.style }}>
         {leading}
         <span>{children}</span>
         <button type="button" className="m3-chip__remove m3-icon-btn m3-state m3-target" style={{ width: 24, height: 24 }} aria-label={removeLabel ?? '外す'} onClick={onRemove}>
