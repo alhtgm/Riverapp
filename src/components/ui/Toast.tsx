@@ -30,7 +30,7 @@ const iconColor: Record<ToastType, string> = {
 
 /**
  * 画面下に短く出るお知らせ（M3 のスナックバー。見た目は m3.css の .m3-snackbar）。
- * 右下の「課題を追加」ボタンにかぶらないよう、その上に出す。
+ * スマホでは右下の「課題を追加」ボタンと下部バーにかぶらないよう、その上に出す（高さは TimelineView が CSS 変数で渡す）。
  */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -49,7 +49,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         className="m3-snackbar-host"
-        style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', zIndex: 9999 }}
+        style={{ bottom: 'calc(var(--space-4) + var(--fab-clearance, 0px) + var(--bottom-bar-height, env(safe-area-inset-bottom)))', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', zIndex: 9999 }}
         aria-live="polite"
         aria-atomic="false"
       >

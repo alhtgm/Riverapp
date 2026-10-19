@@ -22,13 +22,15 @@ interface Props {
   height?: number
   /** 重ねて開くとき用（既定 300） */
   zIndex?: number
+  /** center = 中央のダイアログ（既定）、side = PC・タブレットでは右から出すパネル。スマホはどちらも下から出るシート */
+  placement?: 'center' | 'side'
 }
 
 /**
  * 画面の上に重ねて開くパネル。見た目は M3（m3.css の .m3-modal）。
  * PC・タブレットでは中央のダイアログ、スマートフォン（600px 未満）では下からのシート。
  */
-export default function Sheet({ title, subtitle, onClose, children, footer, headerExtra, width = 520, height, zIndex = 300 }: Props) {
+export default function Sheet({ title, subtitle, onClose, children, footer, headerExtra, width = 520, height, zIndex = 300, placement = 'center' }: Props) {
   const titleId = useId()
   // 重ねて開いているときは、Esc で一番上のシートだけを閉じる
   const closeRef = useRef(onClose)
@@ -44,12 +46,12 @@ export default function Sheet({ title, subtitle, onClose, children, footer, head
 
   return (
     <div
-      className="m3-modal-wrap"
+      className={placement === 'side' ? 'm3-modal-wrap m3-modal-wrap--side' : 'm3-modal-wrap'}
       style={{ zIndex }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="m3-modal"
+        className={placement === 'side' ? 'm3-modal m3-modal--side' : 'm3-modal'}
         data-fixed-height={height ? '' : undefined}
         role="dialog"
         aria-modal="true"

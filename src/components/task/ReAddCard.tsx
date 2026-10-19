@@ -39,7 +39,7 @@ export default function ReAddCard({ subject, templates, onAdd, onClose }: Props)
       aria-label={`${subject.name}の課題を追加`}
       style={{
         position: 'fixed',
-        bottom: 'calc(var(--space-4) + env(safe-area-inset-bottom))',
+        bottom: 'calc(var(--space-4) + var(--bottom-bar-height, env(safe-area-inset-bottom)))',
         right: 'var(--space-4)',
         width: 360,
         maxWidth: 'calc(100vw - 32px)',

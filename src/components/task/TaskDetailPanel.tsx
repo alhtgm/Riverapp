@@ -11,6 +11,8 @@ interface Props {
   task: Task | null
   subjects: Subject[]
   onClose: () => void
+  /** 広い画面で、タイムラインの右に並べて出す（背景を暗くせず、タイムラインも操作できる） */
+  docked?: boolean
 }
 
 /** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
@@ -119,7 +121,7 @@ const statusDot = (color: string) => (
   <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: color, margin: '0 var(--space-1)' }} />
 )
 
-export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
+export default function TaskDetailPanel({ task, subjects, onClose, docked = false }: Props) {
   const { updateTask, deleteTask, deleteTasksFromRecurrence, updateTasksFromRecurrence, progress } = useStore()
   const { showToast } = useToast()
   const [title, setTitle] = useState('')
@@ -230,8 +232,14 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
   const groupLabel: CSSProperties = { ...type('label-large'), color: 'var(--text-secondary)' }
 
   return (
-    <div className="m3-side-wrap" style={{ zIndex: 150 }} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <aside className="m3-side-sheet" role="dialog" aria-modal="true" aria-labelledby="task-detail-title" style={{ zIndex: 160 }}>
+    <ModalWrap docked={docked} onClose={onClose}>
+      <aside
+        className={docked ? 'm3-side-sheet m3-side-sheet--docked' : 'm3-side-sheet'}
+        role={docked ? 'complementary' : 'dialog'}
+        aria-modal={docked ? undefined : true}
+        aria-labelledby="task-detail-title"
+        style={docked ? undefined : { zIndex: 160 }}
+      >
 
         <div className="m3-side-sheet__header">
           <h2 id="task-detail-title" style={{ flex: 1, margin: 0, ...type('title-large', 'var(--type-weight-emphasized)') }}>課題の詳細</h2>
@@ -384,6 +392,16 @@ export default function TaskDetailPanel({ task, subjects, onClose }: Props) {
           )}
         </div>
       </aside>
+    </ModalWrap>
+  )
+}
+
+/** 重ねて開くときは背景を暗くする幕で包む。右に並べるときは包まない */
+function ModalWrap({ docked, onClose, children }: { docked: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (docked) return <>{children}</>
+  return (
+    <div className="m3-side-wrap" style={{ zIndex: 150 }} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      {children}
     </div>
   )
 }

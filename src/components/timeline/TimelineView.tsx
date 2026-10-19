@@ -8,7 +8,9 @@ import PeoplePanel, { type PeopleTab } from '../social/PeoplePanel'
 import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
-import HeaderMenu from './HeaderMenu'
+import AppNavigation, { type AppDestination } from './AppNavigation'
+import AccountSheet, { NewSemesterSheet } from './AccountSheet'
+import SettingsSheet from '../settings/SettingsSheet'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ReAddCard, { type ReAddTemplate } from '../task/ReAddCard'
 import ColorPicker from '../ui/ColorPicker'
@@ -216,6 +218,11 @@ export default function TimelineView() {
   const [lectureId, setLectureId] = useState<string | null>(null)
   const fetchSocial = useSocialStore(s => s.fetchSocial)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < BREAKPOINTS.medium)
+  /** 840px 以上（M3 の expanded）。課題の詳細をタイムラインの右に並べる */
+  const [isExpanded, setIsExpanded] = useState(() => window.innerWidth >= BREAKPOINTS.expanded)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [newSemesterOpen, setNewSemesterOpen] = useState(false)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
@@ -325,10 +332,29 @@ export default function TimelineView() {
   }, [tasks])
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < BREAKPOINTS.medium)
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < BREAKPOINTS.medium)
+      setIsExpanded(window.innerWidth >= BREAKPOINTS.expanded)
+    }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    const root = document.documentElement.style
+    root.setProperty('--bottom-bar-height', isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : '0px')
+    // スマホは右下に FAB（56px）があるので、そのぶん上に出す
+    root.setProperty('--fab-clearance', isMobile ? '72px' : '0px')
+    return () => { root.removeProperty('--bottom-bar-height'); root.removeProperty('--fab-clearance') }
+  }, [isMobile])
+
+  /** ナビゲーションで選ばれている行き先（開いている画面から決める） */
+  const activeDestination: AppDestination = inboxOpen ? 'inbox' : peopleTab ? 'people' : accountOpen ? 'me' : 'timeline'
+  const selectDestination = (key: AppDestination) => {
+    setInboxOpen(key === 'inbox')
+    setPeopleTab(key === 'people' ? 'friends' : null)
+    setAccountOpen(key === 'me')
+  }
 
   const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
 
@@ -560,7 +586,11 @@ export default function TimelineView() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', height: '100svh', background: 'var(--bg)' }}>
+      {!isMobile && (
+        <AppNavigation variant="rail" active={activeDestination} onSelect={selectDestination} onAdd={() => setAddModalSubjectId('')} />
+      )}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
       {/* ---- Brand header（M3 の top app bar: 高さ 64px） ---- */}
       <header style={{
@@ -569,7 +599,7 @@ export default function TimelineView() {
         boxShadow: 'var(--elevation-1)',
         display: 'flex',
         alignItems: 'center',
-        padding: isMobile ? '0 var(--space-1) 0 var(--space-4)' : '0 var(--space-3) 0 var(--space-6)',
+        padding: isMobile ? '0 var(--space-4)' : '0 var(--space-6)',
         gap: 'var(--space-3)',
         flexShrink: 0,
         position: 'relative',
@@ -630,10 +660,10 @@ export default function TimelineView() {
           }}>
             v{__APP_VERSION__}
           </span>
-          {/* スマホ幅では出さない（学期は ≡ メニューの「学期」で確認・切り替えできる） */}
-          {!isMobile && (
+          {/* 学期（切り替えはナビゲーションの「自分」から） */}
+          {(
             <span
-              title="学期はメニューから切り替えられます"
+              title="学期は「自分」から切り替えられます"
               style={{
                 fontSize: 'var(--type-label-medium-size)',
                 lineHeight: 'var(--type-label-medium-line)',
@@ -646,18 +676,11 @@ export default function TimelineView() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {semesterLabel(semester)}
+              {isMobile ? semesterLabel(semester).replace('年度 ', '') : semesterLabel(semester)}
             </span>
           )}
         </div>
 
-        {/* 仲間・受信箱・メニュー（プロフィール・学期・設定・ログアウト） */}
-        <HeaderMenu
-          onOpenPeople={tab => setPeopleTab(tab ?? 'friends')}
-          onOpenInbox={() => setInboxOpen(true)}
-          onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
-          isMobile={isMobile}
-        />
       </header>
 
       {/* ---- Filter bar（チップを並べる。高さ 56px・横にスクロールできる） ---- */}
@@ -731,11 +754,13 @@ export default function TimelineView() {
         )}
       </div>
 
-      {/* ---- Main scroll area ---- */}
+      {/* ---- Main scroll area（840px 以上では右に課題の詳細を並べる） ---- */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
       <div
         ref={scrollRef}
         style={{
           flex: 1,
+          minWidth: 0,
           overflow: 'auto',
           position: 'relative',
         }}
@@ -1189,27 +1214,41 @@ export default function TimelineView() {
             })
           )}
           {/* 右下の追加ボタンに最後の行が隠れないようにする余白 */}
-          <div aria-hidden="true" style={{ height: 88 }} />
+          <div aria-hidden="true" style={{ height: isMobile ? 88 : 24 }} />
         </div>
+      </div>
+      {selectedTask && isExpanded && (
+        <TaskDetailPanel
+          task={selectedTask}
+          subjects={subjects}
+          onClose={() => setSelectedTask(null)}
+          docked
+        />
+      )}
+      </div>
+
+      {isMobile && (
+        <AppNavigation variant="bar" active={activeDestination} onSelect={selectDestination} onAdd={() => setAddModalSubjectId('')} />
+      )}
       </div>
 
       {/* 課題を追加（右下の FAB。M3 の FAB: 56px・角 16px） */}
-      {!reAdd && (
+      {isMobile && !reAdd && (
         <Fab
           label="課題を追加 [N]"
           icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}
           onClick={() => setAddModalSubjectId('')}
           style={{
             position: 'fixed',
-            right: isMobile ? 'var(--space-4)' : 'var(--space-6)',
-            bottom: isMobile ? 'calc(var(--space-4) + env(safe-area-inset-bottom))' : 'var(--space-6)',
+            right: 'var(--space-4)',
+            bottom: 'calc(var(--space-4) + var(--bottom-bar-height, 0px))',
             zIndex: 120,
           }}
         />
       )}
 
       {/* ---- Overlays ---- */}
-      {selectedTask && (
+      {selectedTask && !isExpanded && (
         <TaskDetailPanel
           task={selectedTask}
           subjects={subjects}
@@ -1264,12 +1303,24 @@ export default function TimelineView() {
         />
       )}
 
+      {accountOpen && (
+        <AccountSheet
+          onClose={() => setAccountOpen(false)}
+          onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onNewSemester={() => setNewSemesterOpen(true)}
+        />
+      )}
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {newSemesterOpen && <NewSemesterSheet onClose={() => setNewSemesterOpen(false)} />}
+
       {quickMenu && (
         <TaskQuickMenu
           task={quickMenu.task}
           position={{ x: quickMenu.x, y: quickMenu.y }}
           onClose={() => setQuickMenu(null)}
           onOpenDetail={() => { setSelectedTask(quickMenu.task); setQuickMenu(null) }}
+          asSheet={isMobile}
         />
       )}
 

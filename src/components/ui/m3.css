@@ -692,3 +692,32 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 @media (prefers-reduced-motion: reduce) {
   .m3-side-wrap, .m3-side-sheet, .m3-menu { animation: none; }
 }
+
+/* 広い画面で、タイムラインの右に並べるサイドシート（背景を暗くしない・タイムラインも操作できる） */
+.m3-side-sheet--docked {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  flex-shrink: 0;
+  height: 100%;
+  border-radius: 0;
+  border-left: 1px solid var(--border);
+  box-shadow: none;
+  animation-duration: var(--motion-duration-medium2);
+}
+
+/* 仲間・受信箱など、PC・タブレットでは右から出すパネル（Sheet の placement="side"）。スマホは下から出るシートのまま */
+@media (min-width: 600px) {
+  .m3-modal-wrap--side { align-items: stretch; justify-content: flex-end; padding: 0; }
+  .m3-modal--side {
+    width: min(480px, 100vw) !important;
+    height: 100svh !important;
+    max-height: none;
+    border-radius: var(--shape-lg) 0 0 var(--shape-lg);
+    animation-name: m3-side-in;
+  }
+}
+
+/* 開いたときにフォーカスを受け取るダイアログ・シートの外枠には、選択中の枠を出さない（中のボタンには出る） */
+.m3-dialog:focus, .m3-sheet:focus { outline: none; }

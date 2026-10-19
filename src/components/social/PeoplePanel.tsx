@@ -55,7 +55,7 @@ export default function PeoplePanel({ initialTab = 'friends', onClose, onOpenPro
   const { incoming, invites } = useSocialStore()
 
   return (
-    <Sheet title="仲間" subtitle={SUBTITLE[tab]} onClose={onClose} width={720} height={740}>
+    <Sheet placement="side" title="仲間" subtitle={SUBTITLE[tab]} onClose={onClose} width={720} height={740}>
       <Tabs
         value={tab}
         onChange={setTab}

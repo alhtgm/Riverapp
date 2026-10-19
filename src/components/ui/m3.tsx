@@ -336,9 +336,10 @@ function useModal(open: boolean, onClose: () => void, panelRef: React.RefObject<
     document.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    // 最初の入力欄かボタンにフォーカスを移す
+    // 入力欄があれば最初の入力欄へ、なければ画面そのものへフォーカスを移す
+    // （ボタンに移すと、タップで開いたときにも選択中の枠が出てうるさいため）
     requestAnimationFrame(() => {
-      const target = panelRef.current?.querySelector<HTMLElement>('input, select, textarea, button, [tabindex]:not([tabindex="-1"])')
+      const target = panelRef.current?.querySelector<HTMLElement>('input, select, textarea')
       ;(target ?? panelRef.current)?.focus()
     })
     return () => {

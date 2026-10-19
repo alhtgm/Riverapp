@@ -126,7 +126,7 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
   }
 
   return (
-    <Sheet title="受信箱" subtitle="返事が必要な申請・招待と、お知らせが届きます" onClose={onClose} width={640} height={720}>
+    <Sheet placement="side" title="受信箱" subtitle="返事が必要な申請・招待と、お知らせが届きます" onClose={onClose} width={640} height={720}>
       <Section
         title="返事が必要"
         count={pending.length}
