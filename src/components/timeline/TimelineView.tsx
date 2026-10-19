@@ -15,7 +15,8 @@ import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
-import { Button, Chip, Fab } from '../ui/m3'
+import { Button, Chip, Fab, IconButton } from '../ui/m3'
+import { EmptyState } from '../ui/kit'
 import { BREAKPOINTS } from '../../theme/breakpoints'
 import { semesterKey, semesterLabel, semesterRange, subjectInSemester } from '../../lib/semester'
 import { describeNotification, notificationUserIds } from '../../lib/notificationText'
@@ -50,6 +51,22 @@ const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 
 
 type EffectiveStatus = 'todo' | 'in_progress' | 'done' | 'submitted' | 'overdue'
+
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const typeRole = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
+
+/** 表の線・土日・今日の列の色。文字色を薄く混ぜるので、ライト/ダークどちらでもそのまま合う */
+const gridLine = 'color-mix(in srgb, var(--text-primary) 7%, transparent)'
+const weekendColumn = 'color-mix(in srgb, var(--text-primary) 4%, transparent)'
+const todayColumn = 'color-mix(in srgb, var(--accent) 14%, transparent)'
+
+/** 講義の行の小さいアイコンボタン（見た目 32px・押せる範囲は 48px） */
+const rowIconButton: React.CSSProperties = { width: 32, height: 32, marginLeft: 'var(--space-1)' }
 
 /** 絞り込みバーの区切り線 */
 const filterDivider: React.CSSProperties = { width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }
@@ -201,7 +218,6 @@ export default function TimelineView() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < BREAKPOINTS.medium)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
-  const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
   /** 表示範囲: 'week'=今週, 'month'=今月(30日), 'all'=すべて */
   const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('all')
@@ -735,7 +751,6 @@ export default function TimelineView() {
             zIndex: 20,
             background: 'var(--bg)',
             borderBottom: '1px solid var(--border)',
-            boxShadow: '0 2px 8px rgba(20,18,40,0.04)',
           }}>
             {/* Date columns */}
             {days.map((day, i) => {
@@ -755,44 +770,36 @@ export default function TimelineView() {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    paddingBottom: 8,
+                    paddingBottom: 'var(--space-1)',
                     gap: 2,
-                    background: isToday
-                      ? (isDark ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'color-mix(in srgb, var(--accent) 14%, transparent)')
-                      : (isSun || isSat)
-                      ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(20,18,40,0.035)')
-                      : 'transparent',
-                    borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(20,18,40,0.06)'}`,
+                    background: isToday ? todayColumn : (isSun || isSat) ? weekendColumn : 'transparent',
+                    borderRight: `1px solid ${gridLine}`,
                     position: 'relative',
                   }}
                 >
                   <span style={{
-                    fontSize: 10,
-                    fontWeight: (isFirst || i === 0) ? 700 : 600,
+                    ...typeRole('label-small'),
+                    fontWeight: (isFirst || i === 0) ? 'var(--type-weight-emphasized)' : 'var(--type-label-small-weight)',
                     color: (isFirst || i === 0)
                       ? 'var(--text-primary)'
                       : isSun ? 'var(--danger)'
                       : isSat ? 'var(--saturday)'
                       : 'var(--text-tertiary)',
-                    letterSpacing: (isFirst || i === 0) ? '0.04em' : '0.02em',
                     whiteSpace: 'nowrap',
                   }}>
                     {(isFirst || i === 0) ? `${day.getMonth() + 1}月` : DAY_JA[dow]}
                   </span>
                   <div style={{
-                    width: isToday ? 28 : 26,
-                    height: isToday ? 28 : 26,
+                    width: 32,
+                    height: 32,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: '50%',
+                    borderRadius: 'var(--shape-full)',
                     background: isToday ? 'var(--accent-solid)' : 'transparent',
-                    boxShadow: isToday ? '0 2px 10px color-mix(in srgb, var(--accent) 48%, transparent), 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
-                    fontSize: isToday ? 13 : 12,
-                    fontWeight: isToday ? 800 : 500,
+                    ...typeRole('label-large'),
+                    fontWeight: isToday ? 'var(--type-weight-emphasized)' : 'var(--type-label-large-weight)',
                     color: isToday ? 'var(--on-accent)' : isSun ? 'var(--danger)' : isSat ? 'var(--saturday)' : 'var(--text-secondary)',
-                    letterSpacing: '-0.02em',
-                    transition: 'all 0.2s',
                   }}>
                     {day.getDate()}
                   </div>
@@ -815,71 +822,22 @@ export default function TimelineView() {
               ))}
             </>
           ) : grouped.length === 0 ? (
-            <div style={{
-              display: 'flex',
-              height: 320,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 14,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  boxShadow: '0 2px 8px rgba(20,18,40,0.06)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 14px',
-                }}>
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <rect x="2.5" y="2.5" width="17" height="17" rx="4.5" stroke="var(--text-disabled)" strokeWidth="1.5"/>
-                    <path d="M8 11h6M11 8v6" stroke="var(--text-disabled)" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  {viewRange !== 'all'
-                    ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません`
-                    : subjects.length === 0 ? `${semesterLabel(semester)}の講義はまだありません` : '課題を追加してはじめましょう'}
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 5, letterSpacing: '-0.01em' }}>
-                  {viewRange !== 'all'
-                    ? '「すべて」に切り替えると全期間の課題が表示されます'
-                    : subjects.length === 0
-                      ? '「課題を追加」から講義を作成できます。ほかの学期はメニューから切り替えられます'
-                      : '右上の「課題を追加」から追加できます [N]'}
-                </p>
-                {viewRange !== 'all' && (
-                  <button
-                    onClick={() => setViewRange('all')}
-                    style={{
-                      marginTop: 14,
-                      background: 'var(--accent-bg)',
-                      color: 'var(--accent)',
-                      border: '1px solid var(--accent-muted)',
-                      borderRadius: 9999,
-                      padding: '6px 18px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      letterSpacing: '-0.01em',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 20%, transparent)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 50%, transparent)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
-                  >
-                    「すべて」に切り替える
-                  </button>
-                )}
-              </div>
+            <div style={{ position: 'sticky', left: 0, width: 'min(560px, 100vw)', padding: 'var(--space-8) var(--space-4)' }}>
+              <EmptyState
+                title={viewRange !== 'all'
+                  ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません`
+                  : subjects.length === 0 ? `${semesterLabel(semester)}の講義はまだありません` : '課題を追加してはじめましょう'}
+                description={viewRange !== 'all'
+                  ? '「すべて」に切り替えると全期間の課題が表示されます'
+                  : subjects.length === 0
+                    ? '右下の「＋」（課題を追加）から講義を作成できます。ほかの学期はメニューから切り替えられます'
+                    : '右下の「＋」から追加できます [N]'}
+                action={viewRange !== 'all' ? <Button variant="tonal" onClick={() => setViewRange('all')}>「すべて」に切り替える</Button> : undefined}
+              />
             </div>
           ) : (
             grouped.map(({ subject, subjectRows }) => {
               const collapsed = collapsedIds.has(subject.id)
-              const isHovered = hoveredSubjectId === subject.id
 
               return (
                 <div key={subject.id}>
@@ -887,15 +845,13 @@ export default function TimelineView() {
                   <div
                     style={{
                       height: SUBJECT_SEP_HEIGHT,
-                      borderTop: '1px solid var(--border-light)',
+                      borderTop: '1px solid var(--border)',
                       borderBottom: `1px solid ${subject.color}20`,
                       background: `linear-gradient(90deg, ${subject.color}18 0%, transparent 320px)`,
                       position: 'relative',
                       display: 'flex',
                       alignItems: 'center',
                     }}
-                    onMouseEnter={() => setHoveredSubjectId(subject.id)}
-                    onMouseLeave={() => setHoveredSubjectId(null)}
                   >
                     {/* Sticky name area — overlays timeline, stays at left edge during scroll */}
                     {/* カラーピッカーを開いている間は、この科目のスタッキングコンテキストを
@@ -918,7 +874,7 @@ export default function TimelineView() {
                           height: '100%',
                           background: subject.color,
                           flexShrink: 0,
-                          borderRadius: '0 3px 3px 0',
+                          borderRadius: '0 var(--shape-xs) var(--shape-xs) 0',
                           cursor: 'pointer',
                           position: 'relative',
                         }}
@@ -939,34 +895,39 @@ export default function TimelineView() {
                       </div>
 
                       {/* Collapse toggle + name (no truncation) */}
-                      <div
+                      <button
+                        type="button"
+                        aria-expanded={!collapsed}
+                        title={collapsed ? '課題を表示する' : '課題を隠す'}
+                        className="m3-state"
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
-                          padding: '0 6px 0 8px',
+                          gap: 'var(--space-2)',
+                          padding: '0 var(--space-2)',
                           cursor: 'pointer',
                           height: '100%',
                           userSelect: 'none',
+                          border: 'none',
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
                         }}
                         onClick={() => toggleCollapse(subject.id)}
                       >
                         <svg
-                          width="8" height="8" viewBox="0 0 10 10" fill="none"
+                          width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden="true"
                           style={{
                             flexShrink: 0,
                             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1)',
+                            transition: 'transform var(--motion-duration-short4) var(--motion-easing-standard)',
                           }}
                         >
-                          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2 3.5L5 6.5L8 3.5" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <span
                           style={{
-                            fontSize: isMobile ? 12 : 13,
-                            fontWeight: 700,
-                            color: 'var(--text-primary)',
-                            letterSpacing: '-0.01em',
+                            ...typeRole('title-small'),
+                            fontWeight: 'var(--type-weight-emphasized)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -974,87 +935,43 @@ export default function TimelineView() {
                         </span>
                         {!collapsed && subjectRows.length > 0 && (
                           <span style={{
-                            fontSize: 10,
+                            ...typeRole('label-small'),
                             color: 'var(--text-secondary)',
-                            background: 'var(--border-light)',
-                            borderRadius: 9999,
-                            padding: '2px 7px',
+                            background: 'var(--bg-secondary)',
+                            borderRadius: 'var(--shape-full)',
+                            padding: '0 var(--space-2)',
                             flexShrink: 0,
-                            fontWeight: 700,
                           }}>
                             {subjectRows.reduce((s, r) => s + r.tasks.length, 0)}
                           </span>
                         )}
-                      </div>
+                      </button>
 
-                      {/* Add button */}
-                      {(
-                        <button
-                          onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
-                          aria-label={`${subject.name}に課題を追加`}
-                          title="この科目に課題を追加"
-                          style={{
-                            background: 'var(--accent-bg)',
-                            border: '1px solid var(--accent-muted)',
-                            cursor: 'pointer',
-                            padding: 0,
-                            width: 28,
-                            height: 28,
-                            marginLeft: 4,
-                            borderRadius: 8,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            opacity: isHovered ? 1 : 0.72,
-                            transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, transform 0.1s',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 20%, transparent)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, transparent)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)' }}
-                          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
-                          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                            <path d="M6 1v10M1 6h10" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"/>
-                          </svg>
-                        </button>
-                      )}
+                      {/* この講義に課題を追加 */}
+                      <IconButton
+                        label={`${subject.name}に課題を追加`}
+                        variant="tonal"
+                        onClick={e => { e.stopPropagation(); setAddModalSubjectId(subject.id) }}
+                        style={rowIconButton}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                          <path d="M9 4v10M4 9h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </IconButton>
 
                       {/* 講義の画面（設定・参加者・進捗・履歴・退出） */}
-                      <button
+                      <IconButton
+                        label={`${subject.name}の講義画面を開く（設定・参加者・進捗・履歴）`}
                         onClick={e => { e.stopPropagation(); setLectureId(subject.id) }}
-                        aria-label={`${subject.name}の講義画面を開く`}
-                        title="講義の画面（設定・参加者・進捗・履歴）"
-                        style={{
-                          background: 'var(--bg-secondary)',
-                          border: '1px solid var(--border)',
-                          cursor: 'pointer',
-                          padding: 0,
-                          width: 28,
-                          height: 28,
-                          marginLeft: 4,
-                          marginRight: 6,
-                          borderRadius: 8,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          color: 'var(--text-tertiary)',
-                          opacity: isHovered ? 1 : 0.72,
-                          transition: 'opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-bg)'; e.currentTarget.style.borderColor = 'var(--accent-muted)'; e.currentTarget.style.color = 'var(--accent)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-                        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)' }}
-                        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                        style={{ ...rowIconButton, marginRight: 'var(--space-2)' }}
                       >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                          <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.4"/>
-                          <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                          <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.3"/>
-                          <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.3"/>
+                          <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                          <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
+                          <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                         </svg>
-                      </button>
+                      </IconButton>
 
                       <SharedPartiesBadge
                         subject={subject}
@@ -1071,11 +988,11 @@ export default function TimelineView() {
                       if (total === 0) return null
                       const pct = Math.round((done / total) * 100)
                       return (
-                        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 56, height: 5, background: `${subject.color}30`, borderRadius: 9999, overflow: 'hidden' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 9999, transition: 'width 0.4s ease' }} />
+                        <div style={{ position: 'absolute', right: 'var(--space-3)', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                          <div style={{ width: 56, height: 4, background: `${subject.color}30`, borderRadius: 'var(--shape-full)', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: subject.color, borderRadius: 'var(--shape-full)', transition: 'width var(--motion-duration-long2) var(--motion-easing-emphasized)' }} />
                           </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: subject.color, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                          <span style={{ ...typeRole('label-small'), color: subject.color, whiteSpace: 'nowrap' }}>
                             {done}/{total}
                           </span>
                         </div>
@@ -1088,7 +1005,7 @@ export default function TimelineView() {
                     return (
                       <div
                         key={row.rowIndex}
-                        style={{ height: ROW_HEIGHT, borderBottom: '1px solid var(--border-light)', position: 'relative', background: 'var(--surface)' }}
+                        style={{ height: ROW_HEIGHT, borderBottom: `1px solid ${gridLine}`, position: 'relative', background: 'var(--surface)' }}
                       >
                         {/* Grid + bars */}
                         <div style={{ position: 'absolute', inset: 0 }}>
@@ -1107,10 +1024,8 @@ export default function TimelineView() {
                                   top: 0,
                                   width: COL_WIDTH,
                                   height: ROW_HEIGHT,
-                                  background: isTodayCol
-                                    ? (isDark ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)')
-                                    : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(20,18,40,0.03)'),
-                                  borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(20,18,40,0.05)'}`,
+                                  background: isTodayCol ? todayColumn : weekendColumn,
+                                  borderRight: `1px solid ${gridLine}`,
                                   pointerEvents: 'none',
                                 }}
                               />
@@ -1149,33 +1064,31 @@ export default function TimelineView() {
                                   transform: 'translateY(-50%)',
                                   height: 36,
                                   background: bg,
-                                  borderRadius: 7,
+                                  borderRadius: 'var(--shape-sm)',
                                   cursor: isDragging ? 'grabbing' : 'grab',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  paddingLeft: 8,
-                                  paddingRight: 16,
+                                  paddingLeft: 'var(--space-2)',
+                                  paddingRight: 'var(--space-4)',
                                   overflow: 'hidden',
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
-                                  transition: isDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
+                                  transition: isDragging ? 'none' : 'box-shadow var(--motion-duration-short4) var(--motion-easing-standard)',
                                   borderLeft: `3px solid ${color}`,
-                                  boxShadow: isDragging ? `0 6px 16px ${withAlpha(color, '38')}` : `0 1px 4px ${withAlpha(color, '18')}`,
+                                  boxShadow: isDragging ? 'var(--elevation-3)' : 'var(--elevation-0)',
                                   userSelect: 'none',
                                 }}
                                 onMouseEnter={e => {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
-                                    el.style.transform = 'translateY(-50%) translateY(-2px)'
-                                    el.style.boxShadow = `0 4px 12px ${withAlpha(color, '28')}`
+                                    el.style.boxShadow = 'var(--elevation-1)'
                                     el.style.zIndex = '3'
                                   }
                                 }}
                                 onMouseLeave={e => {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
-                                    el.style.transform = 'translateY(-50%)'
-                                    el.style.boxShadow = `0 1px 4px ${withAlpha(color, '18')}`
+                                    el.style.boxShadow = 'var(--elevation-0)'
                                     el.style.zIndex = '2'
                                   }
                                 }}
@@ -1185,7 +1098,7 @@ export default function TimelineView() {
                                   onMouseDown={e => { e.stopPropagation(); startDrag(e, task, 'resize-start') }}
                                   style={{
                                     position: 'absolute', left: 0, top: 0, bottom: 0, width: 10,
-                                    cursor: 'ew-resize', zIndex: 4, borderRadius: '6px 0 0 6px',
+                                    cursor: 'ew-resize', zIndex: 4, borderRadius: 'var(--shape-sm) 0 0 var(--shape-sm)',
                                   }}
                                 />
                                 {/* Right resize handle */}
@@ -1212,27 +1125,26 @@ export default function TimelineView() {
 
                                 {occurrenceLabel && (
                                   <span style={{
-                                    fontSize: 10, fontWeight: 700, color,
-                                    background: `${withAlpha(color, '22')}`,
-                                    borderRadius: 4, padding: '2px 5px',
-                                    flexShrink: 0, letterSpacing: '0.02em', lineHeight: 1, marginRight: 5,
+                                    ...typeRole('label-small'), color,
+                                    background: withAlpha(color, '22'),
+                                    borderRadius: 'var(--shape-xs)', padding: '0 var(--space-1)',
+                                    flexShrink: 0, marginRight: 'var(--space-1)',
                                     pointerEvents: 'none',
                                   }}>
                                     {occurrenceLabel}
                                   </span>
                                 )}
                                 <span style={{
-                                  fontSize: 12, fontWeight: 600, color,
+                                  ...typeRole('label-medium'), color,
                                   overflow: 'hidden', textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
-                                  letterSpacing: '-0.02em', lineHeight: 1,
                                   pointerEvents: 'none',
                                   flex: 1,
                                   minWidth: 0,
                                 }}>
                                   {task.title}
                                   {task.due_time && (
-                                    <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: 4 }}>
+                                    <span style={{ opacity: 0.75, fontWeight: 400, marginLeft: 'var(--space-1)' }}>
                                       {task.due_time}
                                     </span>
                                   )}
@@ -1247,24 +1159,30 @@ export default function TimelineView() {
 
                   {/* Empty subject */}
                   {!collapsed && subjectRows.length === 0 && (
-                    <div
+                    <button
+                      type="button"
+                      className="m3-state"
                       style={{
                         height: ROW_HEIGHT,
-                        borderBottom: '1px solid var(--border-light)',
+                        width: '100%',
+                        border: 'none',
+                        borderBottom: `1px solid ${gridLine}`,
                         background: 'var(--surface)',
                         display: 'flex',
                         alignItems: 'center',
-                        paddingLeft: 20,
-                        gap: 7,
+                        padding: '0 var(--space-5)',
+                        gap: 'var(--space-2)',
                         cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        ...typeRole('body-medium'),
                       }}
                       onClick={() => setAddModalSubjectId(subject.id)}
                     >
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1v10M1 6h10" stroke="var(--text-disabled)" strokeWidth="2" strokeLinecap="round"/>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
                       </svg>
-                      <span style={{ fontSize: 11, color: 'var(--text-disabled)', fontStyle: 'italic', letterSpacing: '-0.01em' }}>課題を追加</span>
-                    </div>
+                      {subject.name}に課題を追加
+                    </button>
                   )}
                 </div>
               )
@@ -1389,12 +1307,11 @@ function SharedPartiesBadge({ subject, isMobile, onClick }: { subject: Subject; 
   const chip: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 4,
-    height: 20,
-    padding: '0 8px',
-    borderRadius: 9999,
-    fontSize: 11,
-    fontWeight: 700,
+    gap: 'var(--space-1)',
+    height: 24,
+    padding: '0 var(--space-2)',
+    borderRadius: 'var(--shape-xs)',
+    ...typeRole('label-medium'),
     whiteSpace: 'nowrap',
     flexShrink: 0,
   }
@@ -1405,16 +1322,17 @@ function SharedPartiesBadge({ subject, isMobile, onClick }: { subject: Subject; 
       onClick={e => { e.stopPropagation(); onClick() }}
       title={`${title}\nクリックで共有先を変更`}
       aria-label={`${subject.name}の共有先: ${title.replace(/\n/g, '、')}`}
+      className="m3-state"
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        marginRight: 8,
-        padding: 0,
+        gap: 'var(--space-1)',
+        marginRight: 'var(--space-2)',
+        padding: 'var(--space-1)',
         border: 'none',
         background: 'none',
+        borderRadius: 'var(--shape-sm)',
         cursor: 'pointer',
-        fontFamily: 'inherit',
       }}
     >
       {isPublic && (
@@ -1431,7 +1349,7 @@ function SharedPartiesBadge({ subject, isMobile, onClick }: { subject: Subject; 
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: 'inline-block',
-            lineHeight: '20px',
+            lineHeight: '24px',
           }}
         >
           {name}
