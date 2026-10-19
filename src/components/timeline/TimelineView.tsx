@@ -15,6 +15,8 @@ import ColorPicker from '../ui/ColorPicker'
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
+import { Button, Chip, Fab } from '../ui/m3'
+import { BREAKPOINTS } from '../../theme/breakpoints'
 import { semesterKey, semesterLabel, semesterRange, subjectInSemester } from '../../lib/semester'
 import { describeNotification, notificationUserIds } from '../../lib/notificationText'
 
@@ -48,6 +50,17 @@ const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 
 
 type EffectiveStatus = 'todo' | 'in_progress' | 'done' | 'submitted' | 'overdue'
+
+/** 絞り込みバーの区切り線 */
+const filterDivider: React.CSSProperties = { width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }
+
+/** 「今日」チップのアイコン */
+const todayIcon = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+    <circle cx="9" cy="9" r="1.8" fill="currentColor" />
+  </svg>
+)
 
 const STATUS_PILLS: { key: EffectiveStatus; label: string }[] = [
   { key: 'todo',        label: '未着手' },
@@ -185,7 +198,7 @@ export default function TimelineView() {
   const [partyId, setPartyId] = useState<string | null>(null)
   const [lectureId, setLectureId] = useState<string | null>(null)
   const fetchSocial = useSocialStore(s => s.fetchSocial)
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < BREAKPOINTS.medium)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null)
@@ -296,7 +309,7 @@ export default function TimelineView() {
   }, [tasks])
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640)
+    const handleResize = () => setIsMobile(window.innerWidth < BREAKPOINTS.medium)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -533,52 +546,56 @@ export default function TimelineView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--bg)' }}>
 
-      {/* ---- Brand header ---- */}
+      {/* ---- Brand header（M3 の top app bar: 高さ 64px） ---- */}
       <header style={{
-        height: 52,
+        height: 64,
         background: 'linear-gradient(135deg, var(--brand-deep) 0%, var(--brand-header) 100%)',
-        borderBottom: '1px solid color-mix(in srgb, var(--on-brand) 7%, transparent)',
-        boxShadow: '0 2px 12px rgba(28,22,60,0.45)',
+        boxShadow: 'var(--elevation-1)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 18px',
-        gap: 12,
+        padding: isMobile ? '0 var(--space-1) 0 var(--space-4)' : '0 var(--space-3) 0 var(--space-6)',
+        gap: 'var(--space-3)',
         flexShrink: 0,
         position: 'relative',
         zIndex: 100,
       }}>
 
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flex: 1, minWidth: 0 }}>
           <img
             src="/river-icon.png"
-            width={30}
-            height={30}
-            alt="River"
-            style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(13,11,40,0.35)' }}
+            width={32}
+            height={32}
+            alt=""
+            style={{ borderRadius: 'var(--shape-sm)', objectFit: 'cover', flexShrink: 0 }}
           />
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--on-brand)', letterSpacing: '-0.04em', flexShrink: 0 }}>
+          <h1 style={{
+            margin: 0, flexShrink: 0, color: 'var(--on-brand)',
+            fontSize: 'var(--type-title-large-size)', lineHeight: 'var(--type-title-large-line)',
+            fontWeight: 'var(--type-weight-emphasized)', letterSpacing: 'var(--type-title-large-tracking)',
+          }}>
             River
-          </span>
-          <div style={{ width: 1, height: 14, background: 'color-mix(in srgb, var(--on-brand) 28%, transparent)', marginLeft: 2, flexShrink: 0 }} />
-          <span style={{
-            fontSize: 12,
-            color: 'color-mix(in srgb, var(--on-brand) 80%, transparent)',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: isMobile ? 130 : 220,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-          title={schoolName ?? '課題タイムライン'}
+          </h1>
+          <span
+            style={{
+              fontSize: 'var(--type-body-small-size)',
+              lineHeight: 'var(--type-body-small-line)',
+              color: 'color-mix(in srgb, var(--on-brand) 80%, transparent)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-1)',
+              paddingLeft: 'var(--space-2)',
+              borderLeft: '1px solid color-mix(in srgb, var(--on-brand) 28%, transparent)',
+            }}
+            title={schoolName ?? '課題タイムライン'}
           >
             {schoolName ? (
               <>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.75 }} aria-hidden="true">
                   <path d="M8 2L15 5.5L8 9L1 5.5L8 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
                   <path d="M4 7v3.5c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
@@ -587,38 +604,38 @@ export default function TimelineView() {
             ) : '課題タイムライン'}
           </span>
           <span style={{
-            fontSize: 10,
-            color: 'color-mix(in srgb, var(--on-brand) 62%, transparent)',
-            fontWeight: 500,
-            letterSpacing: '0.02em',
-            background: 'color-mix(in srgb, var(--on-brand) 8%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--on-brand) 12%, transparent)',
-            borderRadius: 4,
-            padding: '1px 5px',
+            fontSize: 'var(--type-label-small-size)',
+            lineHeight: 'var(--type-label-small-line)',
+            color: 'color-mix(in srgb, var(--on-brand) 70%, transparent)',
+            background: 'color-mix(in srgb, var(--on-brand) 10%, transparent)',
+            borderRadius: 'var(--shape-xs)',
+            padding: '0 var(--space-1)',
             flexShrink: 0,
           }}>
             v{__APP_VERSION__}
           </span>
-          <span
-            title="学期はメニューから切り替えられます"
-            style={{
-              fontSize: 11,
-              color: 'var(--on-brand)',
-              fontWeight: 700,
-              background: 'color-mix(in srgb, var(--on-brand) 14%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--on-brand) 22%, transparent)',
-              borderRadius: 9999,
-              padding: '2px 9px',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {isMobile ? semesterLabel(semester).replace('年度 ', '') : semesterLabel(semester)}
-          </span>
+          {/* スマホ幅では出さない（学期は ≡ メニューの「学期」で確認・切り替えできる） */}
+          {!isMobile && (
+            <span
+              title="学期はメニューから切り替えられます"
+              style={{
+                fontSize: 'var(--type-label-medium-size)',
+                lineHeight: 'var(--type-label-medium-line)',
+                fontWeight: 'var(--type-label-medium-weight)',
+                color: 'var(--on-brand)',
+                background: 'color-mix(in srgb, var(--on-brand) 14%, transparent)',
+                borderRadius: 'var(--shape-sm)',
+                padding: 'var(--space-1) var(--space-2)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {semesterLabel(semester)}
+            </span>
+          )}
         </div>
 
-        {/* 通知 + ハンバーガーメニュー（フレンド・パーティー・アカウント・テーマ・ログアウト） */}
+        {/* 仲間・受信箱・メニュー（プロフィール・学期・設定・ログアウト） */}
         <HeaderMenu
           onOpenPeople={tab => setPeopleTab(tab ?? 'friends')}
           onOpenInbox={() => setInboxOpen(true)}
@@ -627,216 +644,73 @@ export default function TimelineView() {
         />
       </header>
 
-      {/* ---- Filter bar ---- */}
+      {/* ---- Filter bar（チップを並べる。高さ 56px・横にスクロールできる） ---- */}
       <div style={{
-        height: 46,
-        borderBottom: '1px solid var(--border-light)',
+        height: 56,
+        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 18px',
-        gap: 6,
+        padding: '0 var(--space-4)',
+        gap: 'var(--space-2)',
         flexShrink: 0,
         background: 'var(--filter-glass)',
         position: 'relative',
         zIndex: 99,
         overflowX: 'auto',
-        // スクロール可能であることをさりげなく示すフェード（::after は CSS-in-JS では難しいので親に position:relative が必要）
       }}>
-        {/* Today button */}
-        <button
-          onClick={scrollToToday}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            background: 'transparent',
-            color: 'var(--text-secondary)',
-            border: '1px solid var(--border)',
-            borderRadius: 9999,
-            padding: '5px 12px 5px 9px',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            letterSpacing: '-0.01em',
-            fontFamily: 'inherit',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'
-            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 35%, transparent)'
-            e.currentTarget.style.color = 'var(--accent-solid)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.color = 'var(--text-secondary)'
-          }}
-          title="今日にスクロール [T]"
-        >
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
-            <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.6"/>
-            <circle cx="5" cy="5" r="1.2" fill="currentColor"/>
-          </svg>
-          今日
-        </button>
+        <Chip icon={todayIcon} onClick={scrollToToday} title="今日にスクロール [T]">今日</Chip>
 
-        <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0 }} />
+        <div style={filterDivider} />
 
         {!isMobile && (
           <span style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: 'var(--text-tertiary)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            flexShrink: 0,
-            marginRight: 2,
+            fontSize: 'var(--type-label-medium-size)', lineHeight: 'var(--type-label-medium-line)',
+            fontWeight: 'var(--type-label-medium-weight)', color: 'var(--text-secondary)', flexShrink: 0,
           }}>
             絞り込み
           </span>
         )}
 
-        {/* View range selector */}
+        {/* 表示する期間（どれか 1 つ） */}
         {([
           { key: 'week',  label: '今週' },
           { key: 'month', label: '今月' },
           { key: 'all',   label: 'すべて' },
-        ] as const).map(opt => {
-          const active = viewRange === opt.key
-          const activeBg    = 'var(--accent-bg)'
-          const activeColor = 'var(--accent)'
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setViewRange(opt.key)}
-              style={{
-                background: active ? activeBg : 'transparent',
-                color: active ? activeColor : 'var(--text-secondary)',
-                border: `1px solid ${active ? 'var(--accent-muted)' : 'var(--border)'}`,
-                borderRadius: 9999,
-                padding: '5px 12px',
-                fontSize: 13,
-                fontWeight: active ? 700 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                flexShrink: 0,
-                letterSpacing: '-0.01em',
-                fontFamily: 'inherit',
-                boxShadow: active ? '0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent)' : 'none',
-              }}
-              onMouseEnter={e => {
-                if (!active) {
-                  e.currentTarget.style.background = activeBg
-                  e.currentTarget.style.borderColor = 'var(--accent-muted)'
-                  e.currentTarget.style.color = 'var(--accent)'
-                }
-              }}
-              onMouseLeave={e => {
-                if (!active) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.borderColor = 'var(--border)'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }
-              }}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
+        ] as const).map(opt => (
+          <Chip key={opt.key} selected={viewRange === opt.key} onClick={() => setViewRange(opt.key)}>
+            {opt.label}
+          </Chip>
+        ))}
 
-        {/* Divider */}
-        <div style={{ width: 1, height: 14, background: 'var(--border)', flexShrink: 0 }} />
+        <div style={filterDivider} />
 
+        {/* ステータス（複数選べる） */}
         {STATUS_PILLS.map(pill => {
           const isActive = selectedStatuses.has(pill.key)
           const cfg = STATUS_CONFIG[pill.key]
-          const pillColor = isDark ? cfg.darkColor : cfg.color
-          const pillBg    = isDark ? cfg.darkBg    : cfg.bg
           return (
-            <button
+            <Chip
               key={pill.key}
+              selected={isActive}
+              icon={<span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: cfg.color, margin: '0 var(--space-1)' }} />}
               onClick={() => toggleStatus(pill.key)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: isActive ? pillBg : 'transparent',
-                color: isActive ? pillColor : 'var(--text-secondary)',
-                border: `1px solid ${isActive ? withAlpha(pillColor, '55') : 'var(--border)'}`,
-                borderRadius: 9999,
-                padding: '5px 12px 5px 9px',
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                flexShrink: 0,
-                letterSpacing: '-0.01em',
-                fontFamily: 'inherit',
-                boxShadow: isActive ? `0 2px 8px ${withAlpha(pillColor, '22')}` : 'none',
-              }}
-              onMouseEnter={e => {
-                if (!isActive) {
-                  e.currentTarget.style.background = pillBg
-                  e.currentTarget.style.borderColor = withAlpha(pillColor, '33')
-                  e.currentTarget.style.color = pillColor
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.borderColor = 'var(--border)'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }
-              }}
+              style={isActive ? { background: cfg.bg, color: cfg.color } : undefined}
             >
-              <div style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: pillColor,
-                flexShrink: 0,
-                opacity: isActive ? 1 : 0.55,
-              }} />
               {pill.label}
-            </button>
+            </Chip>
           )
         })}
 
         {isFiltering && (
           <>
-            <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0, letterSpacing: '-0.01em' }}>
+            <div style={filterDivider} />
+            <span style={{
+              fontSize: 'var(--type-label-large-size)', lineHeight: 'var(--type-label-large-line)',
+              fontWeight: 'var(--type-label-large-weight)', color: 'var(--text-secondary)', flexShrink: 0,
+            }}>
               {filteredTotal}件
             </span>
-            <button
-              onClick={() => setSelectedStatuses(new Set())}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--text-secondary)',
-                padding: '4px 10px',
-                borderRadius: 9999,
-                flexShrink: 0,
-                fontFamily: 'inherit',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--bg-secondary)'
-                e.currentTarget.style.color = 'var(--text-secondary)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'none'
-                e.currentTarget.style.color = 'var(--text-tertiary)'
-              }}
-            >
-              リセット
-            </button>
+            <Button variant="text" size="xs" onClick={() => setSelectedStatuses(new Set())}>リセット</Button>
           </>
         )}
       </div>
@@ -1401,46 +1275,19 @@ export default function TimelineView() {
         </div>
       </div>
 
-      {/* 課題を追加（右下の丸ボタン） */}
+      {/* 課題を追加（右下の FAB。M3 の FAB: 56px・角 16px） */}
       {!reAdd && (
-        <button
+        <Fab
+          label="課題を追加 [N]"
+          icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}
           onClick={() => setAddModalSubjectId('')}
-          aria-label="課題を追加 (N)"
-          title="課題を追加 [N]"
           style={{
             position: 'fixed',
-            right: isMobile ? 16 : 24,
-            bottom: isMobile ? 'calc(16px + env(safe-area-inset-bottom))' : 24,
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            border: 'none',
-            background: 'linear-gradient(135deg, var(--accent-solid) 0%, var(--accent-solid-2) 100%)',
-            color: 'var(--on-accent)',
-            boxShadow: '0 6px 18px color-mix(in srgb, var(--accent) 42%, transparent)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
+            right: isMobile ? 'var(--space-4)' : 'var(--space-6)',
+            bottom: isMobile ? 'calc(var(--space-4) + env(safe-area-inset-bottom))' : 'var(--space-6)',
             zIndex: 120,
-            transition: 'box-shadow 0.2s, transform 0.15s',
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = '0 8px 24px color-mix(in srgb, var(--accent) 55%, transparent)'
-            e.currentTarget.style.transform = 'translateY(-2px)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = '0 6px 18px color-mix(in srgb, var(--accent) 42%, transparent)'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)' }}
-          onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
-        >
-          <svg width="22" height="22" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M6 1.5v9M1.5 6h9" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
-          </svg>
-        </button>
+        />
       )}
 
       {/* ---- Overlays ---- */}

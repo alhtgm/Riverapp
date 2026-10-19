@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { Avatar, Button, Field } from '../ui/kit'
+import { IconButton } from '../ui/m3'
 import Sheet from '../ui/Sheet'
 import SettingsSheet from '../settings/SettingsSheet'
 import { inputStyle } from '../ui/styles'
@@ -21,140 +22,97 @@ interface Props {
 /** 受信箱の「返事が必要」と同じ件を指す通知の種類（未読の数で二重に数えない） */
 const PENDING_TYPES = new Set(['friend_request', 'party_invite', 'lecture_apply_request'])
 
-const headerButton: CSSProperties = {
-  background: 'color-mix(in srgb, var(--on-brand) 7%, transparent)',
-  color: 'color-mix(in srgb, var(--on-brand) 85%, transparent)',
-  border: '1px solid color-mix(in srgb, var(--on-brand) 15%, transparent)',
-  borderRadius: 8,
-  width: 36,
-  height: 34,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-  position: 'relative',
-  fontFamily: 'inherit',
-  transition: 'background 0.2s',
-}
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const type = (role: string, weight?: string): CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: weight ?? `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
 
-function Badge({ count }: { count: number }) {
+/** ヘッダー（選んだ色の帯）の上のボタンの文字色 */
+const onBrand: CSSProperties = { color: 'var(--on-brand)' }
+
+/** 件数のバッジ（M3 の large badge。ボタンの右上） */
+function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null
   return (
-    <span style={{
-      position: 'absolute', top: -5, right: -5, minWidth: 17, height: 17, borderRadius: 9999,
-      background: 'var(--accent-solid)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
-      boxShadow: '0 0 0 2px var(--brand-deep)',
-    }}>
+    <span className="m3-badge" aria-hidden="true" style={{ top: 2, left: 'auto', right: 2 }}>
       {count > 99 ? '99+' : count}
     </span>
   )
 }
 
-function MenuItem({ icon, label, badge = 0, onClick, danger = false }: {
-  icon: ReactNode; label: string; badge?: number; onClick: () => void; danger?: boolean
-}) {
-  return (
-    <button
-      role="menuitem"
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px',
-        background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer',
-        fontFamily: 'inherit', fontSize: 13, fontWeight: 500, textAlign: 'left',
-        color: danger ? 'var(--danger)' : 'var(--text-primary)',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-    >
-      <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: danger ? 'var(--danger)' : 'var(--text-secondary)' }}>{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
-      {badge > 0 && (
-        <span style={{ background: 'var(--accent-solid)', color: 'var(--on-accent)', borderRadius: 9999, fontSize: 10, fontWeight: 700, padding: '1px 7px' }}>{badge}</span>
-      )}
-    </button>
-  )
-}
+const svg = (children: ReactNode) => (
+  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">{children}</svg>
+)
 
 const icon = {
-  friends: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  ),
-  semester: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="2" y="3" width="12" height="11" rx="1.8" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-  settings: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  ),
-  logout: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
+  friends: svg(<>
+    <circle cx="6" cy="5.5" r="2.3" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M1.8 13c.4-2.3 2.2-3.6 4.2-3.6s3.8 1.3 4.2 3.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <circle cx="11.5" cy="6.2" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M11.2 9.6c1.6 0 2.8 1 3.1 2.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+  </>),
+  inbox: svg(<>
+    <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </>),
+  menu: svg(<path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />),
+  semester: svg(<>
+    <rect x="2" y="3" width="12" height="11" rx="1.8" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </>),
+  settings: svg(<>
+    <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </>),
+  logout: svg(<path d="M10 3L15 8M15 8L10 13M15 8H5M6 2H2.5C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />),
+  check: svg(<path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />),
+  plus: svg(<path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />),
 }
 
 const TERM_OPTION_LABEL: Record<SemesterTerm, string> = { spring: '前期', fall: '後期', other: 'その他' }
 
-/** メニュー内の行（MenuItem と同じ寸法）。選択中の学期などに使う */
-function MenuRow({ icon, label, trailing, onClick, active = false, expanded, nested = false }: {
-  icon: ReactNode; label: string; trailing?: ReactNode; onClick: () => void; active?: boolean; expanded?: boolean
-  /** 灰色のまとまりの中に置くとき（ホバー色を背景と変える） */
-  nested?: boolean
+/** メニューの 1 行（M3 の menu item: 高さ 48px・左にアイコン） */
+function MenuItem({ icon: leading, label, trailing, onClick, danger = false, selected = false, indent = false, expanded }: {
+  icon?: ReactNode
+  label: string
+  trailing?: ReactNode
+  onClick: () => void
+  danger?: boolean
+  selected?: boolean
+  /** 学期の一覧など、ひとつ下の階層の行 */
+  indent?: boolean
+  /** 開け閉めする行のとき、開いているか */
+  expanded?: boolean
 }) {
   return (
     <button
+      type="button"
       role={expanded === undefined ? 'menuitem' : undefined}
       aria-expanded={expanded}
+      aria-current={selected || undefined}
       onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px',
-        background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer',
-        fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 500, textAlign: 'left',
-        color: 'var(--text-primary)',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = nested ? 'var(--surface)' : 'var(--bg-secondary)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+      className={`m3-menu-item m3-state${selected ? ' m3-menu-item--selected' : ''}`}
+      style={{ color: danger ? 'var(--danger)' : undefined, paddingLeft: indent ? 'var(--space-12)' : undefined }}
     >
-      <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>{icon}</span>
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ width: 20, display: 'flex', flexShrink: 0, color: danger ? 'var(--danger)' : selected ? 'var(--accent-dark)' : 'var(--text-secondary)' }}>{leading}</span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selected ? 'var(--type-weight-emphasized)' : undefined }}>{label}</span>
       {trailing}
     </button>
   )
 }
 
 const chevron = (open: boolean) => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-    style={{ color: 'var(--text-tertiary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
-    <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
-const check = (
-  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <path d="M2.5 7.5l3 3 6-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
-const plus = (
-  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <path d="M7 2.5v9M2.5 7h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  <svg width="18" height="18" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+    style={{ color: 'var(--text-secondary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--motion-duration-short4) var(--motion-easing-standard)', flexShrink: 0 }}>
+    <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
 const trailingText = (text: string) => (
-  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500, flexShrink: 0 }}>{text}</span>
+  <span style={{ ...type('label-medium'), color: 'var(--text-secondary)', flexShrink: 0 }}>{text}</span>
 )
 
 /** 学期の切り替え（Excel のシートを切り替える感覚）。開くと学期の一覧が出る */
@@ -166,7 +124,7 @@ function SemesterSection({ onPicked, onCreate }: { onPicked: () => void; onCreat
 
   return (
     <>
-      <MenuRow
+      <MenuItem
         icon={icon.semester}
         label="学期"
         expanded={expanded}
@@ -174,26 +132,26 @@ function SemesterSection({ onPicked, onCreate }: { onPicked: () => void; onCreat
         trailing={<>{trailingText(semesterLabel(semester))}{chevron(expanded)}</>}
       />
       {expanded && (
-        <div role="group" aria-label="学期を選ぶ" style={{ background: 'var(--bg-secondary)', borderRadius: 8, margin: '2px 0 4px', padding: 2 }}>
-          <div style={{ maxHeight: 216, overflowY: 'auto' }}>
+        <div role="group" aria-label="学期を選ぶ">
+          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
             {semesters.map(s => {
               const key = semesterKey(s)
               const active = key === currentKey
               const count = subjects.filter(sub => subjectInSemester(sub, s)).length
               return (
-                <MenuRow
+                <MenuItem
                   key={key}
-                  icon={active ? check : null}
+                  icon={active ? icon.check : null}
                   label={semesterLabel(s)}
-                  active={active}
-                  nested
+                  selected={active}
+                  indent
                   onClick={() => { setSemester(s); setExpanded(false); onPicked() }}
                   trailing={trailingText(count > 0 ? `${count}講義` : '講義なし')}
                 />
               )
             })}
           </div>
-          <MenuRow icon={plus} label="新しい学期を始める" nested onClick={onCreate} />
+          <MenuItem icon={icon.plus} label="新しい学期を始める" indent onClick={onCreate} />
         </div>
       )}
     </>
@@ -222,13 +180,13 @@ function NewSemesterSheet({ onClose }: { onClose: () => void }) {
       width={420}
       zIndex={320}
       footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button onClick={onClose}>やめる</Button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <Button variant="ghost" onClick={onClose}>やめる</Button>
           <Button variant="primary" disabled={!validYear} onClick={open}>この学期を開く</Button>
         </div>
       }
     >
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
         <div style={{ flex: 1 }}>
           <Field label="年度" required error={validYear ? null : '2000〜2100の年度を入力してください'}>
             <input type="number" min={2000} max={2100} value={year} onChange={e => setYear(Number(e.target.value))} style={inputStyle} />
@@ -246,7 +204,10 @@ function NewSemesterSheet({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** ヘッダー右端の「通知」ボタンとハンバーガーメニュー */
+/**
+ * ヘッダー右端のボタン（仲間・受信箱・メニュー）。M3 の top app bar の後ろ側の操作。
+ * PC では文字付きのボタン、スマホでは 48px のアイコンボタンにする。
+ */
 export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile, isMobile }: Props) {
   const { profile, signOut } = useStore()
   const incoming = useSocialStore(s => s.incoming.length)
@@ -275,97 +236,66 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
   }, [open])
 
   const pick = (fn: () => void) => () => { setOpen(false); fn() }
-
-  /** 文字つきのヘッダーボタン（スマホではアイコンだけ） */
-  const labeledButton: CSSProperties = {
-    ...headerButton,
-    width: isMobile ? headerButton.width : 'auto',
-    padding: isMobile ? 0 : '0 11px 0 9px',
-    gap: 6,
-    fontSize: 13,
-    fontWeight: 600,
-  }
-  const hoverOn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--on-brand) 14%, transparent)' }
-  const hoverOff = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--on-brand) 7%, transparent)' }
+  const inboxLabel = inboxCount > 0 ? `受信箱（${pending > 0 ? `返事が必要 ${pending}件` : `未読 ${inboxCount}件`}）` : '受信箱'
 
   return (
-    <>
-      <button
-        onClick={() => onOpenPeople()}
-        aria-label="仲間（フレンド・パーティー）"
-        title="仲間（フレンド・パーティー）"
-        style={labeledButton}
-        onMouseEnter={hoverOn}
-        onMouseLeave={hoverOff}
-      >
-        {icon.friends}
-        {!isMobile && '仲間'}
-      </button>
-
-      <button
-        onClick={onOpenInbox}
-        aria-label={inboxCount > 0 ? `受信箱（${pending > 0 ? `返事が必要 ${pending}件` : `未読 ${inboxCount}件`}）` : '受信箱'}
-        title="受信箱（申請・招待・お知らせ）"
-        style={labeledButton}
-        onMouseEnter={hoverOn}
-        onMouseLeave={hoverOff}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M4 11V7a4 4 0 118 0v4l1.2 1.5H2.8L4 11z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-          <path d="M6.5 14a1.6 1.6 0 003 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-        {!isMobile && '受信箱'}
-        <Badge count={inboxCount} />
-      </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 'var(--space-1)', flexShrink: 0 }}>
+      {isMobile ? (
+        <>
+          <IconButton label="仲間（フレンド・パーティー）" onClick={() => onOpenPeople()} style={onBrand}>{icon.friends}</IconButton>
+          <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <IconButton label={inboxLabel} onClick={onOpenInbox} style={onBrand}>{icon.inbox}</IconButton>
+            <CountBadge count={inboxCount} />
+          </span>
+        </>
+      ) : (
+        <>
+          <button type="button" className="m3-btn m3-btn--text m3-btn--icon m3-state m3-target" style={onBrand}
+            title="仲間（フレンド・パーティー）" onClick={() => onOpenPeople()}>
+            {icon.friends}仲間
+          </button>
+          <button type="button" className="m3-btn m3-btn--text m3-btn--icon m3-state m3-target" style={onBrand}
+            aria-label={inboxLabel} title="受信箱（申請・招待・お知らせ）" onClick={onOpenInbox}>
+            {icon.inbox}受信箱
+            <CountBadge count={inboxCount} />
+          </button>
+        </>
+      )}
 
       <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
-        <button
-          onClick={() => setOpen(o => !o)}
-          aria-label="メニュー"
+        <IconButton
+          label="メニュー"
           aria-haspopup="menu"
           aria-expanded={open}
-          title="メニュー"
-          style={{ ...headerButton, background: open ? 'color-mix(in srgb, var(--on-brand) 16%, transparent)' : headerButton.background }}
-          onMouseEnter={hoverOn}
-          onMouseLeave={e => { e.currentTarget.style.background = open ? 'color-mix(in srgb, var(--on-brand) 16%, transparent)' : 'color-mix(in srgb, var(--on-brand) 7%, transparent)' }}
+          onClick={() => setOpen(o => !o)}
+          style={onBrand}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
+          {icon.menu}
+        </IconButton>
 
         {open && (
-          <div
-            role="menu"
-            style={{
-              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 270,
-              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-              boxShadow: 'var(--shadow-lg)', padding: 6, zIndex: 250,
-            }}
-          >
+          <div role="menu" className="m3-menu" style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, width: 288, zIndex: 250 }}>
             <button
+              type="button"
               role="menuitem"
               onClick={pick(onOpenMyProfile)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px',
-                background: 'var(--surface-warm)', border: '1px solid var(--border-light)', borderRadius: 10,
-                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', marginBottom: 4,
-              }}
+              className="m3-menu-item m3-state"
+              style={{ minHeight: 64, gap: 'var(--space-3)' }}
             >
-              <Avatar name={profile?.display_name ?? null} size={34} />
+              <Avatar name={profile?.display_name ?? null} size={40} />
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'block', ...type('title-small'), color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile?.display_name}
                 </span>
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                <span style={{ display: 'block', ...type('body-small'), color: 'var(--text-secondary)' }}>
                   {profile?.handle ? `@${profile.handle}・` : ''}プロフィールとアカウント
                 </span>
               </span>
             </button>
+            <div className="m3-menu__divider" />
             <SemesterSection onPicked={() => setOpen(false)} onCreate={pick(() => setNewSemesterOpen(true))} />
-            <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
             <MenuItem icon={icon.friends} label="仲間（フレンド・パーティー）" onClick={pick(() => onOpenPeople())} />
-            <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 6px' }} />
+            <div className="m3-menu__divider" />
             <MenuItem icon={icon.settings} label="設定" onClick={pick(() => setSettingsOpen(true))} />
             <MenuItem icon={icon.logout} label="ログアウト" danger onClick={pick(() => { void signOut() })} />
           </div>
@@ -373,6 +303,6 @@ export default function HeaderMenu({ onOpenPeople, onOpenInbox, onOpenMyProfile,
       </div>
       {newSemesterOpen && <NewSemesterSheet onClose={() => setNewSemesterOpen(false)} />}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
-    </>
+    </div>
   )
 }
