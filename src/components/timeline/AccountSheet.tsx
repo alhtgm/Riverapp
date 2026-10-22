@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useStore } from '../../store/useStore'
 import { Avatar, Button, Field } from '../ui/kit'
 import Sheet from '../ui/Sheet'
@@ -115,6 +115,101 @@ function SemesterSection({ onPicked, onCreate }: { onPicked: () => void; onCreat
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * ヘッダーの学期の表示。押すと学期の一覧（メニュー）が開き、その場で切り替えられる。
+ * compact: スマホ向けに「年度」を省いて短く出す
+ */
+export function SemesterSwitcher({ compact, onCreate }: { compact: boolean; onCreate: () => void }) {
+  const { subjects, semester, setSemester } = useStore()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const semesters = listSemesters(subjects, [currentSemester(), semester])
+  const currentKey = semesterKey(semester)
+  const label = semesterLabel(semester)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="学期を切り替える"
+        onClick={() => setOpen(o => !o)}
+        className="m3-state"
+        style={{
+          ...type('label-medium'),
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          color: 'var(--on-brand)',
+          background: 'color-mix(in srgb, var(--on-brand) 14%, transparent)',
+          border: 'none',
+          borderRadius: 'var(--shape-full)',
+          padding: 'var(--space-1) var(--space-1) var(--space-1) var(--space-2)',
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        {compact ? label.replace('年度 ', '') : label}
+        <svg width="16" height="16" viewBox="0 0 10 10" fill="none" aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--motion-duration-short4) var(--motion-easing-standard)' }}>
+          <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="m3-menu" role="menu" aria-label="学期を選ぶ" style={{
+          position: 'absolute', top: 'calc(100% + var(--space-2))', left: 0, width: 260, zIndex: 10,
+        }}>
+          {semesters.map(s => {
+            const key = semesterKey(s)
+            const active = key === currentKey
+            const count = subjects.filter(sub => subjectInSemester(sub, s)).length
+            return (
+              <button
+                key={key}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                className={`m3-menu-item m3-state${active ? ' m3-menu-item--selected' : ''}`}
+                onClick={() => { setSemester(s); setOpen(false) }}
+              >
+                <span style={{ width: 20, display: 'flex', flexShrink: 0, color: 'var(--accent-dark)' }}>{active ? icon.check : null}</span>
+                <span style={{ flex: 1, fontWeight: active ? 'var(--type-weight-emphasized)' : undefined }}>{semesterLabel(s)}</span>
+                {trailingText(count > 0 ? `${count}講義` : '講義なし')}
+              </button>
+            )
+          })}
+          <div className="m3-menu__divider" />
+          <button
+            type="button"
+            role="menuitem"
+            className="m3-menu-item m3-state"
+            onClick={() => { setOpen(false); onCreate() }}
+          >
+            <span style={{ width: 20, display: 'flex', flexShrink: 0, color: 'var(--text-secondary)' }}>{icon.plus}</span>
+            新しい学期を始める
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 

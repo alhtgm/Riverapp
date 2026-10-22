@@ -9,7 +9,7 @@ import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
 import AppNavigation, { type AppDestination } from './AppNavigation'
-import AccountSheet, { NewSemesterSheet } from './AccountSheet'
+import AccountSheet, { NewSemesterSheet, SemesterSwitcher } from './AccountSheet'
 import SettingsSheet from '../settings/SettingsSheet'
 import TaskQuickMenu from '../task/TaskQuickMenu'
 import ReAddCard, { type ReAddTemplate } from '../task/ReAddCard'
@@ -97,6 +97,33 @@ function getEffectiveStatus(task: Task, todayStr: string): EffectiveStatus {
 function taskMatchesFilter(task: Task, selected: Set<EffectiveStatus>, todayStr: string): boolean {
   if (selected.size === 0) return true
   return selected.has(getEffectiveStatus(task, todayStr))
+}
+
+/** 講義の並べ方: 'custom'=自分で決めた順（ドラッグで入れ替え）, 'due'=期限が近い順 */
+type LectureSort = 'custom' | 'due'
+
+const LECTURE_SORT_STORAGE_KEY = 'river:lecture-sort'
+
+function readStoredLectureSort(): LectureSort {
+  try { return localStorage.getItem(LECTURE_SORT_STORAGE_KEY) === 'due' ? 'due' : 'custom' } catch { return 'custom' }
+}
+
+function storeLectureSort(sort: LectureSort) {
+  try { localStorage.setItem(LECTURE_SORT_STORAGE_KEY, sort) } catch { /* 保存できなくても表示は切り替える */ }
+}
+
+/**
+ * 講義の「次の締切」。まだ終わっていない課題のうち、今日以降で一番近い締切（時刻まで含めて比べる）。
+ * 該当がなければ null（期限が近い順では後ろに回す）
+ */
+function nextDueKey(subjectTasks: Task[], todayStr: string): string | null {
+  let min: string | null = null
+  for (const t of subjectTasks) {
+    if (t.status === 'done' || t.status === 'submitted' || t.due_date < todayStr) continue
+    const key = `${t.due_date} ${t.due_time ?? '99:99'}`
+    if (min === null || key < min) min = key
+  }
+  return min
 }
 
 interface SubjectRow {
@@ -198,10 +225,13 @@ interface DragState {
 export default function TimelineView() {
   const {
     subjects: allSubjects, tasks: allTasks, semester,
-    fetchAll, updateSubject, updateTask, addTask, loading, isDark, toggleTheme, schoolName, userId,
+    fetchAll, updateSubject, reorderSubjects, updateTask, addTask, loading, isDark, toggleTheme, schoolName, userId,
   } = useStore()
   // 表示中の学期の講義・課題だけを扱う（学期 = Excel のシート）
-  const subjects = useMemo(() => allSubjects.filter(s => subjectInSemester(s, semester)), [allSubjects, semester])
+  const subjects = useMemo(
+    () => allSubjects.filter(s => subjectInSemester(s, semester)).sort((a, b) => a.order - b.order),
+    [allSubjects, semester],
+  )
   const tasks = useMemo(() => {
     const ids = new Set(subjects.map(s => s.id))
     return allTasks.filter(t => ids.has(t.subject_id))
@@ -228,6 +258,15 @@ export default function TimelineView() {
   const [selectedStatuses, setSelectedStatuses] = useState<Set<EffectiveStatus>>(new Set())
   /** 表示範囲: 'week'=今週, 'month'=今月(30日), 'all'=すべて */
   const [viewRange, setViewRange] = useState<'week' | 'month' | 'all'>('all')
+  const [lectureSort, setLectureSort] = useState<LectureSort>(readStoredLectureSort)
+  const changeLectureSort = (sort: LectureSort) => {
+    setLectureSort(sort)
+    storeLectureSort(sort)
+  }
+  /** 講義のドラッグでの並べ替え中: 動かしている講義と、落とす位置（表示中の講義の何番目の前か） */
+  const [lectureDrag, setLectureDrag] = useState<{ id: string; dropIndex: number } | null>(null)
+  const lectureDragRef = useRef<{ id: string; dropIndex: number } | null>(null)
+  const groupRefs = useRef(new Map<string, HTMLDivElement>())
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -481,6 +520,16 @@ export default function TimelineView() {
     }
   }, [])
 
+  // 講義をドラッグしている間は、画面全体を「つかんでいる」カーソルにして文字の選択を止める
+  const isLectureDragging = lectureDrag !== null
+  useEffect(() => {
+    if (!isLectureDragging) return
+    const body = document.body.style
+    body.cursor = 'grabbing'
+    body.userSelect = 'none'
+    return () => { body.cursor = ''; body.userSelect = '' }
+  }, [isLectureDragging])
+
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds(prev => {
       const next = new Set(prev)
@@ -498,7 +547,21 @@ export default function TimelineView() {
     return row.tasks.some(t => t.start_date <= focusCutoffStr && t.due_date >= todayStr)
   }, [todayStr, focusCutoffStr])
 
-  const grouped: GroupedSubject[] = subjects
+  // 並べ方を反映した講義の順（期限が近い順でも、次の締切が同じなら自分の順を保つ）
+  const sortedSubjects = useMemo(() => {
+    if (lectureSort === 'custom') return subjects
+    const keys = new Map(subjects.map(s => [s.id, nextDueKey(tasks.filter(t => t.subject_id === s.id), todayStr)]))
+    return [...subjects].sort((a, b) => {
+      const ka = keys.get(a.id) ?? null
+      const kb = keys.get(b.id) ?? null
+      if (ka === kb) return 0
+      if (ka === null) return 1
+      if (kb === null) return -1
+      return ka < kb ? -1 : 1
+    })
+  }, [lectureSort, subjects, tasks, todayStr])
+
+  const grouped: GroupedSubject[] = sortedSubjects
     .map(subject => {
       const allRows = buildSubjectRows(tasks.filter(t => t.subject_id === subject.id))
       let subjectRows = allRows
@@ -521,6 +584,83 @@ export default function TimelineView() {
       return { subject, subjectRows }
     })
     .filter(g => g.subjectRows.length > 0)
+
+  /**
+   * 表示中の講義を from 番目から「to 番目の前」へ動かし、並び順を保存する。
+   * 絞り込みで隠れている講義は、今の位置関係を保ったまま残す。
+   * 期限が近い順で動かしたときは、今見えている順を自分の順として保存し、自分の順に切り替える
+   */
+  const moveLecture = async (id: string, to: number) => {
+    const shown = grouped.map(g => g.subject.id)
+    const from = shown.indexOf(id)
+    if (from < 0 || to < 0 || to > shown.length || to === from || to === from + 1) return
+    const nextShown = shown.filter(s => s !== id)
+    const insertAt = to > from ? to - 1 : to
+    nextShown.splice(insertAt, 0, id)
+
+    const all = sortedSubjects.map(s => s.id).filter(s => s !== id)
+    const after = nextShown[insertAt + 1]
+    if (after) all.splice(all.indexOf(after), 0, id)
+    else all.splice(all.indexOf(nextShown[insertAt - 1]) + 1, 0, id)
+
+    if (lectureSort !== 'custom') {
+      changeLectureSort('custom')
+      showToast('並べ替えを「自分の順」に切り替えました')
+    }
+    try {
+      await reorderSubjects(all)
+    } catch (e: unknown) {
+      showToast(`並べ替えを保存できませんでした：${(e as Error).message}`, 'error')
+    }
+  }
+
+  // ---- 講義のドラッグ（つまみを押したまま上下に動かす。マウス・タッチ・ペン共通） ----
+  const handleLecturePointerDown = (e: React.PointerEvent<HTMLElement>, id: string) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const state = { id, dropIndex: grouped.findIndex(g => g.subject.id === id) }
+    lectureDragRef.current = state
+    setLectureDrag(state)
+  }
+
+  const handleLecturePointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = lectureDragRef.current
+    if (!drag) return
+    // 各講義の中央より上にいれば、その講義の前に落とす
+    let dropIndex = grouped.length
+    for (let i = 0; i < grouped.length; i++) {
+      const rect = groupRefs.current.get(grouped[i].subject.id)?.getBoundingClientRect()
+      if (rect && e.clientY < rect.top + rect.height / 2) { dropIndex = i; break }
+    }
+    // 上下の端に近づいたら自動でスクロールする
+    const area = scrollRef.current
+    if (area) {
+      const r = area.getBoundingClientRect()
+      if (e.clientY < r.top + HEADER_HEIGHT + 32) area.scrollBy({ top: -16 })
+      else if (e.clientY > r.bottom - 32) area.scrollBy({ top: 16 })
+    }
+    if (dropIndex !== drag.dropIndex) {
+      const next = { ...drag, dropIndex }
+      lectureDragRef.current = next
+      setLectureDrag(next)
+    }
+  }
+
+  const endLectureDrag = (commit: boolean) => {
+    const drag = lectureDragRef.current
+    lectureDragRef.current = null
+    setLectureDrag(null)
+    if (commit && drag) void moveLecture(drag.id, drag.dropIndex)
+  }
+
+  // つまみにフォーカスして ↑↓ キーでも 1 つずつ動かせる
+  const handleLectureHandleKeyDown = (e: React.KeyboardEvent, id: string) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+    e.preventDefault()
+    const from = grouped.findIndex(g => g.subject.id === id)
+    void moveLecture(id, e.key === 'ArrowUp' ? from - 1 : from + 2)
+  }
 
   const filteredTotal = grouped.reduce(
     (sum, g) => sum + g.subjectRows.reduce((s, r) => s + r.tasks.length, 0), 0
@@ -654,31 +794,14 @@ export default function TimelineView() {
             lineHeight: 'var(--type-label-small-line)',
             color: 'color-mix(in srgb, var(--on-brand) 70%, transparent)',
             background: 'color-mix(in srgb, var(--on-brand) 10%, transparent)',
-            borderRadius: 'var(--shape-xs)',
-            padding: '0 var(--space-1)',
+            borderRadius: 'var(--shape-full)',
+            padding: '0 var(--space-2)',
             flexShrink: 0,
           }}>
             v{__APP_VERSION__}
           </span>
-          {/* 学期（切り替えはナビゲーションの「自分」から） */}
-          {(
-            <span
-              title="学期は「自分」から切り替えられます"
-              style={{
-                fontSize: 'var(--type-label-medium-size)',
-                lineHeight: 'var(--type-label-medium-line)',
-                fontWeight: 'var(--type-label-medium-weight)',
-                color: 'var(--on-brand)',
-                background: 'color-mix(in srgb, var(--on-brand) 14%, transparent)',
-                borderRadius: 'var(--shape-sm)',
-                padding: 'var(--space-1) var(--space-2)',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {isMobile ? semesterLabel(semester).replace('年度 ', '') : semesterLabel(semester)}
-            </span>
-          )}
+          {/* 学期（押すと一覧が開き、その場で切り替えられる） */}
+          <SemesterSwitcher compact={isMobile} onCreate={() => setNewSemesterOpen(true)} />
         </div>
 
       </header>
@@ -698,6 +821,27 @@ export default function TimelineView() {
         overflowX: 'auto',
       }}>
         <Chip icon={todayIcon} onClick={scrollToToday} title="今日にスクロール [T]">今日</Chip>
+
+        <div style={filterDivider} />
+
+        {!isMobile && (
+          <span style={{
+            fontSize: 'var(--type-label-medium-size)', lineHeight: 'var(--type-label-medium-line)',
+            fontWeight: 'var(--type-label-medium-weight)', color: 'var(--text-secondary)', flexShrink: 0,
+          }}>
+            並べ替え
+          </span>
+        )}
+
+        {/* 講義の並べ方（どれか 1 つ） */}
+        {([
+          { key: 'custom', label: '自分の順', title: '講義の左のつまみをドラッグして順番を入れ替えられます' },
+          { key: 'due',    label: '期限が近い順', title: 'まだ終わっていない課題の締切が近い講義から並べます' },
+        ] as const).map(opt => (
+          <Chip key={opt.key} selected={lectureSort === opt.key} onClick={() => changeLectureSort(opt.key)} title={opt.title}>
+            {opt.label}
+          </Chip>
+        ))}
 
         <div style={filterDivider} />
 
@@ -861,11 +1005,30 @@ export default function TimelineView() {
               />
             </div>
           ) : (
-            grouped.map(({ subject, subjectRows }) => {
+            grouped.map(({ subject, subjectRows }, groupIdx) => {
               const collapsed = collapsedIds.has(subject.id)
+              const isDraggingLecture = lectureDrag?.id === subject.id
+              // 落とす位置の線（この講義の前、または最後の講義の後ろ）
+              const dropBefore = lectureDrag !== null && lectureDrag.dropIndex === groupIdx
+              const dropAfter = lectureDrag !== null && groupIdx === grouped.length - 1 && lectureDrag.dropIndex === grouped.length
 
               return (
-                <div key={subject.id}>
+                <div
+                  key={subject.id}
+                  ref={el => { if (el) groupRefs.current.set(subject.id, el); else groupRefs.current.delete(subject.id) }}
+                  style={{
+                    position: 'relative',
+                    opacity: isDraggingLecture ? 0.5 : 1,
+                    transition: 'opacity var(--motion-duration-short4) var(--motion-easing-standard)',
+                  }}
+                >
+                  {(dropBefore || dropAfter) && (
+                    <div aria-hidden="true" style={{
+                      position: 'absolute', left: 0, right: 0, [dropBefore ? 'top' : 'bottom']: -2,
+                      height: 4, borderRadius: 'var(--shape-full)', background: 'var(--accent-solid)',
+                      zIndex: 30, pointerEvents: 'none',
+                    }} />
+                  )}
                   {/* Subject separator row — full width, name sticky at left */}
                   <div
                     style={{
@@ -918,6 +1081,39 @@ export default function TimelineView() {
                           />
                         )}
                       </div>
+
+                      {/* 並べ替えのつまみ（ドラッグ、またはフォーカスして ↑↓ キー） */}
+                      <button
+                        type="button"
+                        aria-label={`${subject.name}の順番を入れ替える（ドラッグ、または ↑↓ キー）`}
+                        title="ドラッグして順番を入れ替え"
+                        className="m3-state"
+                        onPointerDown={e => handleLecturePointerDown(e, subject.id)}
+                        onPointerMove={handleLecturePointerMove}
+                        onPointerUp={() => endLectureDrag(true)}
+                        onPointerCancel={() => endLectureDrag(false)}
+                        onKeyDown={e => handleLectureHandleKeyDown(e, subject.id)}
+                        style={{
+                          width: 24,
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: 'none',
+                          background: 'transparent',
+                          color: 'var(--text-tertiary)',
+                          cursor: isDraggingLecture ? 'grabbing' : 'grab',
+                          touchAction: 'none',
+                          flexShrink: 0,
+                          padding: 0,
+                        }}
+                      >
+                        <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+                          <circle cx="3" cy="3" r="1.3" /><circle cx="7" cy="3" r="1.3" />
+                          <circle cx="3" cy="8" r="1.3" /><circle cx="7" cy="8" r="1.3" />
+                          <circle cx="3" cy="13" r="1.3" /><circle cx="7" cy="13" r="1.3" />
+                        </svg>
+                      </button>
 
                       {/* Collapse toggle + name (no truncation) */}
                       <button
@@ -1095,7 +1291,8 @@ export default function TimelineView() {
                                   alignItems: 'center',
                                   paddingLeft: 'var(--space-2)',
                                   paddingRight: 'var(--space-4)',
-                                  overflow: 'hidden',
+                                  // hidden だと中の名前の sticky が効かないので clip で切り取る
+                                  overflow: 'clip',
                                   whiteSpace: 'nowrap',
                                   zIndex: isDragging ? 10 : 2,
                                   transition: isDragging ? 'none' : 'box-shadow var(--motion-duration-short4) var(--motion-easing-standard)',
@@ -1148,31 +1345,38 @@ export default function TimelineView() {
                                   </svg>
                                 </div>
 
-                                {occurrenceLabel && (
-                                  <span style={{
-                                    ...typeRole('label-small'), color,
-                                    background: withAlpha(color, '22'),
-                                    borderRadius: 'var(--shape-xs)', padding: '0 var(--space-1)',
-                                    flexShrink: 0, marginRight: 'var(--space-1)',
-                                    pointerEvents: 'none',
-                                  }}>
-                                    {occurrenceLabel}
-                                  </span>
-                                )}
+                                {/* 名前（バーの左端が画面の外に出たら、画面の左端についてきて見えたままになる） */}
                                 <span style={{
-                                  ...typeRole('label-medium'), color,
-                                  overflow: 'hidden', textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  pointerEvents: 'none',
-                                  flex: 1,
+                                  position: 'sticky',
+                                  left: 'var(--space-2)',
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   minWidth: 0,
+                                  pointerEvents: 'none',
                                 }}>
-                                  {task.title}
-                                  {task.due_time && (
-                                    <span style={{ opacity: 0.75, fontWeight: 400, marginLeft: 'var(--space-1)' }}>
-                                      {task.due_time}
+                                  {occurrenceLabel && (
+                                    <span style={{
+                                      ...typeRole('label-small'), color,
+                                      background: withAlpha(color, '22'),
+                                      borderRadius: 'var(--shape-xs)', padding: '0 var(--space-1)',
+                                      flexShrink: 0, marginRight: 'var(--space-1)',
+                                    }}>
+                                      {occurrenceLabel}
                                     </span>
                                   )}
+                                  <span style={{
+                                    ...typeRole('label-medium'), color,
+                                    overflow: 'hidden', textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 0,
+                                  }}>
+                                    {task.title}
+                                    {task.due_time && (
+                                      <span style={{ opacity: 0.75, fontWeight: 400, marginLeft: 'var(--space-1)' }}>
+                                        {task.due_time}
+                                      </span>
+                                    )}
+                                  </span>
                                 </span>
                               </div>
                             )
