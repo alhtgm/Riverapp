@@ -84,7 +84,8 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
       </Section>
 
       <Section title="テーマカラー" description="1 色選ぶと、相性のいい色でサイト全体を塗り分けます">
-        <div role="radiogroup" aria-label="テーマカラーの候補" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+        {/* 一段に並べる。幅が足りないときは丸を縮めて収める（押せる範囲は m3-target で確保） */}
+        <div role="radiogroup" aria-label="テーマカラーの候補" style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {PRESETS.map(c => {
             const selected = current.base.toUpperCase() === c && (palette !== null || c === DEFAULT_BASE)
             return (
@@ -97,7 +98,7 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
                 className="m3-state m3-target"
                 onClick={() => (c === DEFAULT_BASE && current.pattern === 'complementary' ? update(null) : pickColor(c))}
                 style={{
-                  width: 40, height: 40, borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
+                  flex: '1 1 0', minWidth: 0, maxWidth: 40, aspectRatio: '1', borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
                   border: '3px solid var(--surface)',
                   boxShadow: selected ? '0 0 0 2px var(--text-primary)' : '0 0 0 1px var(--border)',
                 }}

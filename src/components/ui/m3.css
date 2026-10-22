@@ -235,7 +235,8 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 .m3-field--error .m3-field__label,
 .m3-field--error .m3-field__support { color: var(--danger); }
 
-/* ─── チップ（高さ 32px・角 8px）──────────────────────────────── */
+/* ─── チップ（高さ 32px・角は完全な丸）────────────────────────────
+   M3 の既定は角 8px だが、隣に並ぶボタンと丸みをそろえるため完全な丸にしている */
 .m3-chip {
   display: inline-flex;
   align-items: center;
@@ -243,7 +244,7 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
   height: 32px;
   padding: 0 var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--shape-sm);
+  border-radius: var(--shape-full);
   background: transparent;
   color: var(--text-secondary);
   font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);

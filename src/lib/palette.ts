@@ -344,6 +344,27 @@ function accentOf(base: Lch, baseHex: string, pattern: PalettePattern): string {
   return lchToHex([l, clamp(C0 * 1.2, 0.13, 0.2), h])
 }
 
+/**
+ * ダークモードの地（背景・面・線・灰色の文字）。テーマカラーに関係なく固定し、index.css の
+ * [data-theme="dark"] と同じ値にする。黒に色みが混ざると濁って見えるため、色を変えるのは
+ * ブランド・アクセント・ステータスだけにする
+ */
+const DARK_NEUTRALS = {
+  '--bg': '#121212',
+  '--bg-secondary': '#1A1A1A',
+  '--surface': '#1E1E1E',
+  '--surface-warm': '#262626',
+  '--text-primary': '#EDEDED',
+  '--text-secondary': '#C2C2C2',
+  '--text-tertiary': '#959595',
+  '--text-disabled': '#5E5E5E',
+  '--border': '#3A3A3A',
+  '--border-light': '#2C2C2C',
+  '--border-strong': '#525252',
+  '--header-glass': 'rgba(18,18,18,0.9)',
+  '--filter-glass': 'rgba(18,18,18,0.72)',
+}
+
 /** 選んだ 1 色から CSS 変数の値を作る */
 function buildPalette({ base: baseHex, pattern }: CustomPalette) {
   const base = hexToLch(baseHex)
@@ -354,8 +375,8 @@ function buildPalette({ base: baseHex, pattern }: CustomPalette) {
   const tone = (l: number, c = cN): string => lchToHex([l, c, H0])
 
   const lightBg = tone(0.975)
-  const darkBg = tone(0.16)
-  const darkSurface = tone(0.215)
+  const darkBg = DARK_NEUTRALS['--bg']
+  const darkSurface = DARK_NEUTRALS['--surface']
 
   // ヘッダーは選んだ色そのまま。文字色のほうを白か黒に切り替える
   const { surface: header, on: onBrand } = surfaceWithText(baseHex)
@@ -406,27 +427,15 @@ function buildPalette({ base: baseHex, pattern }: CustomPalette) {
   const darkBrand = fit([0.78, Math.min(C0, 0.12), H0], [darkSurface, darkBg], 4.5, 1)
   const darkAccent = fit([Math.max(accentLch[0], 0.72), accentLch[1], accentLch[2]], [darkSurface, darkBg], 4.5, 1)
   const dark = {
+    ...DARK_NEUTRALS,
     '--brand': darkBrand,
     '--brand-soft': rgba(darkBrand, 0.16),
     '--water': lchToHex([0.75, Math.min(Math.max(C0, 0.08), 0.12), patternHues(H0, pattern)[1] ?? H0]),
     '--saturday': darkBrand,
-    '--bg': darkBg,
-    '--bg-secondary': tone(0.19),
-    '--surface': darkSurface,
-    '--surface-warm': tone(0.25),
-    '--text-primary': tone(0.95, cN * 0.6),
-    '--text-secondary': tone(0.82),
-    '--text-tertiary': fit([0.68, cN, H0], [darkSurface, darkBg], 4.5, 1),
-    '--text-disabled': tone(0.45),
-    '--border': tone(0.32),
-    '--border-light': tone(0.27),
-    '--border-strong': tone(0.4),
     '--accent': darkAccent,
     '--accent-dark': darkAccent,
     '--accent-bg': rgba(darkAccent, 0.16),
     '--accent-muted': rgba(darkAccent, 0.26),
-    '--header-glass': rgba(darkBg, 0.9),
-    '--filter-glass': rgba(darkBg, 0.72),
   }
 
   const status = buildStatus(base, pattern, lightBg, darkBg, darkSurface)

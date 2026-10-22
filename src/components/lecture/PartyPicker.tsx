@@ -60,7 +60,7 @@ export default function PartyPicker({ myParties, selectedIds, busy, onChange }: 
           <span
             title="ほかの参加者が選んだパーティーです。そのパーティーのメンバーだけが外せます"
             style={{
-              display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 var(--space-3)', borderRadius: 'var(--shape-sm)',
+              display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 var(--space-3)', borderRadius: 'var(--shape-full)',
               background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
               fontSize: 'var(--type-label-large-size)', lineHeight: 'var(--type-label-large-line)', fontWeight: 'var(--type-label-large-weight)',
             }}
