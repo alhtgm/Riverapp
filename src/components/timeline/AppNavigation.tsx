@@ -1,0 +1,71 @@
+import type { ReactNode } from 'react'
+import { useSocialStore } from '../../store/useSocialStore'
+import { Fab, NavigationBar, NavigationRail, type NavDestination } from '../ui/m3'
+
+export type AppDestination = 'timeline' | 'people' | 'inbox' | 'me'
+
+/** 受信箱の「返事が必要」と同じ件を指す通知の種類（未読の数で二重に数えない） */
+const PENDING_TYPES = new Set(['friend_request', 'party_invite', 'lecture_apply_request'])
+
+const svg = (children: ReactNode) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">{children}</svg>
+)
+
+const icons: Record<AppDestination, ReactNode> = {
+  timeline: svg(<path d="M4 6.5h10M7 12h13M4 17.5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />),
+  people: svg(<>
+    <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <circle cx="17" cy="9" r="2.4" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M17 14c2 .2 3.5 1.7 4 4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </>),
+  inbox: svg(<>
+    <path d="M6 16.5V11a6 6 0 1112 0v5.5l1.6 2H4.4L6 16.5z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    <path d="M10 21a2 2 0 004 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </>),
+  me: svg(<>
+    <circle cx="12" cy="8.5" r="3.6" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </>),
+}
+
+const plusIcon = svg(<path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />)
+
+/**
+ * 画面の切り替え（M3 の navigation bar / rail）。
+ * - スマホ（compact）: 画面下のナビゲーションバー
+ * - タブレット・PC: 左側のナビゲーションレール（いちばん上に「課題を追加」の FAB）
+ */
+export default function AppNavigation({ variant, active, onSelect, onAdd }: {
+  variant: 'bar' | 'rail'
+  active: AppDestination
+  onSelect: (key: AppDestination) => void
+  /** レールの上の FAB（課題を追加） */
+  onAdd: () => void
+}) {
+  const incoming = useSocialStore(s => s.incoming.length)
+  const invites = useSocialStore(s => s.invites.length)
+  const applyRequests = useSocialStore(s => s.applyRequests.length)
+  const unreadOther = useSocialStore(s => s.notifications.filter(n => !n.read_at && !PENDING_TYPES.has(n.type)).length)
+  const inboxCount = applyRequests + incoming + invites + unreadOther
+
+  const items: NavDestination<AppDestination>[] = [
+    { key: 'timeline', label: 'タイムライン', icon: icons.timeline },
+    { key: 'people', label: '仲間', icon: icons.people },
+    { key: 'inbox', label: '受信箱', icon: icons.inbox, badge: inboxCount > 0 ? inboxCount : undefined },
+    { key: 'me', label: '自分', icon: icons.me },
+  ]
+
+  if (variant === 'bar') {
+    return <NavigationBar items={items} value={active} onChange={onSelect} label="画面の切り替え" />
+  }
+  return (
+    <NavigationRail
+      items={items}
+      value={active}
+      onChange={onSelect}
+      label="画面の切り替え"
+      fab={<Fab label="課題を追加 [N]" icon={plusIcon} onClick={onAdd} />}
+    />
+  )
+}

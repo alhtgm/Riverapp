@@ -40,14 +40,14 @@ interface TaskStateRow {
   memo: string | null
 }
 
-export interface LectureInput {
+interface LectureInput {
   title: string
   year: number
   term: LectureTerm
   professor?: string | null
 }
 
-export type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
+type LectureSettings = Partial<Pick<LectureRow, 'title' | 'year' | 'term' | 'professor' | 'visibility' | 'apply_open'>>
 
 type TaskInput = Pick<Task, 'subject_id' | 'title' | 'start_date' | 'due_date' | 'due_time' | 'status' | 'memo'> &
   Partial<Pick<Task, 'description' | 'url'>>
@@ -155,6 +155,8 @@ interface AppState {
   // Subject（= 参加中の講義）
   addSubject: (input: LectureInput, color: string) => Promise<Subject>
   updateSubject: (id: string, updates: Partial<Pick<Subject, 'name' | 'color' | 'order'>>) => Promise<void>
+  /** 講義の並び順を保存する（ids の順に order を 0, 1, 2… と振り直す。失敗したら元に戻す） */
+  reorderSubjects: (ids: string[]) => Promise<void>
   updateLectureSettings: (id: string, settings: LectureSettings) => Promise<void>
   /** 講義から退出する（課題は自分のRiverから消え、進捗は保持される） */
   deleteSubject: (id: string) => Promise<void>
@@ -503,6 +505,29 @@ export const useStore = create<AppState>((set, get) => ({
       if (error) fail(error)
     }
     set(s => ({ subjects: s.subjects.map(sub => (sub.id === id ? { ...sub, ...updates } : sub)) }))
+  },
+
+  reorderSubjects: async (ids) => {
+    const prev = get().subjects
+    const nextOrder = new Map(ids.map((id, i) => [id, i]))
+    const changed = prev.filter(s => nextOrder.has(s.id) && s.order !== nextOrder.get(s.id))
+    if (changed.length === 0) return
+    // 先に画面へ反映し、保存に失敗したら元の順に戻す
+    set({
+      subjects: prev
+        .map(s => (nextOrder.has(s.id) ? { ...s, order: nextOrder.get(s.id)! } : s))
+        .sort((a, b) => a.order - b.order),
+    })
+    const results = await Promise.all(changed.map(s => supabase.rpc('update_my_lecture_prefs', {
+      p_lecture_id: s.id,
+      p_color: null,
+      p_order: nextOrder.get(s.id)!,
+    })))
+    const failed = results.find(r => r.error)
+    if (failed?.error) {
+      set({ subjects: prev })
+      fail(failed.error)
+    }
   },
 
   updateLectureSettings: async (id, settings) => {

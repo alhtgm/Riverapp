@@ -3,19 +3,34 @@ import type { Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, STATUS_ORDER, isOverdue, formatDate } from '../../types'
 import { useStore } from '../../store/useStore'
 import { PeopleRow } from '../lecture/ProgressPeople'
+import { BottomSheet } from '../ui/m3'
+import '../ui/m3.css'
 
 interface Props {
   task: Task
   position: { x: number; y: number }
   onClose: () => void
   onOpenDetail: () => void
+  /** スマホでは、押した場所の近くではなく下から出るシートにする（親指が届き、画面からはみ出さない） */
+  asSheet?: boolean
 }
 
-export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }: Props) {
-  const { updateTask, isDark, progress } = useStore()
+/** メニューの大きさの見込み（画面からはみ出さない位置を決めるため） */
+const MENU_WIDTH = 300
+const MENU_HEIGHT = 340
+const EDGE = 8
+
+/**
+ * タイムラインのバーを押したときに出るメニュー（M3 の menu: 角 4px・各行 48px）。
+ * 自分のステータスをその場で切り替え、詳細の編集へ進める。
+ */
+export default function TaskQuickMenu({ task, position, onClose, onOpenDetail, asSheet = false }: Props) {
+  const { updateTask, progress } = useStore()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // シートのときは、Esc と外側のタップでの閉じる処理を BottomSheet に任せる
+    if (asSheet) return
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
@@ -29,213 +44,110 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail }:
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [onClose])
+  }, [onClose, asSheet])
 
-  const menuWidth = 300
-  const menuHeight = 260
-  const x = Math.min(position.x, window.innerWidth - menuWidth - 8)
-  const y = position.y + 12 + menuHeight > window.innerHeight
-    ? position.y - menuHeight - 8
-    : position.y + 12
+  // 押した場所の下に出す。入らなければ上に、それでも入らなければ画面の端に寄せる
+  const width = Math.min(MENU_WIDTH, window.innerWidth - EDGE * 2)
+  const x = Math.max(EDGE, Math.min(position.x, window.innerWidth - width - EDGE))
+  const below = position.y + 12
+  const above = position.y - MENU_HEIGHT - 8
+  const y = below + MENU_HEIGHT <= window.innerHeight - EDGE
+    ? below
+    : Math.max(EDGE, above >= EDGE ? above : window.innerHeight - MENU_HEIGHT - EDGE)
 
   const handleStatusClick = async (status: TaskStatus) => {
     await updateTask(task.id, { status })
     onClose()
   }
 
-  const effectiveStatus = isOverdue(task) ? 'overdue' : task.status
+  const overdue = isOverdue(task)
+
+  const body = (
+    <>
+      <div className="m3-menu__group-label">
+        <span>自分のステータス</span>
+        <span>参加者の状況</span>
+      </div>
+      {STATUS_ORDER.map(s => {
+        const cfg = STATUS_CONFIG[s]
+        const isActive = task.status === s
+        return (
+          <button
+            key={s}
+            type="button"
+            role="menuitemradio"
+            aria-checked={isActive}
+            className={`m3-menu-item m3-state${isActive ? ' m3-menu-item--selected' : ''}`}
+            onClick={() => handleStatusClick(s)}
+          >
+            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 'var(--shape-full)', background: cfg.color, flexShrink: 0 }} />
+            <span style={{ width: 72, flexShrink: 0, color: isActive ? cfg.color : 'var(--text-primary)', fontWeight: isActive ? 'var(--type-weight-emphasized)' : undefined }}>
+              {cfg.label}
+            </span>
+            {/* この講義の参加者のうち、このステータスにいる人 */}
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+              <PeopleRow people={progress[task.id]?.[s] ?? []} size={20} />
+            </span>
+            <span aria-hidden="true" style={{ width: 18, display: 'flex', flexShrink: 0 }}>
+              {isActive && (
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M4 9.5l3 3 7-7" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+          </button>
+        )
+      })}
+
+      {overdue && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-3)', margin: 'var(--space-1) var(--space-2) 0',
+          padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--shape-xs)', background: STATUS_CONFIG.overdue.bg,
+          color: STATUS_CONFIG.overdue.color, fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)',
+        }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 'var(--shape-full)', background: STATUS_CONFIG.overdue.color, flexShrink: 0 }} />
+          期限切れ（締切を過ぎると自動でこの表示になります）
+        </div>
+      )}
+
+      <div className="m3-menu__divider" />
+      <button type="button" role="menuitem" className="m3-menu-item m3-state" style={{ color: 'var(--accent-dark)' }} onClick={() => { onOpenDetail(); onClose() }}>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M3 9h12M9.5 3.5L15 9l-5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        詳細を編集
+      </button>
+    </>
+  )
+
+  const dates = `${formatDate(task.start_date)} → ${formatDate(task.due_date)}`
+
+  if (asSheet) {
+    return (
+      <BottomSheet open onClose={onClose} title={task.title} zIndex={200}>
+        <div style={{ margin: '0 calc(-1 * var(--space-6))' }}>
+          <div style={{ padding: '0 var(--space-6) var(--space-2)', fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)', color: 'var(--text-secondary)' }}>{dates}</div>
+          {body}
+        </div>
+      </BottomSheet>
+    )
+  }
 
   return (
-    <div
-      ref={ref}
-      style={{
-        position: 'fixed',
-        top: y,
-        left: x,
-        width: menuWidth,
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        boxShadow: '0 8px 32px rgba(20,16,10,0.12), 0 2px 8px rgba(20,16,10,0.06)',
-        zIndex: 200,
-        overflow: 'hidden',
-        animation: 'quickMenuIn 0.22s cubic-bezier(0.16,1,0.3,1)',
-      }}
-    >
-      <style>{`
-        @keyframes quickMenuIn {
-          from { opacity: 0; transform: scale(0.94) translateY(-8px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
-
-      {/* Task info */}
-      <div style={{
-        padding: '11px 13px 9px',
-        borderBottom: '1px solid var(--border-light)',
-        background: 'var(--surface-warm)',
-      }}>
+    <div ref={ref} role="menu" aria-label={`${task.title} のステータス`} className="m3-menu" style={{ top: y, left: x, width, zIndex: 200 }}>
+      <div className="m3-menu__header">
         <div style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-primary)',
-          letterSpacing: '-0.02em',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          marginBottom: 2,
+          fontSize: 'var(--type-title-small-size)', lineHeight: 'var(--type-title-small-line)', fontWeight: 'var(--type-title-small-weight)',
+          color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {task.title}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>
-          {formatDate(task.start_date)} → {formatDate(task.due_date)}
+        <div style={{ fontSize: 'var(--type-body-small-size)', lineHeight: 'var(--type-body-small-line)', color: 'var(--text-secondary)' }}>
+          {dates}
         </div>
       </div>
 
-      {/* Status buttons */}
-      <div style={{ padding: '8px 10px' }}>
-        <div style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: 'var(--text-tertiary)',
-          letterSpacing: '0.1em',
-          marginBottom: 5,
-          textTransform: 'uppercase',
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}>
-          <span>自分のステータス</span>
-          <span style={{ letterSpacing: '0.04em' }}>参加者の状況</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {STATUS_ORDER.map(s => {
-            const cfg = STATUS_CONFIG[s]
-            const isActive = task.status === s
-            const btnColor = isDark ? cfg.darkColor : cfg.color
-            const btnBg    = isDark ? cfg.darkBg    : cfg.bg
-            return (
-              <button
-                key={s}
-                onClick={() => handleStatusClick(s)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: isActive ? btnBg : 'transparent',
-                  border: isActive ? `1px solid ${btnColor}22` : '1px solid transparent',
-                  borderRadius: 7,
-                  padding: '6px 8px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  transition: 'background 0.1s',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={e => {
-                  if (!isActive) {
-                    (e.currentTarget as HTMLButtonElement).style.background = btnBg
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = btnColor + '22'
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent'
-                  }
-                }}
-              >
-                <div style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: btnColor,
-                  flexShrink: 0,
-                  boxShadow: isActive ? `0 1px 4px ${btnColor}44` : 'none',
-                }} />
-                <span style={{
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? btnColor : 'var(--text-secondary)',
-                  letterSpacing: '-0.01em',
-                  width: 64,
-                  flexShrink: 0,
-                }}>
-                  {cfg.label}
-                </span>
-                {/* この講義の参加者のうち、このステータスにいる人 */}
-                <span style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
-                  <PeopleRow people={progress[task.id]?.[s] ?? []} size={18} />
-                </span>
-                {isActive && (
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <path d="M2 6l3 3 5-5" stroke={btnColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </button>
-            )
-          })}
-
-          {effectiveStatus === 'overdue' && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '5px 8px',
-              borderRadius: 7,
-              background: isDark ? STATUS_CONFIG.overdue.darkBg : STATUS_CONFIG.overdue.bg,
-              border: `1px solid ${(isDark ? STATUS_CONFIG.overdue.darkColor : STATUS_CONFIG.overdue.color)}22`,
-              marginTop: 2,
-            }}>
-              <div style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: isDark ? STATUS_CONFIG.overdue.darkColor : STATUS_CONFIG.overdue.color,
-              }} />
-              <span style={{ fontSize: 12, color: isDark ? STATUS_CONFIG.overdue.darkColor : STATUS_CONFIG.overdue.color, fontWeight: 500, letterSpacing: '-0.01em' }}>
-                期限切れ（自動）
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Detail link */}
-      <div style={{ borderTop: '1px solid var(--border-light)', padding: '6px 10px' }}>
-        <button
-          onClick={() => { onOpenDetail(); onClose() }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'transparent',
-            border: '1px solid transparent',
-            borderRadius: 7,
-            padding: '6px 8px',
-            cursor: 'pointer',
-            width: '100%',
-            fontSize: 13,
-            color: 'var(--accent)',
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            fontFamily: 'inherit',
-            transition: 'background 0.1s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--accent-bg)'
-            e.currentTarget.style.borderColor = 'var(--accent-muted)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-            <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          詳細を編集
-        </button>
-      </div>
+      {body}
     </div>
   )
 }

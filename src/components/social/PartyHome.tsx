@@ -32,11 +32,19 @@ function formatDateTime(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const type = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
+
 function ScopeSelect({ value, onChange }: { value: Scope; onChange: (v: Scope) => void }) {
   const semester = useStore(s => s.semester)
   return (
     <select value={value} onChange={e => onChange(e.target.value as Scope)} aria-label="表示する学期"
-      style={{ ...inputStyle, width: 'auto', minHeight: 30, padding: '4px 10px', fontSize: 12 }}>
+      style={{ ...inputStyle, width: 'auto', minHeight: 40, padding: '0 var(--space-3)', ...type('label-large') }}>
       <option value="semester">{semesterLabel(semester)}</option>
       <option value="all">すべての学期</option>
     </select>
@@ -283,7 +291,7 @@ function LecturesTab({ partyId, partyName, lectures, onChanged, onOpenLecture }:
         }
       >
         {lectures === null ? (
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+          <p style={{ ...type('body-medium'), color: 'var(--text-secondary)', margin: 0 }}>読み込み中...</p>
         ) : (
           <LectureList
             lectures={shown}
@@ -315,9 +323,9 @@ function LecturesTab({ partyId, partyName, lectures, onChanged, onOpenLecture }:
               const on = isShared(l)
               const locked = l.visibility === 'public'
               return (
-                <label key={l.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, minHeight: 48, padding: '8px 12px',
-                  border: `1px solid ${on ? 'var(--accent-muted)' : 'var(--border-light)'}`, borderRadius: 12,
+                <label key={l.id} className="m3-state" style={{
+                  display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minHeight: 56, padding: 'var(--space-2) var(--space-4)',
+                  border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, borderRadius: 'var(--shape-md)',
                   background: on ? 'var(--accent-bg)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer',
                 }}>
                   <input
@@ -328,11 +336,11 @@ function LecturesTab({ partyId, partyName, lectures, onChanged, onOpenLecture }:
                       await setShare([l], !on)
                       showToast(on ? `「${l.name}」を見せないようにしました` : `「${l.name}」を「${partyName}」に見せるようにしました`)
                     })}
-                    style={{ width: 16, height: 16 }}
+                    style={{ width: 18, height: 18, accentColor: 'var(--accent-solid)' }}
                   />
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 'var(--shape-xs)', background: l.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, ...type('body-large'), fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <span style={{ ...type('body-small'), color: 'var(--text-secondary)', flexShrink: 0 }}>
                     {locked ? '全体公開（誰でも見られます）' : `${VISIBILITY_LABEL[l.visibility]}・${l.apply_open ? '参加は承認制' : 'すぐ参加できる'}`}
                   </span>
                 </label>
@@ -440,7 +448,7 @@ function InviteSection({ partyId, codes, onChanged }: { partyId: string; codes: 
               {codes.map(c => (
                 <ListItem
                   key={c.id}
-                  title={<code style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.14em' }}>{c.code}</code>}
+                  title={<code style={{ ...type('title-large'), fontWeight: 'var(--type-weight-emphasized)', letterSpacing: '0.14em' }}>{c.code}</code>}
                   subtitle={`${formatDateTime(c.expires_at)}まで・${c.use_count}/${c.max_uses}回使用`}
                   trailing={
                     <>

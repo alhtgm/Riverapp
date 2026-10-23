@@ -4,7 +4,7 @@ import { toMessage } from '../../lib/errors'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 
-export type InviteState = 'member' | 'excluded' | 'invited'
+type InviteState = 'member' | 'excluded' | 'invited'
 
 /**
  * 所属しているパーティーごとの「この人はメンバーか・招待中か」を読み、招待を送る。

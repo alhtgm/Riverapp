@@ -1,0 +1,724 @@
+/*
+ * M3 の共通部品の見た目（m3.tsx で使う）
+ * 寸法は m3.material.io の部品仕様、値は src/theme/tokens.css のトークン、
+ * 色は index.css の CSS 変数（配色は今回の対象外なので既存の変数をそのまま使う）。
+ *
+ * 色の対応（M3 の色の役割 → River の変数）
+ *   primary / on-primary                → --accent-solid / --on-accent
+ *   secondary-container / on-…          → --accent-bg / --accent-dark
+ *   surface / on-surface                → --surface / --text-primary
+ *   surface-container(-high)            → --bg-secondary / --surface-warm
+ *   on-surface-variant                  → --text-secondary
+ *   outline / outline-variant           → --border-strong / --border
+ *   error                               → --danger
+ *   inverse-surface / inverse-on-surface → --text-primary / --surface
+ */
+
+/* ─── 状態レイヤー（押す・乗せる・キーボードで選ぶときの薄い重ね色）──────── */
+.m3-state {
+  position: relative;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+.m3-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard);
+}
+@media (hover: hover) {
+  .m3-state:hover:not(:disabled)::before { opacity: var(--state-hover-opacity); }
+}
+.m3-state:focus-visible:not(:disabled)::before { opacity: var(--state-focus-opacity); }
+.m3-state:active:not(:disabled)::before { opacity: var(--state-pressed-opacity); }
+.m3-state:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 見た目が 48px より小さい部品でも、押せる範囲は 48px を確保する */
+.m3-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--touch-target-min));
+  height: max(100%, var(--touch-target-min));
+  transform: translate(-50%, -50%);
+}
+
+/* ─── ボタン（高さ 40px・角は完全な丸・左右 24px）────────────────────── */
+.m3-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-6);
+  border: none;
+  border-radius: var(--shape-full);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.m3-btn--icon { padding-left: var(--space-4); }           /* アイコン付きは左 16px */
+.m3-btn--filled { background: var(--accent-solid); color: var(--on-accent); }
+.m3-btn--tonal { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-btn--outlined { background: transparent; color: var(--accent-dark); border: 1px solid var(--border-strong); }
+.m3-btn--text { background: transparent; color: var(--accent-dark); padding: 0 var(--space-3); }
+.m3-btn--text.m3-btn--icon { padding: 0 var(--space-4) 0 var(--space-3); }
+@media (hover: hover) {
+  .m3-btn--filled:hover:not(:disabled) { box-shadow: var(--elevation-1); }
+}
+/* 取り消せない操作（削除など）は error の色にする */
+.m3-btn--danger.m3-btn--filled { background: var(--danger); color: var(--surface); }
+.m3-btn--danger.m3-btn--tonal { background: var(--danger-bg); color: var(--danger); }
+.m3-btn--danger.m3-btn--outlined,
+.m3-btn--danger.m3-btn--text { color: var(--danger); }
+.m3-btn:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--text-primary) 38%, transparent);
+}
+.m3-btn--filled:disabled,
+.m3-btn--tonal:disabled { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.m3-btn--outlined:disabled { border-color: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.m3-btn--block { width: 100%; }
+/* 小さいボタン（M3 Expressive の XS: 高さ 32px）。一覧の行の中など、場所が限られるところ用。押せる範囲は 48px のまま */
+.m3-btn--xs { height: 32px; padding: 0 var(--space-3); gap: var(--space-1); }
+.m3-btn--xs.m3-btn--icon { padding-left: var(--space-2); }
+.m3-btn--xs.m3-btn--text { padding: 0 var(--space-2); }
+
+.m3-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--shape-full);
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: m3-spin 0.8s linear infinite;
+}
+@keyframes m3-spin { to { transform: rotate(360deg); } }
+
+/* ─── アイコンボタン（見た目 40px、押せる範囲 48px）──────────────────── */
+.m3-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--shape-full);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.m3-icon-btn--filled { background: var(--accent-solid); color: var(--on-accent); }
+.m3-icon-btn--tonal { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-icon-btn--outlined { border: 1px solid var(--border-strong); }
+.m3-icon-btn--selected { color: var(--accent-dark); }
+.m3-icon-btn:disabled { cursor: not-allowed; color: color-mix(in srgb, var(--text-primary) 38%, transparent); }
+.m3-icon-btn--filled:disabled,
+.m3-icon-btn--tonal:disabled { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+
+/* ─── FAB（その画面でいちばん大事な操作 1 つだけ）─────────────────────── */
+.m3-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: var(--shape-lg);
+  background: var(--accent-solid);
+  color: var(--on-accent);
+  box-shadow: var(--elevation-3);
+  cursor: pointer;
+  transition: box-shadow var(--motion-duration-short4) var(--motion-easing-standard);
+}
+@media (hover: hover) {
+  .m3-fab:hover { box-shadow: var(--elevation-4); }
+}
+.m3-fab--small { width: 40px; height: 40px; border-radius: var(--shape-md); }
+.m3-fab--large { width: 96px; height: 96px; border-radius: var(--shape-xl); }
+.m3-fab--tonal { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-fab--extended {
+  width: auto;
+  padding: 0 var(--space-5) 0 var(--space-4);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+}
+
+/* ─── カード（角 12px）──────────────────────────────────────── */
+.m3-card {
+  border-radius: var(--shape-md);
+  color: var(--text-primary);
+  text-align: left;
+  font: inherit;
+}
+.m3-card--elevated { background: var(--surface); box-shadow: var(--elevation-1); border: none; }
+.m3-card--filled { background: var(--bg-secondary); border: none; }
+.m3-card--outlined { background: var(--surface); border: 1px solid var(--border); }
+button.m3-card { display: block; width: 100%; cursor: pointer; }
+@media (hover: hover) {
+  button.m3-card--elevated:hover { box-shadow: var(--elevation-2); }
+}
+
+/* ─── 入力欄（outlined。高さ 56px・角 4px・ラベルは枠の上）──────────────── */
+.m3-field { display: flex; flex-direction: column; gap: var(--space-1); --m3-field-bg: var(--surface); }
+.m3-field__box { position: relative; }
+.m3-field__control {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--shape-xs);
+  background: var(--m3-field-bg);
+  color: var(--text-primary);
+  font: var(--type-body-large-weight) var(--type-body-large-size) / var(--type-body-large-line) var(--font-family-base);
+  letter-spacing: var(--type-body-large-tracking);
+  outline: none;
+  transition: border-color var(--motion-duration-short2) var(--motion-easing-standard);
+}
+textarea.m3-field__control { resize: vertical; min-height: 112px; }
+@media (hover: hover) {
+  .m3-field__control:hover:not(:disabled):not(:focus) { border-color: var(--text-primary); }
+}
+.m3-field__control:focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.m3-field__control::placeholder { color: var(--text-tertiary); }
+.m3-field__control:disabled { color: color-mix(in srgb, var(--text-primary) 38%, transparent); border-color: color-mix(in srgb, var(--text-primary) 12%, transparent); cursor: not-allowed; }
+.m3-field__label {
+  position: absolute;
+  top: 0;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  padding: 0 var(--space-1);
+  background: var(--m3-field-bg);
+  color: var(--text-secondary);
+  font: var(--type-body-small-weight) var(--type-body-small-size) / var(--type-body-small-line) var(--font-family-base);
+  letter-spacing: var(--type-body-small-tracking);
+  pointer-events: none;
+  max-width: calc(100% - var(--space-6));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m3-field:focus-within .m3-field__label { color: var(--accent-dark); }
+.m3-field__prefix {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font: var(--type-body-large-weight) var(--type-body-large-size) / var(--type-body-large-line) var(--font-family-base);
+  pointer-events: none;
+}
+.m3-field__support {
+  padding: 0 var(--space-4);
+  color: var(--text-secondary);
+  font: var(--type-body-small-weight) var(--type-body-small-size) / var(--type-body-small-line) var(--font-family-base);
+  letter-spacing: var(--type-body-small-tracking);
+}
+.m3-field--error .m3-field__control,
+.m3-field--error .m3-field__control:focus { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+.m3-field--error .m3-field__label,
+.m3-field--error .m3-field__support { color: var(--danger); }
+
+/* ─── チップ（高さ 32px・角は完全な丸）────────────────────────────
+   M3 の既定は角 8px だが、隣に並ぶボタンと丸みをそろえるため完全な丸にしている */
+.m3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--shape-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.m3-chip--leading { padding-left: var(--space-2); }
+.m3-chip--trailing { padding-right: var(--space-2); }
+.m3-chip--selected { background: var(--accent-bg); border-color: transparent; color: var(--accent-dark); }
+.m3-chip:disabled { cursor: not-allowed; color: color-mix(in srgb, var(--text-primary) 38%, transparent); border-color: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.m3-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--shape-full);
+}
+
+/* ─── ダイアログ（角 28px・本文の右下にボタン）─────────────────────── */
+.m3-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  animation: m3-fade-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate);
+}
+.m3-dialog {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  max-width: 560px;
+  width: 100%;
+  max-height: calc(100svh - 48px);
+  padding: var(--space-6);
+  border-radius: var(--shape-xl);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-3);
+  animation: m3-dialog-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate);
+}
+.m3-dialog__icon { display: flex; justify-content: center; color: var(--accent-dark); margin-bottom: var(--space-4); }
+.m3-dialog__title {
+  margin: 0 0 var(--space-4);
+  font: var(--type-headline-small-weight) var(--type-headline-small-size) / var(--type-headline-small-line) var(--font-family-base);
+  letter-spacing: var(--type-headline-small-tracking);
+}
+.m3-dialog--centered .m3-dialog__title { text-align: center; }
+.m3-dialog__body {
+  overflow-y: auto;
+  color: var(--text-secondary);
+  font: var(--type-body-medium-weight) var(--type-body-medium-size) / var(--type-body-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-body-medium-tracking);
+}
+.m3-dialog__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-6); }
+@keyframes m3-fade-in { from { opacity: 0; } }
+@keyframes m3-dialog-in { from { opacity: 0; transform: scale(0.92); } }
+
+/* ─── ボトムシート（上の角 28px・つまみ付き）───────────────────────── */
+.m3-scrim--sheet { align-items: flex-end; padding: 0; }
+.m3-sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100svh - 56px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--shape-xl) var(--shape-xl) 0 0;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-1);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: m3-sheet-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate);
+}
+.m3-sheet__handle-area { display: flex; justify-content: center; padding: var(--space-4) 0 var(--space-2); }
+.m3-sheet__handle {
+  width: 32px;
+  height: 4px;
+  border-radius: var(--shape-full);
+  background: color-mix(in srgb, var(--text-secondary) 40%, transparent);
+}
+.m3-sheet__title {
+  margin: 0;
+  padding: var(--space-2) var(--space-6) var(--space-2);
+  font: var(--type-title-large-weight) var(--type-title-large-size) / var(--type-title-large-line) var(--font-family-base);
+}
+.m3-sheet__body { overflow-y: auto; padding: var(--space-2) var(--space-6) var(--space-6); }
+@keyframes m3-sheet-in { from { transform: translateY(100%); } }
+
+/* ─── ナビゲーションバー（スマホの下部。高さ 80px）──────────────────── */
+.m3-navbar {
+  display: flex;
+  height: calc(80px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bg-secondary);
+}
+.m3-nav-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-3) 0 var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font: var(--type-label-medium-weight) var(--type-label-medium-size) / var(--type-label-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-label-medium-tracking);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.m3-nav-item__indicator {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 32px;
+  border-radius: var(--shape-full);
+  transition: background var(--motion-duration-short4) var(--motion-easing-standard);
+}
+/* 状態レイヤーは丸い印の部分にだけ出す */
+.m3-nav-item__indicator::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard);
+}
+@media (hover: hover) {
+  .m3-nav-item:hover .m3-nav-item__indicator::before { opacity: var(--state-hover-opacity); }
+}
+.m3-nav-item:focus-visible { outline: none; }
+.m3-nav-item:focus-visible .m3-nav-item__indicator { outline: 3px solid var(--accent); outline-offset: 2px; }
+.m3-nav-item:active .m3-nav-item__indicator::before { opacity: var(--state-pressed-opacity); }
+.m3-nav-item--active { color: var(--text-primary); font-weight: var(--type-weight-emphasized); }
+.m3-nav-item--active .m3-nav-item__indicator { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-nav-item__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--space-1); }
+
+/* ─── ナビゲーションレール（タブレット以上の左側。幅 80px）─────────────── */
+.m3-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 80px;
+  height: 100%;
+  padding: var(--space-3) 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.m3-rail__top { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-5); }
+.m3-rail .m3-nav-item { flex: 0 0 auto; width: 80px; padding: 0; }
+.m3-rail .m3-nav-item__indicator { width: 56px; }
+/* レールは幅 80px なので、日本語 6 文字が入るよう左右の余白と字間をなくす */
+.m3-rail .m3-nav-item__label { padding: 0; letter-spacing: 0; }
+
+/* ─── バッジ（ナビやアイコンの右上の数字・点）────────────────────────── */
+.m3-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--space-1);
+  border-radius: var(--shape-full);
+  background: var(--danger);
+  color: var(--surface);
+  font: var(--type-label-small-weight) var(--type-label-small-size) / 16px var(--font-family-base);
+  text-align: center;
+}
+.m3-badge--dot { min-width: 6px; width: 6px; height: 6px; padding: 0; top: 4px; left: calc(50% + 8px); }
+
+/* ─── スナックバー（画面下に短く知らせる。角 4px）────────────────────── */
+.m3-snackbar-host {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  pointer-events: none;
+  z-index: 1000;
+}
+.m3-snackbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  width: 100%;
+  max-width: 560px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--shape-xs);
+  background: var(--text-primary);
+  color: var(--surface);
+  box-shadow: var(--elevation-3);
+  font: var(--type-body-medium-weight) var(--type-body-medium-size) / var(--type-body-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-body-medium-tracking);
+  pointer-events: auto;
+  animation: m3-snackbar-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate);
+}
+.m3-snackbar__text { flex: 1; padding: var(--space-1) 0; }
+/* 反転した面の上のボタン（M3 の inverse-primary 相当）。背景から読める色に寄せる */
+.m3-snackbar .m3-btn--text { color: color-mix(in oklab, var(--accent) 60%, var(--surface)); }
+.m3-snackbar .m3-icon-btn { color: var(--surface); }
+@keyframes m3-snackbar-in { from { opacity: 0; transform: translateY(16px); } }
+
+/* 動きを減らす設定では、表示時のアニメーションもやめる */
+@media (prefers-reduced-motion: reduce) {
+  .m3-scrim, .m3-dialog, .m3-sheet, .m3-snackbar, .m3-spinner { animation: none; }
+}
+
+/* ─── 画面の上に重ねて開くパネル（Sheet.tsx）────────────────────────
+   PC・タブレット: 中央のダイアログ（角 28px）／スマホ（600px 未満）: 下から出るシート（上の角 28px・つまみ付き） */
+.m3-modal-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--scrim);
+  animation: m3-fade-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate);
+}
+.m3-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: min(88svh, 900px);
+  border-radius: var(--shape-xl);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-3);
+  animation: m3-dialog-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate);
+}
+.m3-modal__handle-area { display: none; }
+.m3-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.m3-modal__title {
+  margin: 0;
+  font: var(--type-title-large-weight) var(--type-title-large-size) / var(--type-title-large-line) var(--font-family-base);
+  font-weight: var(--type-weight-emphasized);
+  letter-spacing: var(--type-title-large-tracking);
+}
+.m3-modal__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font: var(--type-body-medium-weight) var(--type-body-medium-size) / var(--type-body-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-body-medium-tracking);
+}
+.m3-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+.m3-modal__body > * { flex-shrink: 0; }
+.m3-modal__footer {
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 599px) {
+  .m3-modal-wrap { align-items: flex-end; padding: 0; }
+  .m3-modal {
+    width: 100vw !important;
+    max-height: 92svh;
+    border-radius: var(--shape-xl) var(--shape-xl) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation-name: m3-sheet-in;
+  }
+  .m3-modal[data-fixed-height] { height: 92svh !important; }
+  .m3-modal__handle-area { display: flex; justify-content: center; padding: var(--space-3) 0 0; flex-shrink: 0; }
+  .m3-modal__header { padding: var(--space-2) var(--space-2) var(--space-3) var(--space-4); }
+  .m3-modal__body { padding: var(--space-4); }
+  .m3-modal__footer { padding: var(--space-3) var(--space-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-modal-wrap, .m3-modal { animation: none; }
+}
+
+/* ─── セグメントボタン（2〜5 個から 1 つを選ぶ切り替え。高さ 40px・両端が丸い）──────── */
+.m3-segmented { display: inline-flex; max-width: 100%; }
+.m3-segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 48px;
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  margin-left: -1px;
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.m3-segment:first-child { margin-left: 0; border-radius: var(--shape-full) 0 0 var(--shape-full); }
+.m3-segment:last-child { border-radius: 0 var(--shape-full) var(--shape-full) 0; }
+.m3-segment--selected { background: var(--accent-bg); color: var(--accent-dark); }
+.m3-segmented--block { display: flex; width: 100%; }
+.m3-segmented--block .m3-segment { flex: 1; }
+
+/* ─── スイッチ（オン/オフの切り替え。つまみ付きの線 52×32px）──────────────── */
+.m3-switch-row { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; }
+.m3-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--shape-full);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background var(--motion-duration-short4) var(--motion-easing-standard), border-color var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.m3-switch__handle {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--shape-full);
+  background: var(--border-strong);
+  transform: translateY(-50%);
+  transition: left var(--motion-duration-medium1) var(--motion-easing-emphasized), width var(--motion-duration-medium1) var(--motion-easing-emphasized), height var(--motion-duration-medium1) var(--motion-easing-emphasized), background var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.m3-switch[aria-checked="true"] { background: var(--accent-solid); border-color: var(--accent-solid); }
+.m3-switch[aria-checked="true"] .m3-switch__handle { left: 22px; width: 24px; height: 24px; background: var(--on-accent); }
+.m3-switch:disabled { cursor: not-allowed; opacity: var(--state-disabled-content-opacity); }
+.m3-switch-row__label {
+  color: var(--text-primary);
+  font: var(--type-body-large-weight) var(--type-body-large-size) / var(--type-body-large-line) var(--font-family-base);
+  letter-spacing: var(--type-body-large-tracking);
+}
+
+/* ─── サイドシート（右から出るパネル。PC は幅 400px・左の角 16px、スマホは画面いっぱい）── */
+.m3-side-wrap {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  animation: m3-fade-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate);
+}
+.m3-side-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(400px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--text-primary);
+  border-radius: var(--shape-lg) 0 0 var(--shape-lg);
+  box-shadow: var(--elevation-1);
+  overflow: hidden;
+  animation: m3-side-in var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate);
+}
+.m3-side-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.m3-side-sheet__body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6); }
+.m3-side-sheet__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) calc(var(--space-4) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+@keyframes m3-side-in { from { transform: translateX(100%); } }
+@media (max-width: 599px) {
+  .m3-side-sheet { width: 100vw; border-radius: 0; }
+  .m3-side-sheet__header { padding-left: var(--space-4); }
+  .m3-side-sheet__body { padding: var(--space-4); }
+  .m3-side-sheet__footer { padding-left: var(--space-4); padding-right: var(--space-4); }
+}
+
+/* ─── メニュー（押した場所の近くに出る選択肢。角 4px・各行 48px）─────────────── */
+.m3-menu {
+  position: fixed;
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  padding: var(--space-2) 0;
+  border-radius: var(--shape-xs);
+  background: var(--surface-warm);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-2);
+  animation: m3-menu-in var(--motion-duration-medium1) var(--motion-easing-emphasized-decelerate);
+}
+.m3-menu__header { padding: var(--space-2) var(--space-4) var(--space-3); border-bottom: 1px solid var(--border); margin-bottom: var(--space-2); }
+.m3-menu__group-label {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-4);
+  color: var(--text-secondary);
+  font: var(--type-label-medium-weight) var(--type-label-medium-size) / var(--type-label-medium-line) var(--font-family-base);
+  letter-spacing: var(--type-label-medium-tracking);
+}
+.m3-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  letter-spacing: var(--type-label-large-tracking);
+}
+.m3-menu-item--selected { background: var(--accent-bg); }
+.m3-menu__divider { height: 1px; margin: var(--space-2) 0; background: var(--border); }
+@keyframes m3-menu-in { from { opacity: 0; transform: scaleY(0.9); transform-origin: top; } }
+@media (prefers-reduced-motion: reduce) {
+  .m3-side-wrap, .m3-side-sheet, .m3-menu { animation: none; }
+}
+
+/* 広い画面で、タイムラインの右に並べるサイドシート（背景を暗くしない・タイムラインも操作できる） */
+.m3-side-sheet--docked {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  flex-shrink: 0;
+  height: 100%;
+  border-radius: 0;
+  border-left: 1px solid var(--border);
+  box-shadow: none;
+  animation-duration: var(--motion-duration-medium2);
+}
+
+/* 仲間・受信箱など、PC・タブレットでは右から出すパネル（Sheet の placement="side"）。スマホは下から出るシートのまま */
+@media (min-width: 600px) {
+  .m3-modal-wrap--side { align-items: stretch; justify-content: flex-end; padding: 0; }
+  .m3-modal--side {
+    width: min(480px, 100vw) !important;
+    height: 100svh !important;
+    max-height: none;
+    border-radius: var(--shape-lg) 0 0 var(--shape-lg);
+    animation-name: m3-side-in;
+  }
+}
+
+/* 開いたときにフォーカスを受け取るダイアログ・シートの外枠には、選択中の枠を出さない（中のボタンには出る） */
+.m3-dialog:focus, .m3-sheet:focus { outline: none; }
