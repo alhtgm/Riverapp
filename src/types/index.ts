@@ -27,13 +27,6 @@ export const VISIBILITY_LABEL: Record<LectureVisibility, string> = {
   public: '全体',
 }
 
-export const VISIBILITY_DESC: Record<LectureVisibility, string> = {
-  private: '参加者だけ',
-  party: '選んだパーティーのメンバーだけ',
-  friends: '選んだパーティー ＋ 参加者のいずれかのフレンド',
-  public: 'River を使っている誰でも（他大学の人も含む。参加は承認制に固定）',
-}
-
 /**
  * タイムライン上の「科目」= 自分が参加している講義。
  * color / order は自分専用の表示設定（lecture_participants）。
@@ -223,15 +216,27 @@ export function emptyProgress(): TaskProgress {
   return { todo: [], in_progress: [], done: [], submitted: [] }
 }
 
+/**
+ * ステータスの色。値は CSS 変数（index.css で標準の色、設定のテーマカラーで上書き）。
+ * ライト/ダークは CSS 側で切り替わるので、color と darkColor は同じ値を指す。
+ * 透明度をつけるときは `${color}22` ではなく withAlpha() を使う。
+ */
+const statusVars = (key: string) => ({ color: `var(--st-${key})`, bg: `var(--st-${key}-bg)`, darkColor: `var(--st-${key})`, darkBg: `var(--st-${key}-bg)` })
+
 export const STATUS_CONFIG: Record<
   TaskStatus | 'overdue',
   { label: string; color: string; bg: string; darkColor: string; darkBg: string }
 > = {
-  todo:        { label: '未着手',   color: '#6F6862', bg: '#EEEAE3', darkColor: '#B8B2AB', darkBg: 'rgba(155,149,144,0.20)' },
-  in_progress: { label: '進行中',   color: '#0779A0', bg: '#E5F8FC', darkColor: '#38D6F0', darkBg: 'rgba(8,145,178,0.22)' },
-  done:        { label: '完了',     color: '#14913F', bg: '#E4FAEE', darkColor: '#34D46A', darkBg: 'rgba(22,163,74,0.22)'   },
-  submitted:   { label: '提出済み', color: '#7233DE', bg: '#F1EDFE', darkColor: '#B368F9', darkBg: 'rgba(124,58,237,0.22)' },
-  overdue:     { label: '期限切れ', color: '#D42222', bg: '#FDECEC', darkColor: '#F26565', darkBg: 'rgba(239,68,68,0.20)'  },
+  todo:        { label: '未着手',   ...statusVars('todo') },
+  in_progress: { label: '進行中',   ...statusVars('progress') },
+  done:        { label: '完了',     ...statusVars('done') },
+  submitted:   { label: '提出済み', ...statusVars('submitted') },
+  overdue:     { label: '期限切れ', ...statusVars('overdue') },
+}
+
+/** 色（CSS 変数でも可）に透明度をつける。alpha は 16 進 2 桁（'22' など、旧来の `${color}22` と同じ意味） */
+export function withAlpha(color: string, alpha: string): string {
+  return `color-mix(in srgb, ${color} ${Math.round((parseInt(alpha, 16) / 255) * 100)}%, transparent)`
 }
 
 export const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done', 'submitted']

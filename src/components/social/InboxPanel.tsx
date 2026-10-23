@@ -8,6 +8,14 @@ import Sheet from '../ui/Sheet'
 import { Avatar, Button, EmptyState, List, ListItem, Section } from '../ui/kit'
 import type { AppNotification } from '../../types'
 
+/** 押すと次の画面へ進む行の右端の矢印 */
+const chevronRight = (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ color: 'var(--text-secondary)' }}>
+    <path d="M7.5 4.5L13 10l-5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+
 interface Props {
   onClose: () => void
   onOpenProfile: (userId: string) => void
@@ -118,7 +126,7 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
   }
 
   return (
-    <Sheet title="受信箱" subtitle="返事が必要な申請・招待と、お知らせが届きます" onClose={onClose} width={640} height={720}>
+    <Sheet placement="side" title="受信箱" subtitle="返事が必要な申請・招待と、お知らせが届きます" onClose={onClose} width={640} height={720}>
       <Section
         title="返事が必要"
         count={pending.length}
@@ -162,7 +170,7 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
                 title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{describeNotification(n, users, subjects)}</span>}
                 subtitle={timeAgo(n.created_at)}
                 onClick={openFor(n)}
-                trailing={openFor(n) && <span style={{ color: 'var(--text-tertiary)', fontSize: 18 }}>›</span>}
+                trailing={openFor(n) && chevronRight}
               />
             ))}
           </List>

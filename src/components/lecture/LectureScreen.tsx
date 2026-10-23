@@ -118,11 +118,19 @@ function summarizeSharing(visibility: LectureVisibility, applyOpen: boolean, par
   return `いまは、${who}がこの講義を見つけられます。${how}`
 }
 
+/** 文字の役割（tokens.css の M3 type scale）をインラインスタイルで使う */
+const type = (role: string): React.CSSProperties => ({
+  fontSize: `var(--type-${role}-size)`,
+  lineHeight: `var(--type-${role}-line)`,
+  fontWeight: `var(--type-${role}-weight)`,
+  letterSpacing: `var(--type-${role}-tracking)`,
+})
+
 function StatBox({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 14px' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)' }}>{label}</span>
-      <span style={{ fontSize: 20, fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em' }}>{value}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 'var(--space-3) var(--space-4)' }}>
+      <span style={{ ...type('label-medium'), color: 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ ...type('title-large'), fontWeight: 'var(--type-weight-emphasized)', color: color ?? 'var(--text-primary)' }}>{value}</span>
     </div>
   )
 }
@@ -250,7 +258,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
     <Sheet
       title={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 4, background: lecture.color, flexShrink: 0 }} />
+          <span style={{ width: 12, height: 12, borderRadius: 'var(--shape-xs)', background: lecture.color, flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lecture.name}</span>
         </span>
       }
@@ -276,8 +284,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
           <Card padding={0}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
               <StatBox label="メンバー" value={activeCount} />
-              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="取り組み中（のべ）" value={totals.inProgress} color="#0779A0" /></div>
-              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="完了（のべ）" value={totals.done} color="#14913F" /></div>
+              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="取り組み中（のべ）" value={totals.inProgress} color="var(--st-progress)" /></div>
+              <div style={{ borderLeft: '1px solid var(--border-light)' }}><StatBox label="完了（のべ）" value={totals.done} color="var(--st-done)" /></div>
             </div>
           </Card>
 
@@ -289,7 +297,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                 {lectureTasks.map(t => (
                   <Card key={t.id} padding={12}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                      <span style={{ flex: 1, minWidth: 0, ...type('title-small'), color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
                       <Badge tone="accent">締切 {formatDate(t.due_date)}{t.due_time ? ` ${t.due_time}` : ''}</Badge>
                     </div>
                     <ProgressPeople progress={progress[t.id]} />
@@ -396,27 +404,28 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
           <Section title="公開と参加" description="誰がこの講義を見つけられるか・どうやって参加するかを決めます。押すとすぐ反映されます">
             <Card tone="muted" padding={12}>
-              <span style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{summarizeSharing(visibility, applyOpen, visiblePartyNames)}</span>
+              <span style={{ ...type('body-medium'), color: 'var(--text-primary)' }}>{summarizeSharing(visibility, applyOpen, visiblePartyNames)}</span>
             </Card>
 
             <Field group required label="公開範囲" help="公開範囲を変えると、メンバー全員に通知されます">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-2)' }}>
                 {VISIBILITIES.map(v => {
                   const active = visibility === v
                   return (
                     <label
                       key={v}
+                      className="m3-state"
                       style={{
-                        display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 12, cursor: busy ? 'wait' : 'pointer',
-                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border-light)'}`,
+                        display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--shape-md)', cursor: busy ? 'wait' : 'pointer',
+                        border: active ? '2px solid var(--accent-dark)' : '1px solid var(--border)',
                         background: active ? 'var(--accent-bg)' : 'var(--surface)',
                       }}
                     >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input type="radio" name="visibility" checked={active} disabled={busy} onChange={() => void changeVisibility(v)} style={{ margin: 0 }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                        <input type="radio" name="visibility" checked={active} disabled={busy} onChange={() => void changeVisibility(v)} style={{ margin: 0, width: 18, height: 18, accentColor: 'var(--accent-solid)' }} />
+                        <span style={{ ...type('title-small'), color: 'var(--text-primary)' }}>{VISIBILITY_LABEL[v]}</span>
                       </span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{VISIBILITY_HELP[v]}</span>
+                      <span style={{ ...type('body-small'), color: 'var(--text-secondary)' }}>{VISIBILITY_HELP[v]}</span>
                     </label>
                   )
                 })}
@@ -449,7 +458,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
             )}
 
             {visibility !== 'private' && (
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-light)', background: 'var(--surface)', cursor: visibility === 'public' ? 'default' : 'pointer' }}>
+              <label className="m3-state" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--shape-md)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: visibility === 'public' ? 'default' : 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={applyOpen}
@@ -461,11 +470,11 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                       showToast(open ? '参加を承認制にしました' : '承認なしで参加できるようにしました')
                     })
                   }}
-                  style={{ marginTop: 3 }}
+                  style={{ marginTop: 2, width: 18, height: 18, accentColor: 'var(--accent-solid)' }}
                 />
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>参加を承認制にする</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                  <span style={{ ...type('title-small'), color: 'var(--text-primary)' }}>参加を承認制にする</span>
+                  <span style={{ ...type('body-small'), color: 'var(--text-secondary)' }}>
                     {visibility === 'public'
                       ? '全体公開の間は承認制に固定されます'
                       : 'オンにすると、参加したい人の申請がメンバーの受信箱に届き、誰かが承認すると参加できます'}
@@ -511,23 +520,25 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', bottom: -20, padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--border-light)' }}>
               <Button type="submit" variant="primary" disabled={!settingsDirty} loading={busy}>保存する</Button>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{settingsDirty ? '保存していない変更があります' : '変更はありません'}</span>
+              <span style={{ ...type('body-small'), color: 'var(--text-secondary)' }}>{settingsDirty ? '保存していない変更があります' : '変更はありません'}</span>
             </div>
           </form>
 
           <Section title="自分のタイムラインでの色" description="あなたの画面にだけ反映されます">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div role="radiogroup" aria-label="タイムラインでの色" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               {LECTURE_COLORS.map(c => (
                 <button
                   key={c}
                   type="button"
+                  role="radio"
                   aria-label={`色 ${c}`}
-                  aria-pressed={lecture.color === c}
+                  aria-checked={lecture.color === c}
+                  className="m3-state m3-target"
                   onClick={() => run(async () => { await updateSubject(lectureId, { color: c }) })}
                   style={{
-                    width: 32, height: 32, borderRadius: 9, background: c, cursor: 'pointer',
-                    border: lecture.color === c ? '3px solid var(--text-primary)' : '2px solid var(--surface)',
-                    boxShadow: 'var(--shadow-xs)',
+                    width: 40, height: 40, borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
+                    border: '3px solid var(--surface)',
+                    boxShadow: lecture.color === c ? '0 0 0 2px var(--text-primary)' : '0 0 0 1px var(--border)',
                   }}
                 />
               ))}
@@ -560,7 +571,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
       {tab === 'history' && (
         <Section title="操作履歴" description="誰が・いつ・何を変えたかを確認できます">
           {history === null ? (
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>読み込み中...</p>
+            <p style={{ ...type('body-medium'), color: 'var(--text-secondary)', margin: 0 }}>読み込み中...</p>
           ) : history.length === 0 ? (
             <EmptyState compact title="履歴はまだありません" />
           ) : (
@@ -572,13 +583,13 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                   <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 2px', borderBottom: '1px solid var(--border-light)' }}>
                     <Avatar name={e.actor_id ? name(e.actor_id) : 'システム'} size={28} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                      <div style={{ ...type('body-medium'), color: 'var(--text-primary)' }}>
                         <b>{e.actor_id ? name(e.actor_id) : 'システム'}</b>{' '}{d.what}
                       </div>
                       {d.diffs.map((line, i) => (
-                        <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', wordBreak: 'break-all', marginTop: 2 }}>{line}</div>
+                        <div key={i} style={{ ...type('body-small'), color: 'var(--text-secondary)', wordBreak: 'break-all', marginTop: 2 }}>{line}</div>
                       ))}
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{formatDateTime(e.created_at)}</div>
+                      <div style={{ ...type('body-small'), color: 'var(--text-tertiary)', marginTop: 2 }}>{formatDateTime(e.created_at)}</div>
                     </div>
                   </div>
                 )

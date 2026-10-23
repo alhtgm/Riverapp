@@ -4,8 +4,8 @@
   "description": "大学生向け課題管理アプリ。横スクロールのタイムラインで締め切りを可視化。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F6F3EE",
-  "theme_color": "#3B63FF",
+  "background_color": "#F6F5F1",
+  "theme_color": "#3E3A78",
   "lang": "ja",
   "icons": [
     {
