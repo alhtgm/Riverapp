@@ -34,6 +34,7 @@ const MESSAGES: Record<string, string> = {
   'target is not excluded': '対象の人は除外されていません',
   'vote not open': 'この投票は終了しています',
   'invalid count': '回数は1〜52回で指定してください',
+  'handle is fixed': 'ユーザーIDは変更できません',
 }
 
 export function toMessage(e: unknown): string {
