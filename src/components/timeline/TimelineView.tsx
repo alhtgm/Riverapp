@@ -9,6 +9,7 @@ import ProfileView from '../social/ProfileView'
 import PartyHome from '../social/PartyHome'
 import LectureScreen from '../lecture/LectureScreen'
 import AppNavigation, { type AppDestination } from './AppNavigation'
+import { FilterMenuChip, MenuOption } from './FilterMenu'
 import AccountSheet, { NewSemesterSheet, SemesterSwitcher } from './AccountSheet'
 import SettingsSheet from '../settings/SettingsSheet'
 import TaskQuickMenu from '../task/TaskQuickMenu'
@@ -80,6 +81,35 @@ const todayIcon = (
     <circle cx="9" cy="9" r="1.8" fill="currentColor" />
   </svg>
 )
+
+/** 絞り込みバーのチップのアイコン（並べ替え・期間・ステータス） */
+const sortIcon = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="M3 5h12M3 9h8M3 13h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+)
+const rangeIcon = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <rect x="2.5" y="3.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M2.5 7.5h13M6 2v3M12 2v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+const statusIcon = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="M2.5 4.5h13l-5 6v4l-3 1.5v-5.5l-5-6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+  </svg>
+)
+
+const LECTURE_SORT_OPTIONS = [
+  { key: 'custom', label: '自分の順', description: '講義の左のつまみをドラッグして順番を入れ替えられます' },
+  { key: 'due',    label: '期限が近い順', description: 'まだ終わっていない課題の締切が近い講義から並べます' },
+] as const
+
+const VIEW_RANGE_OPTIONS = [
+  { key: 'all',   label: 'すべての期間' },
+  { key: 'week',  label: '今週' },
+  { key: 'month', label: '今月' },
+] as const
 
 const STATUS_PILLS: { key: EffectiveStatus; label: string }[] = [
   { key: 'todo',        label: '未着手' },
@@ -540,6 +570,11 @@ export default function TimelineView() {
   }, [])
 
   const isFiltering = selectedStatuses.size > 0
+  // ステータスのチップの文字: 2 つまでは名前を並べ、3 つ以上は数だけ出す
+  const selectedStatusLabels = STATUS_PILLS.filter(p => selectedStatuses.has(p.key)).map(p => p.label)
+  const statusChipLabel = selectedStatusLabels.length === 0 ? 'ステータス'
+    : selectedStatusLabels.length <= 2 ? selectedStatusLabels.join('・')
+    : `ステータス ${selectedStatusLabels.length}つ`
 
   /** A row matches focus if any of its tasks overlaps with [today, today+30]
    *  (already started but not yet due, OR starting within the next 30 days) */
@@ -824,67 +859,75 @@ export default function TimelineView() {
 
         <div style={filterDivider} />
 
-        {!isMobile && (
-          <span style={{
-            fontSize: 'var(--type-label-medium-size)', lineHeight: 'var(--type-label-medium-line)',
-            fontWeight: 'var(--type-label-medium-weight)', color: 'var(--text-secondary)', flexShrink: 0,
-          }}>
-            並べ替え
-          </span>
-        )}
-
         {/* 講義の並べ方（どれか 1 つ） */}
-        {([
-          { key: 'custom', label: '自分の順', title: '講義の左のつまみをドラッグして順番を入れ替えられます' },
-          { key: 'due',    label: '期限が近い順', title: 'まだ終わっていない課題の締切が近い講義から並べます' },
-        ] as const).map(opt => (
-          <Chip key={opt.key} selected={lectureSort === opt.key} onClick={() => changeLectureSort(opt.key)} title={opt.title}>
-            {opt.label}
-          </Chip>
-        ))}
-
-        <div style={filterDivider} />
-
-        {!isMobile && (
-          <span style={{
-            fontSize: 'var(--type-label-medium-size)', lineHeight: 'var(--type-label-medium-line)',
-            fontWeight: 'var(--type-label-medium-weight)', color: 'var(--text-secondary)', flexShrink: 0,
-          }}>
-            絞り込み
-          </span>
-        )}
+        <FilterMenuChip
+          label={LECTURE_SORT_OPTIONS.find(o => o.key === lectureSort)!.label}
+          active={lectureSort !== 'custom'}
+          icon={sortIcon}
+          menuLabel="講義の並べ方"
+          width={300}
+        >
+          {close => LECTURE_SORT_OPTIONS.map(opt => (
+            <MenuOption
+              key={opt.key}
+              checked={lectureSort === opt.key}
+              description={opt.description}
+              onSelect={() => { changeLectureSort(opt.key); close() }}
+            >
+              {opt.label}
+            </MenuOption>
+          ))}
+        </FilterMenuChip>
 
         {/* 表示する期間（どれか 1 つ） */}
-        {([
-          { key: 'week',  label: '今週' },
-          { key: 'month', label: '今月' },
-          { key: 'all',   label: 'すべて' },
-        ] as const).map(opt => (
-          <Chip key={opt.key} selected={viewRange === opt.key} onClick={() => setViewRange(opt.key)}>
-            {opt.label}
-          </Chip>
-        ))}
+        <FilterMenuChip
+          label={VIEW_RANGE_OPTIONS.find(o => o.key === viewRange)!.label}
+          active={viewRange !== 'all'}
+          icon={rangeIcon}
+          menuLabel="表示する期間"
+        >
+          {close => VIEW_RANGE_OPTIONS.map(opt => (
+            <MenuOption key={opt.key} checked={viewRange === opt.key} onSelect={() => { setViewRange(opt.key); close() }}>
+              {opt.label}
+            </MenuOption>
+          ))}
+        </FilterMenuChip>
 
-        <div style={filterDivider} />
+        {/* ステータス（複数選べる。選んでもメニューは開いたまま） */}
+        <FilterMenuChip
+          label={statusChipLabel}
+          active={isFiltering}
+          icon={statusIcon}
+          menuLabel="表示するステータス（複数選べます）"
+        >
+          {() => (
+            <>
+              {STATUS_PILLS.map(pill => (
+                <MenuOption
+                  key={pill.key}
+                  multi
+                  checked={selectedStatuses.has(pill.key)}
+                  onSelect={() => toggleStatus(pill.key)}
+                  leading={<span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: STATUS_CONFIG[pill.key].color, flexShrink: 0 }} />}
+                >
+                  {pill.label}
+                </MenuOption>
+              ))}
+              {isFiltering && (
+                <>
+                  <div className="m3-menu__divider" />
+                  <button type="button" role="menuitem" className="m3-menu-item m3-state" style={{ color: 'var(--accent-dark)' }}
+                    onClick={() => setSelectedStatuses(new Set())}>
+                    <span style={{ width: 20, flexShrink: 0 }} />
+                    すべてのステータスを表示
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </FilterMenuChip>
 
-        {/* ステータス（複数選べる） */}
-        {STATUS_PILLS.map(pill => {
-          const isActive = selectedStatuses.has(pill.key)
-          const cfg = STATUS_CONFIG[pill.key]
-          return (
-            <Chip
-              key={pill.key}
-              selected={isActive}
-              icon={<span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: cfg.color, margin: '0 var(--space-1)' }} />}
-              onClick={() => toggleStatus(pill.key)}
-              style={isActive ? { background: cfg.bg, color: cfg.color } : undefined}
-            >
-              {pill.label}
-            </Chip>
-          )
-        })}
-
-        {isFiltering && (
+        {(isFiltering || viewRange !== 'all') && (
           <>
             <div style={filterDivider} />
             <span style={{
@@ -893,7 +936,9 @@ export default function TimelineView() {
             }}>
               {filteredTotal}件
             </span>
-            <Button variant="text" size="xs" onClick={() => setSelectedStatuses(new Set())}>リセット</Button>
+            <Button variant="text" size="xs" onClick={() => { setSelectedStatuses(new Set()); setViewRange('all') }}>
+              絞り込みを解除
+            </Button>
           </>
         )}
       </div>
