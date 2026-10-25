@@ -144,13 +144,14 @@ function storeLectureSort(sort: LectureSort) {
 }
 
 /**
- * 講義の「次の締切」。まだ終わっていない課題のうち、今日以降で一番近い締切（時刻まで含めて比べる）。
+ * 講義の「次の締切」。まだ終わっていない課題のうち、一番近い締切（時刻まで含めて比べる）。
+ * 締切を過ぎてまだ終わっていない課題がいちばん急ぐので、それも含める（期限切れの講義が上に来る）。
  * 該当がなければ null（期限が近い順では後ろに回す）
  */
-function nextDueKey(subjectTasks: Task[], todayStr: string): string | null {
+function nextDueKey(subjectTasks: Task[]): string | null {
   let min: string | null = null
   for (const t of subjectTasks) {
-    if (t.status === 'done' || t.status === 'submitted' || t.due_date < todayStr) continue
+    if (t.status === 'done' || t.status === 'submitted') continue
     const key = `${t.due_date} ${t.due_time ?? '99:99'}`
     if (min === null || key < min) min = key
   }
@@ -439,6 +440,24 @@ export default function TimelineView() {
 
   const COL_WIDTH = isMobile ? COL_WIDTH_MOBILE : COL_WIDTH_DESKTOP
 
+  // 見えている範囲の真ん中の日（日付の見出しには毎月1日にしか月が出ないので、今何月を見ているかを別に出す）
+  const [viewCenterIndex, setViewCenterIndex] = useState<number | null>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      setViewCenterIndex(Math.floor((el.scrollLeft + el.clientWidth / 2) / COL_WIDTH))
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update) }
+    update()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => { el.removeEventListener('scroll', onScroll); if (frame) cancelAnimationFrame(frame) }
+  }, [COL_WIDTH])
+  const viewMonthDay = viewCenterIndex !== null ? days[Math.min(Math.max(viewCenterIndex, 0), days.length - 1)] : undefined
+  const viewMonthLabel = viewMonthDay ? `${viewMonthDay.getFullYear()}年${viewMonthDay.getMonth() + 1}月` : null
+
   // ---- Scroll to today ----
   const scrollToToday = useCallback(() => {
     if (scrollRef.current && todayIdx >= 0) {
@@ -597,7 +616,7 @@ export default function TimelineView() {
   // 並べ方を反映した講義の順（期限が近い順でも、次の締切が同じなら自分の順を保つ）
   const sortedSubjects = useMemo(() => {
     if (lectureSort === 'custom') return subjects
-    const keys = new Map(subjects.map(s => [s.id, nextDueKey(tasks.filter(t => t.subject_id === s.id), todayStr)]))
+    const keys = new Map(subjects.map(s => [s.id, nextDueKey(tasks.filter(t => t.subject_id === s.id))]))
     return [...subjects].sort((a, b) => {
       const ka = keys.get(a.id) ?? null
       const kb = keys.get(b.id) ?? null
@@ -606,7 +625,7 @@ export default function TimelineView() {
       if (kb === null) return -1
       return ka < kb ? -1 : 1
     })
-  }, [lectureSort, subjects, tasks, todayStr])
+  }, [lectureSort, subjects, tasks])
 
   const grouped: GroupedSubject[] = sortedSubjects
     .map(subject => {
@@ -958,6 +977,15 @@ export default function TimelineView() {
               絞り込みを解除
             </Button>
           </>
+        )}
+        {/* 今見ている年月（スマホは場所がないので出さない） */}
+        {!isMobile && viewMonthLabel && (
+          <span aria-live="polite" style={{
+            marginLeft: 'auto', paddingLeft: 'var(--space-4)', flexShrink: 0, whiteSpace: 'nowrap',
+            fontSize: 'var(--type-title-small-size)', lineHeight: 'var(--type-title-small-line)', fontWeight: 600, color: 'var(--text-secondary)',
+          }}>
+            {viewMonthLabel}
+          </span>
         )}
       </div>
 
@@ -1338,6 +1366,9 @@ export default function TimelineView() {
                             const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
                             const timeLabel = task.due_time ? ` ${task.due_time}` : ''
                             const isDragging = dragRef.current?.taskId === task.id
+                            // 詳細やメニューを開いている課題は、講義の色の枠で目立たせる
+                            const isSelected = selectedTask?.id === task.id || quickMenu?.task.id === task.id
+                            const restShadow = isSelected ? `0 0 0 2px ${color}` : 'var(--elevation-0)'
                             // バーが細くて名前が入らないときは、名前をバーの右の空いている所に出す（次のバーにはかからない幅まで）
                             const nextLeft = row.tasks
                               .filter(t => t.id !== task.id)
@@ -1375,24 +1406,24 @@ export default function TimelineView() {
                                   // hidden だと中の名前の sticky が効かないので clip で切り取る
                                   overflow: 'clip',
                                   whiteSpace: 'nowrap',
-                                  zIndex: isDragging ? 10 : 2,
+                                  zIndex: isDragging ? 10 : isSelected ? 3 : 2,
                                   transition: isDragging ? 'none' : 'box-shadow var(--motion-duration-short4) var(--motion-easing-standard)',
                                   borderLeft: `3px solid ${color}`,
-                                  boxShadow: isDragging ? 'var(--elevation-3)' : 'var(--elevation-0)',
+                                  boxShadow: isDragging ? 'var(--elevation-3)' : restShadow,
                                   userSelect: 'none',
                                 }}
                                 onMouseEnter={e => {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
-                                    el.style.boxShadow = 'var(--elevation-1)'
+                                    el.style.boxShadow = isSelected ? `${restShadow}, var(--elevation-1)` : 'var(--elevation-1)'
                                     el.style.zIndex = '3'
                                   }
                                 }}
                                 onMouseLeave={e => {
                                   if (!dragRef.current) {
                                     const el = e.currentTarget as HTMLElement
-                                    el.style.boxShadow = 'var(--elevation-0)'
-                                    el.style.zIndex = '2'
+                                    el.style.boxShadow = restShadow
+                                    el.style.zIndex = isSelected ? '3' : '2'
                                   }
                                 }}
                               >
