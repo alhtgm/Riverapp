@@ -27,6 +27,8 @@ export function describeNotification(
       return `「${lectureTitle}」の公開範囲が「${VISIBILITY_LABEL[p.old_visibility as LectureVisibility] ?? ''}」から「${VISIBILITY_LABEL[p.new_visibility as LectureVisibility] ?? ''}」に変わりました`
     case 'feedback_reply': return `開発者に送ったメッセージ「${String(p.original ?? '')}」に返事が届きました`
     case 'announcement': return `運営からのお知らせ: ${String(p.title ?? '')}`
+    case 'handle_reassigned':
+      return `ユーザーIDが @${String(p.old_handle ?? '')} から @${String(p.new_handle ?? '')} に変わりました（フレンドやパーティーはそのままです）`
     default: return 'お知らせがあります'
   }
 }
