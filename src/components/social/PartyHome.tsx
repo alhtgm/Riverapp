@@ -11,6 +11,7 @@ import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Badge, Button, Confirm, EmptyState, Field, List, ListItem, Section, Tabs } from '../ui/kit'
+import { JoinedInput } from '../ui/m3'
 import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import MemberList from './MemberList'
@@ -141,7 +142,7 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
         <>
           <Section title="パーティー名" description="メンバーなら誰でも変更できます">
             <form
-              style={{ display: 'flex', gap: 8, maxWidth: 480 }}
+              style={{ maxWidth: 480 }}
               onSubmit={e => {
                 e.preventDefault()
                 void run(async () => {
@@ -154,8 +155,16 @@ export default function PartyHome({ partyId, onClose, onOpenLecture, onOpenProfi
                 })
               }}
             >
-              <input value={name} onChange={e => setName(e.target.value)} maxLength={40} style={inputStyle} />
-              <Button type="submit" variant="primary" disabled={name.trim() === party.name} loading={busy}>保存する</Button>
+              <JoinedInput
+                value={name}
+                onChange={e => setName(e.target.value)}
+                maxLength={40}
+                aria-label="パーティー名"
+                actionLabel="保存する"
+                actionVariant="primary"
+                actionDisabled={name.trim() === party.name}
+                loading={busy}
+              />
             </form>
           </Section>
 

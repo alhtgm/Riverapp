@@ -208,6 +208,41 @@ export function SelectField({ label, supportingText, error, required, background
   )
 }
 
+// ─── 入力欄とボタンをつなげた形 ─────────────────────────────────
+
+/**
+ * 入力欄とその操作のボタンを1つの枠にまとめたもの（検索・作る・参加・コピーなど）。
+ * 左の入力欄を大きく取り、右に区切り線でつなげたボタンを置く。form の中なら action は送信ボタンになる
+ */
+export function JoinedInput({ prefix, actionLabel, actionVariant = 'tonal', actionType = 'submit', onAction, actionDisabled, loading = false, ...input }: {
+  /** 入力欄の左に添える文字（「@」など） */
+  prefix?: ReactNode
+  actionLabel: string
+  /** primary = 塗りつぶし（その画面の主な操作）、tonal = 淡い色 */
+  actionVariant?: 'primary' | 'tonal'
+  actionType?: 'submit' | 'button'
+  onAction?: () => void
+  actionDisabled?: boolean
+  loading?: boolean
+} & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="m3-joined">
+      {prefix && <span className="m3-joined__prefix" aria-hidden="true">{prefix}</span>}
+      <input {...input} className={cx('m3-joined__input', input.className)} />
+      <button
+        type={actionType}
+        className={cx('m3-joined__action', 'm3-state', actionVariant === 'primary' && 'm3-joined__action--primary')}
+        disabled={actionDisabled || loading}
+        aria-busy={loading || undefined}
+        onClick={onAction}
+      >
+        {loading && <span className="m3-spinner" aria-hidden="true" />}
+        {actionLabel}
+      </button>
+    </div>
+  )
+}
+
 // ─── チップ ──────────────────────────────────────────────
 
 const checkIcon = (

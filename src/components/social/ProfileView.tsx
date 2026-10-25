@@ -6,6 +6,7 @@ import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Badge, Button, Card, Confirm, Field, List, ListItem, Notice, Section } from '../ui/kit'
+import { JoinedInput } from '../ui/m3'
 import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import { InviteToParties } from './PartyInvite'
@@ -179,16 +180,15 @@ function HandleDisplay({ handle }: { handle: string }) {
     }
   }
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-      <input
-        value={`@${handle}`}
-        readOnly
-        aria-label="ユーザーID"
-        onFocus={e => e.currentTarget.select()}
-        style={{ ...inputStyle, flex: 1, minWidth: 0, color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}
-      />
-      <Button size="sm" variant="ghost" onClick={() => { void copy() }}>コピー</Button>
-    </div>
+    <JoinedInput
+      value={`@${handle}`}
+      readOnly
+      aria-label="ユーザーID"
+      onFocus={e => e.currentTarget.select()}
+      actionLabel="コピー"
+      actionType="button"
+      onAction={() => { void copy() }}
+    />
   )
 }
 
