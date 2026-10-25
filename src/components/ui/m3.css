@@ -677,6 +677,18 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
   animation: m3-menu-in var(--motion-duration-medium1) var(--motion-easing-emphasized-decelerate);
 }
 .m3-menu__header { padding: var(--space-2) var(--space-4) var(--space-3); border-bottom: 1px solid var(--border); margin-bottom: var(--space-2); }
+/* メニューの中身をシートなどの中にそのまま並べるとき（浮かせない・影を付けない） */
+.m3-menu--inline {
+  position: static;
+  min-width: 0;
+  max-width: none;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--shape-md);
+  background: var(--surface);
+  box-shadow: none;
+  animation: none;
+}
 .m3-menu__group-label {
   display: flex;
   justify-content: space-between;

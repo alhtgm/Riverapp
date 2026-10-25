@@ -19,7 +19,8 @@ import { useStore } from '../../store/useStore'
 import { useSocialStore } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import { Button, Chip, Fab, IconButton } from '../ui/m3'
-import { EmptyState } from '../ui/kit'
+import { EmptyState, Section } from '../ui/kit'
+import Sheet from '../ui/Sheet'
 import { BREAKPOINTS } from '../../theme/breakpoints'
 import { semesterKey, semesterLabel, semesterRange, subjectInSemester } from '../../lib/semester'
 import { describeNotification, notificationUserIds } from '../../lib/notificationText'
@@ -284,6 +285,8 @@ export default function TimelineView() {
   const [isExpanded, setIsExpanded] = useState(() => window.innerWidth >= BREAKPOINTS.expanded)
   const [accountOpen, setAccountOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** スマホの並べ方・絞り込みのシート */
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [newSemesterOpen, setNewSemesterOpen] = useState(false)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [quickMenu, setQuickMenu] = useState<{ task: Task; x: number; y: number } | null>(null)
@@ -791,6 +794,31 @@ export default function TimelineView() {
     return { left: startI * COL_WIDTH, width: Math.max((endI - startI + 1) * COL_WIDTH, COL_WIDTH), color, bg }
   }
 
+  // 並べ方・期間・ステータスの選択肢（パソコンはチップのメニュー、スマホは下から出るシートで同じものを使う）
+  const sortOptions = (after?: () => void) => LECTURE_SORT_OPTIONS.map(opt => (
+    <MenuOption key={opt.key} checked={lectureSort === opt.key} description={opt.description} onSelect={() => { changeLectureSort(opt.key); after?.() }}>
+      {opt.label}
+    </MenuOption>
+  ))
+  const rangeOptions = (after?: () => void) => VIEW_RANGE_OPTIONS.map(opt => (
+    <MenuOption key={opt.key} checked={viewRange === opt.key} onSelect={() => { setViewRange(opt.key); after?.() }}>
+      {opt.label}
+    </MenuOption>
+  ))
+  const statusOptions = () => STATUS_PILLS.map(pill => (
+    <MenuOption
+      key={pill.key}
+      multi
+      checked={selectedStatuses.has(pill.key)}
+      onSelect={() => toggleStatus(pill.key)}
+      leading={<span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: STATUS_CONFIG[pill.key].color, flexShrink: 0 }} />}
+    >
+      {pill.label}
+    </MenuOption>
+  ))
+  /** 既定から変えている並べ方・絞り込みの数（スマホの「絞り込み」チップに出す） */
+  const changedFilterCount = (lectureSort !== 'due' ? 1 : 0) + (viewRange !== 'all' ? 1 : 0) + (isFiltering ? 1 : 0)
+
   return (
     <div style={{ display: 'flex', height: '100svh', background: 'var(--bg)' }}>
       {!isMobile && (
@@ -896,42 +924,42 @@ export default function TimelineView() {
 
         <div style={filterDivider} />
 
+        {/* スマホ: チップを横に並べると画面の外に隠れて押せないので、「絞り込み」1つから下のシートを開く */}
+        {isMobile && (
+          <Chip
+            selected={changedFilterCount > 0}
+            icon={statusIcon}
+            aria-haspopup="dialog"
+            onClick={() => setMobileFilterOpen(true)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {changedFilterCount > 0 ? `並べ方・絞り込み（${changedFilterCount}）` : '並べ方・絞り込み'}
+          </Chip>
+        )}
+
         {/* 講義の並べ方（どれか 1 つ） */}
-        <FilterMenuChip
+        {!isMobile && <FilterMenuChip
           label={LECTURE_SORT_OPTIONS.find(o => o.key === lectureSort)!.label}
           active={lectureSort !== 'due'}
           icon={sortIcon}
           menuLabel="講義の並べ方"
           width={300}
         >
-          {close => LECTURE_SORT_OPTIONS.map(opt => (
-            <MenuOption
-              key={opt.key}
-              checked={lectureSort === opt.key}
-              description={opt.description}
-              onSelect={() => { changeLectureSort(opt.key); close() }}
-            >
-              {opt.label}
-            </MenuOption>
-          ))}
-        </FilterMenuChip>
+          {close => sortOptions(close)}
+        </FilterMenuChip>}
 
         {/* 表示する期間（どれか 1 つ） */}
-        <FilterMenuChip
+        {!isMobile && <FilterMenuChip
           label={VIEW_RANGE_OPTIONS.find(o => o.key === viewRange)!.label}
           active={viewRange !== 'all'}
           icon={rangeIcon}
           menuLabel="表示する期間"
         >
-          {close => VIEW_RANGE_OPTIONS.map(opt => (
-            <MenuOption key={opt.key} checked={viewRange === opt.key} onSelect={() => { setViewRange(opt.key); close() }}>
-              {opt.label}
-            </MenuOption>
-          ))}
-        </FilterMenuChip>
+          {close => rangeOptions(close)}
+        </FilterMenuChip>}
 
         {/* ステータス（複数選べる。選んでもメニューは開いたまま） */}
-        <FilterMenuChip
+        {!isMobile && <FilterMenuChip
           label={statusChipLabel}
           active={isFiltering}
           icon={statusIcon}
@@ -939,17 +967,7 @@ export default function TimelineView() {
         >
           {() => (
             <>
-              {STATUS_PILLS.map(pill => (
-                <MenuOption
-                  key={pill.key}
-                  multi
-                  checked={selectedStatuses.has(pill.key)}
-                  onSelect={() => toggleStatus(pill.key)}
-                  leading={<span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 'var(--shape-full)', background: STATUS_CONFIG[pill.key].color, flexShrink: 0 }} />}
-                >
-                  {pill.label}
-                </MenuOption>
-              ))}
+              {statusOptions()}
               {isFiltering && (
                 <>
                   <div className="m3-menu__divider" />
@@ -962,9 +980,9 @@ export default function TimelineView() {
               )}
             </>
           )}
-        </FilterMenuChip>
+        </FilterMenuChip>}
 
-        {(isFiltering || viewRange !== 'all') && (
+        {!isMobile && (isFiltering || viewRange !== 'all') && (
           <>
             <div style={filterDivider} />
             <span style={{
@@ -1653,6 +1671,39 @@ export default function TimelineView() {
         />
       )}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+
+      {/* スマホの並べ方・絞り込み（下から出るシート。選ぶとすぐ反映され、タイムラインの件数も下に出す） */}
+      {mobileFilterOpen && (
+        <Sheet
+          title="並べ方と絞り込み"
+          subtitle="選ぶとすぐタイムラインに反映されます"
+          onClose={() => setMobileFilterOpen(false)}
+          zIndex={320}
+          footer={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span style={{ flex: 1, color: 'var(--text-secondary)', fontSize: 'var(--type-body-medium-size)' }}>
+                {(isFiltering || viewRange !== 'all') ? `${filteredTotal}件を表示中` : 'すべての課題を表示中'}
+              </span>
+              {changedFilterCount > 0 && (
+                <Button variant="text" onClick={() => { changeLectureSort('due'); setViewRange('all'); setSelectedStatuses(new Set()) }}>
+                  元に戻す
+                </Button>
+              )}
+              <Button onClick={() => setMobileFilterOpen(false)}>閉じる</Button>
+            </div>
+          }
+        >
+          <Section title="講義の並べ方">
+            <div role="group" aria-label="講義の並べ方" className="m3-menu m3-menu--inline">{sortOptions()}</div>
+          </Section>
+          <Section title="表示する期間">
+            <div role="group" aria-label="表示する期間" className="m3-menu m3-menu--inline">{rangeOptions()}</div>
+          </Section>
+          <Section title="ステータス" description="複数選べます。何も選ばなければすべて表示します">
+            <div role="group" aria-label="表示するステータス" className="m3-menu m3-menu--inline">{statusOptions()}</div>
+          </Section>
+        </Sheet>
+      )}
       {newSemesterOpen && <NewSemesterSheet onClose={() => setNewSemesterOpen(false)} />}
 
       {quickMenu && (
