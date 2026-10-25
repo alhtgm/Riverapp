@@ -774,7 +774,10 @@ export default function TimelineView() {
   return (
     <div style={{ display: 'flex', height: '100svh', background: 'var(--bg)' }}>
       {!isMobile && (
-        <AppNavigation variant="rail" active={activeDestination} onSelect={selectDestination} onAdd={() => setAddModalSubjectId('')} />
+        <AppNavigation
+          variant="rail" active={activeDestination} onSelect={selectDestination} onAdd={() => setAddModalSubjectId('')}
+          onOpenSettings={() => { setAccountOpen(false); setSettingsOpen(true) }} settingsOpen={settingsOpen}
+        />
       )}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
@@ -1575,7 +1578,7 @@ export default function TimelineView() {
         <AccountSheet
           onClose={() => setAccountOpen(false)}
           onOpenMyProfile={() => { if (userId) setProfileUserId(userId) }}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={isMobile ? () => setSettingsOpen(true) : undefined}
           onNewSemester={() => setNewSemesterOpen(true)}
         />
       )}
