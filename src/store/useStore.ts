@@ -17,6 +17,7 @@ interface LectureRow {
   professor: string | null
   visibility: LectureVisibility
   apply_open: boolean
+  created_by: string | null
   created_at: string
 }
 
@@ -77,6 +78,7 @@ function toSubject(
     professor: lecture.professor,
     visibility: lecture.visibility,
     apply_open: lecture.apply_open,
+    created_by: lecture.created_by,
     created_at: lecture.created_at,
     visible_parties: visibleParties,
   }

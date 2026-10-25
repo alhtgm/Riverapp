@@ -6,6 +6,7 @@ import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Badge, Button, Card, Confirm, Field, List, ListItem, Notice, Section } from '../ui/kit'
+import { JoinedInput } from '../ui/m3'
 import { inputStyle } from '../ui/styles'
 import LectureList from '../lecture/LectureList'
 import { InviteToParties } from './PartyInvite'
@@ -179,16 +180,15 @@ function HandleDisplay({ handle }: { handle: string }) {
     }
   }
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-      <input
-        value={`@${handle}`}
-        readOnly
-        aria-label="ユーザーID"
-        onFocus={e => e.currentTarget.select()}
-        style={{ ...inputStyle, flex: 1, minWidth: 0, color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}
-      />
-      <Button size="sm" variant="ghost" onClick={() => { void copy() }}>コピー</Button>
-    </div>
+    <JoinedInput
+      value={`@${handle}`}
+      readOnly
+      aria-label="ユーザーID"
+      onFocus={e => e.currentTarget.select()}
+      actionLabel="コピー"
+      actionType="button"
+      onAction={() => { void copy() }}
+    />
   )
 }
 
@@ -213,7 +213,8 @@ function AccountSettings() {
     <>
       <Section title="表示名とユーザーID" description="フレンドや講義のメンバーに表示されます。ユーザーIDを伝えると検索してもらえます">
         <form
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, alignItems: 'end' }}
+          // 2つの欄は上揃え（下揃えだと補足の行数の違いで入力欄の高さがずれる）。保存は欄の下に右寄せで置く
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3) var(--space-4)', alignItems: 'start' }}
           onSubmit={e => {
             e.preventDefault()
             void run(async () => {
@@ -234,7 +235,9 @@ function AccountSettings() {
           <Field label="ユーザーID" readOnly group help="自動で決まったIDです。変更はできません">
             <HandleDisplay handle={profile?.handle ?? ''} />
           </Field>
-          <div><Button type="submit" variant="primary" disabled={!dirty} loading={busy}>保存する</Button></div>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+            <Button type="submit" variant="primary" disabled={!dirty} loading={busy}>保存する</Button>
+          </div>
         </form>
       </Section>
 
@@ -258,7 +261,8 @@ function AccountSettings() {
           )
         ) : (
           <form
-            style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}
+            // 表示名とユーザーIDの欄と同じく、ボタンは欄の下に右寄せで置く（横並びだと補足の行で高さがずれる）
+            style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
             onSubmit={e => {
               e.preventDefault()
               void run(async () => {
@@ -268,12 +272,12 @@ function AccountSettings() {
               })
             }}
           >
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <Field label="大学のメールアドレス" help="@より後ろから大学を判定します。メールは届かず、ほかの人にも表示されません">
-                <input type="email" value={schoolEmail} onChange={e => setSchoolEmail(e.target.value)} placeholder="you@s.yourschool.ac.jp" style={inputStyle} />
-              </Field>
+            <Field label="大学のメールアドレス" help="@より後ろから大学を判定します。メールは届かず、ほかの人にも表示されません">
+              <input type="email" value={schoolEmail} onChange={e => setSchoolEmail(e.target.value)} placeholder="you@s.yourschool.ac.jp" style={inputStyle} />
+            </Field>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button type="submit" disabled={!schoolEmail.trim()} loading={busy}>登録する</Button>
             </div>
-            <Button type="submit" disabled={!schoolEmail.trim()} loading={busy}>登録する</Button>
           </form>
         )}
       </Section>
