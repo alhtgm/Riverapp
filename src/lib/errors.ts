@@ -34,6 +34,13 @@ const MESSAGES: Record<string, string> = {
   'target is not excluded': '対象の人は除外されていません',
   'vote not open': 'この投票は終了しています',
   'invalid count': '回数は1〜52回で指定してください',
+  'handle is fixed': 'ユーザーIDは変更できません',
+  'not signed in': 'ログインが必要です',
+  'feedback limit reached': '送れるのは1日20件までです。明日また送ってください',
+  'admin only': '管理者だけが使えます',
+  'feedback not found': 'メッセージが見つかりません',
+  'cannot suspend yourself': '自分は利用停止にできません',
+  'cannot suspend an admin': '管理者は利用停止にできません',
 }
 
 export function toMessage(e: unknown): string {

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sheet from '../ui/Sheet'
-import { Button, Section } from '../ui/kit'
+import FeedbackForm from './FeedbackForm'
+import { fetchIsAdmin } from '../../lib/admin'
+import { Button, Section, Tabs } from '../ui/kit'
 import { SegmentedButton, TextField } from '../ui/m3'
 import { STATUS_CONFIG } from '../../types'
 import { useStore } from '../../store/useStore'
@@ -36,13 +38,33 @@ const moonIcon = (
   </svg>
 )
 
-/** ハンバーガーメニューの「設定」。表示モードと色は選んだらすぐ画面に反映される */
+type SettingsTab = 'display' | 'contact' | 'admin'
+
+const SUBTITLE: Record<SettingsTab, string> = {
+  display: '表示モードと色は選んだらすぐ反映され、この端末のブラウザに保存されます',
+  contact: 'バグの報告や「ここを直してほしい」などを開発者に送れます。返事は受信箱に届きます',
+  admin: '管理者として登録されている人にだけ表示されています',
+}
+
+/**
+ * 設定。上のタブで大枠（表示・開発者に連絡・管理者）を切り替える。
+ * 「管理者」は管理者にだけ出す
+ */
 export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const isDark = useStore(s => s.isDark)
   const toggleTheme = useStore(s => s.toggleTheme)
   const stored = getStoredPalette()
   const [palette, setPalette] = useState<CustomPalette | null>(stored)
   const [hexDraft, setHexDraft] = useState(stored?.base ?? DEFAULT_BASE)
+
+  const [tab, setTab] = useState<SettingsTab>('display')
+  // 管理者にだけ管理者画面への入口を出す（確かめられなければ出さない）
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    let alive = true
+    fetchIsAdmin().then(v => { if (alive) setIsAdmin(v) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   const current: CustomPalette = palette ?? { base: DEFAULT_BASE, pattern: 'complementary' }
 
@@ -59,17 +81,39 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet
       title="設定"
-      subtitle="この端末のブラウザに保存されます"
+      subtitle={SUBTITLE[tab]}
       onClose={onClose}
-      width={480}
+      width={520}
+      height={720}
       zIndex={320}
       footer={
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-          <Button variant="ghost" onClick={() => update(null)} disabled={!palette}>標準の配色に戻す</Button>
-          <Button variant="primary" onClick={onClose}>閉じる</Button>
+        <div style={{ display: 'flex', justifyContent: tab === 'display' ? 'space-between' : 'flex-end', gap: 'var(--space-2)' }}>
+          {tab === 'display' && <Button variant="ghost" onClick={() => update(null)} disabled={!palette}>標準の配色に戻す</Button>}
+          <Button variant={tab === 'display' ? 'primary' : 'secondary'} onClick={onClose}>閉じる</Button>
         </div>
       }
     >
+      <Tabs<SettingsTab>
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'display', label: '表示' },
+          { key: 'contact', label: '開発者に連絡' },
+          ...(isAdmin ? [{ key: 'admin' as const, label: '管理者' }] : []),
+        ]}
+      />
+
+      {tab === 'contact' && <FeedbackForm />}
+
+      {tab === 'admin' && (
+        <Section title="管理者画面" description="開発者へのメッセージの確認と返事、ユーザーの管理、全員へのお知らせができます。新しいタブで開きます">
+          <div>
+            <Button variant="primary" onClick={() => window.open('/admin', '_blank', 'noopener')}>管理者画面を開く</Button>
+          </div>
+        </Section>
+      )}
+
+      {tab === 'display' && <>
       <Section title="表示モード">
         <SegmentedButton
           label="表示モード"
@@ -181,6 +225,7 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </Section>
+      </>}
     </Sheet>
   )
 }

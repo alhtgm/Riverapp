@@ -266,7 +266,8 @@ export function NewSemesterSheet({ onClose }: { onClose: () => void }) {
 export default function AccountSheet({ onClose, onOpenMyProfile, onOpenSettings, onNewSemester }: {
   onClose: () => void
   onOpenMyProfile: () => void
-  onOpenSettings: () => void
+  /** 省略すると設定の行を出さない（PC・タブレットではレールの下から開く） */
+  onOpenSettings?: () => void
   onNewSemester: () => void
 }) {
   const { profile, signOut } = useStore()
@@ -294,7 +295,7 @@ export default function AccountSheet({ onClose, onOpenMyProfile, onOpenSettings,
         </button>
         <div className="m3-menu__divider" />
         <SemesterSection onPicked={onClose} onCreate={then(onNewSemester)} />
-        <Row icon={icon.settings} label="設定（表示モード・テーマカラー）" onClick={then(onOpenSettings)} />
+        {onOpenSettings && <Row icon={icon.settings} label="設定（表示モード・テーマカラー）" onClick={then(onOpenSettings)} />}
         <div className="m3-menu__divider" />
         <Row icon={icon.logout} label="ログアウト" danger onClick={() => { void signOut() }} />
       </div>

@@ -167,18 +167,27 @@ const type = (role: string): React.CSSProperties => ({
   letterSpacing: `var(--type-${role}-tracking)`,
 })
 
-function HandleInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/** 自分のユーザーID（自動で決まり、変更できない）。フレンドに伝えやすいようにコピーできる */
+function HandleDisplay({ handle }: { handle: string }) {
+  const { showToast } = useToast()
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`@${handle}`)
+      showToast('ユーザーIDをコピーしました')
+    } catch {
+      showToast('コピーできませんでした。IDを長押しして選んでください', 'error')
+    }
+  }
   return (
-    <div style={{ position: 'relative' }}>
-      <span aria-hidden="true" style={{ position: 'absolute', left: 'var(--space-4)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: 'var(--type-body-large-size)' }}>@</span>
+    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
       <input
-        value={value}
-        onChange={e => onChange(e.target.value.replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, ''))}
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-        style={{ ...inputStyle, paddingLeft: 'calc(var(--space-4) + 18px)' }}
+        value={`@${handle}`}
+        readOnly
+        aria-label="ユーザーID"
+        onFocus={e => e.currentTarget.select()}
+        style={{ ...inputStyle, flex: 1, minWidth: 0, color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}
       />
+      <Button size="sm" variant="ghost" onClick={() => { void copy() }}>コピー</Button>
     </div>
   )
 }
@@ -188,7 +197,6 @@ function AccountSettings() {
   const { showToast } = useToast()
   const { profile, updateMyProfile, schoolName, setMySchoolEmail } = useStore()
   const social = useSocialStore()
-  const [handle, setHandle] = useState(profile?.handle ?? '')
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [schoolEmail, setSchoolEmail] = useState('')
   const [confirmSchoolRemove, setConfirmSchoolRemove] = useState(false)
@@ -199,7 +207,7 @@ function AccountSettings() {
     try { await fn() } catch (e: unknown) { showToast(toMessage(e), 'error') } finally { setBusy(false) }
   }
 
-  const dirty = handle !== (profile?.handle ?? '') || displayName !== (profile?.display_name ?? '')
+  const dirty = displayName !== (profile?.display_name ?? '')
 
   return (
     <>
@@ -209,7 +217,7 @@ function AccountSettings() {
           onSubmit={e => {
             e.preventDefault()
             void run(async () => {
-              await updateMyProfile({ handle, display_name: displayName })
+              await updateMyProfile({ display_name: displayName })
               const me = useStore.getState().profile
               if (me) {
                 useSocialStore.setState(st => ({
@@ -223,8 +231,8 @@ function AccountSettings() {
           <Field label="表示名" required help="本名でなくてもかまいません">
             <input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={30} required style={inputStyle} />
           </Field>
-          <Field label="ユーザーID" required help="英数字とアンダースコアで3〜20文字">
-            <HandleInput value={handle} onChange={setHandle} />
+          <Field label="ユーザーID" readOnly group help="自動で決まったIDです。変更はできません">
+            <HandleDisplay handle={profile?.handle ?? ''} />
           </Field>
           <div><Button type="submit" variant="primary" disabled={!dirty} loading={busy}>保存する</Button></div>
         </form>

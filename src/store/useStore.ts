@@ -127,10 +127,11 @@ interface AppState {
   profileLoaded: boolean
   schoolName: string | null
   fetchProfile: () => Promise<void>
-  completeOnboarding: (displayName: string, handle: string) => Promise<void>
+  /** プロフィールを作り、本人が選んだ学期を最初の学期にする。ユーザーIDはデータベースが自動で決める（本人は変更できない） */
+  completeOnboarding: (displayName: string, semester: Semester) => Promise<void>
   /** 大学を任意で登録する（null で登録を外す）。ドメインから大学を判定するだけで、ほかの機能には影響しない */
   setMySchoolEmail: (schoolEmail: string | null) => Promise<void>
-  updateMyProfile: (updates: { handle?: string; display_name?: string }) => Promise<void>
+  updateMyProfile: (updates: { display_name: string }) => Promise<void>
 
   // Theme
   isDark: boolean
@@ -244,21 +245,20 @@ export const useStore = create<AppState>((set, get) => ({
     set({ profile: row as unknown as Profile, schoolName: sName, profileLoaded: true, userId: user.id })
   },
 
-  completeOnboarding: async (displayName, handle) => {
+  completeOnboarding: async (displayName, semester) => {
     const userId = await requireUserId()
     const name = displayName.trim()
-    const h = handle.trim().replace(/^@/, '')
     if (!name) throw new Error('表示名を入力してください')
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(h)) {
-      throw new Error('ユーザーIDは英数字とアンダースコアで3〜20文字にしてください')
-    }
     const { data, error } = await supabase
       .from('profiles')
-      .insert({ id: userId, display_name: name, handle: h })
+      .insert({ id: userId, display_name: name })
       .select()
       .single()
     if (error) fail(error)
-    set({ profile: data, schoolName: null, profileLoaded: true, userId })
+    // setSemester は今の学期と同じだと保存しないので、ここでは必ず保存する
+    set({ profile: data, schoolName: null, profileLoaded: true, userId, semester })
+    storeSemesterLocally(semester)
+    void supabase.auth.updateUser({ data: { last_semester: semesterKey(semester) } })
   },
 
   setMySchoolEmail: async (schoolEmail) => {
@@ -297,20 +297,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   updateMyProfile: async (updates) => {
     const userId = await requireUserId()
-    const payload: Record<string, string> = {}
-    if (updates.handle !== undefined) {
-      const h = updates.handle.trim().replace(/^@/, '')
-      if (!/^[a-zA-Z0-9_]{3,20}$/.test(h)) {
-        throw new Error('ユーザーIDは英数字とアンダースコアで3〜20文字にしてください')
-      }
-      payload.handle = h
-    }
-    if (updates.display_name !== undefined) {
-      const n = updates.display_name.trim()
-      if (!n) throw new Error('表示名を入力してください')
-      payload.display_name = n
-    }
-    const { data, error } = await supabase.from('profiles').update(payload).eq('id', userId).select().single()
+    // ユーザーIDは変更できないので、表示名だけを保存する
+    const name = updates.display_name.trim()
+    if (!name) throw new Error('表示名を入力してください')
+    const { data, error } = await supabase.from('profiles').update({ display_name: name }).eq('id', userId).select().single()
     if (error) fail(error)
     set(s => ({ profile: s.profile ? { ...s.profile, ...data } : data }))
   },

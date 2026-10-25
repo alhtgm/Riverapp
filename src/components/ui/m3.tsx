@@ -454,19 +454,38 @@ export function NavigationBar<K extends string>({ items, value, onChange, label 
   )
 }
 
-/** 左側のナビゲーションレール（medium 以上 = タブレット・PC）。上に FAB を置ける */
-export function NavigationRail<K extends string>({ items, value, onChange, fab, label = 'メイン' }: {
+/** 左側のナビゲーションレール（medium 以上 = タブレット・PC）。上に FAB、いちばん下に footer を置ける */
+export function NavigationRail<K extends string>({ items, value, onChange, fab, footer, label = 'メイン' }: {
   items: NavDestination<K>[]
   value: K
   onChange: (key: K) => void
   fab?: ReactNode
+  /** レールのいちばん下（設定など、画面の切り替えではない操作） */
+  footer?: ReactNode
   label?: string
 }) {
   return (
     <nav className="m3-rail" aria-label={label}>
       {fab && <div className="m3-rail__top">{fab}</div>}
       {items.map(item => <NavItem key={item.key} item={item} active={item.key === value} onSelect={onChange} />)}
+      {footer && <div className="m3-rail__bottom">{footer}</div>}
     </nav>
+  )
+}
+
+/** レールの行き先と同じ見た目のボタン（画面は切り替えず、シートを開くなどの操作に使う） */
+export function NavRailButton({ label, icon, active = false, onClick }: {
+  label: string
+  icon: ReactNode
+  /** 開いているシートなど、今その操作の中にいるとき */
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button type="button" className={cx('m3-nav-item', active && 'm3-nav-item--active')} aria-label={label} aria-expanded={active} onClick={onClick}>
+      <span className="m3-nav-item__indicator">{icon}</span>
+      <span className="m3-nav-item__label">{label}</span>
+    </button>
   )
 }
 
