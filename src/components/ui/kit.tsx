@@ -146,11 +146,13 @@ export function List({ children }: { children: ReactNode }) {
 // ---------------------------------------------------------------
 // Field
 // ---------------------------------------------------------------
-export function Field({ label, help, error, required, children, group = false }: {
+export function Field({ label, help, error, required, readOnly = false, children, group = false }: {
   label: string
   help?: ReactNode
   error?: string | null
   required?: boolean
+  /** 表示するだけで入力しない欄。「必須」「任意」を出さない */
+  readOnly?: boolean
   children: ReactNode
   /** 中身がボタンなどを含む複合部品のときは true（label で包むと余白クリックでボタンが押されるため） */
   group?: boolean
@@ -160,7 +162,7 @@ export function Field({ label, help, error, required, children, group = false }:
     <Wrapper style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       <span style={{ ...type('label-large'), color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
         {label}
-        {required
+        {readOnly ? null : required
           ? <span style={{ ...type('label-small'), color: 'var(--accent-dark)' }}>必須</span>
           : <span style={{ ...type('label-small'), color: 'var(--text-tertiary)' }}>任意</span>}
       </span>

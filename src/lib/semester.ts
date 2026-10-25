@@ -13,7 +13,7 @@ export interface Semester {
 
 export const SEMESTER_TERMS: SemesterTerm[] = ['spring', 'fall', 'other']
 
-const SEMESTER_TERM_LABEL: Record<SemesterTerm, string> = {
+export const SEMESTER_TERM_LABEL: Record<SemesterTerm, string> = {
   spring: '前期',
   fall: '後期',
   other: 'その他',

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useSocialStore } from '../../store/useSocialStore'
-import { Fab, NavigationBar, NavigationRail, type NavDestination } from '../ui/m3'
+import { Fab, NavigationBar, NavigationRail, NavRailButton, type NavDestination } from '../ui/m3'
 
 export type AppDestination = 'timeline' | 'people' | 'inbox' | 'me'
 
@@ -31,17 +31,25 @@ const icons: Record<AppDestination, ReactNode> = {
 
 const plusIcon = svg(<path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />)
 
+const settingsIcon = svg(<>
+  <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+  <path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3L5.6 5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+</>)
+
 /**
  * 画面の切り替え（M3 の navigation bar / rail）。
- * - スマホ（compact）: 画面下のナビゲーションバー
- * - タブレット・PC: 左側のナビゲーションレール（いちばん上に「課題を追加」の FAB）
+ * - スマホ（compact）: 画面下のナビゲーションバー（設定は「自分」の中から開く）
+ * - タブレット・PC: 左側のナビゲーションレール（いちばん上に「課題を追加」の FAB、いちばん下に「設定」）
  */
-export default function AppNavigation({ variant, active, onSelect, onAdd }: {
+export default function AppNavigation({ variant, active, onSelect, onAdd, onOpenSettings, settingsOpen = false }: {
   variant: 'bar' | 'rail'
   active: AppDestination
   onSelect: (key: AppDestination) => void
   /** レールの上の FAB（課題を追加） */
   onAdd: () => void
+  /** レールの下の「設定」 */
+  onOpenSettings?: () => void
+  settingsOpen?: boolean
 }) {
   const incoming = useSocialStore(s => s.incoming.length)
   const invites = useSocialStore(s => s.invites.length)
@@ -66,6 +74,7 @@ export default function AppNavigation({ variant, active, onSelect, onAdd }: {
       onChange={onSelect}
       label="画面の切り替え"
       fab={<Fab label="課題を追加 [N]" icon={plusIcon} onClick={onAdd} />}
+      footer={onOpenSettings && <NavRailButton label="設定" icon={settingsIcon} active={settingsOpen} onClick={onOpenSettings} />}
     />
   )
 }
