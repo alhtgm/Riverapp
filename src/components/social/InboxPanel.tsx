@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { toMessage } from '../../lib/errors'
-import { describeNotification, isMessageNotice } from '../../lib/notificationText'
+import { describeNotification, isMessageNotice, isTaskNotice } from '../../lib/notificationText'
 import MessageNotice from './MessageNotice'
+import TaskNotice from './TaskNotice'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
@@ -170,6 +171,16 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
           <List>
             {notifications.map(n => isMessageNotice(n) ? (
               <MessageNotice key={n.id} notification={n} time={timeAgo(n.created_at)} isNew={unreadAtOpen.has(n.id)} />
+            ) : isTaskNotice(n) ? (
+              <TaskNotice
+                key={n.id}
+                notification={n}
+                users={users}
+                subjects={subjects}
+                time={timeAgo(n.created_at)}
+                isNew={unreadAtOpen.has(n.id)}
+                onOpen={openFor(n)}
+              />
             ) : (
               <ListItem
                 key={n.id}
