@@ -179,7 +179,9 @@ export function SemesterSwitcher({ compact, onCreate }: { compact: boolean; onCr
 
       {open && (
         <div className="m3-menu" role="menu" aria-label="学期を選ぶ" style={{
-          position: 'absolute', top: 'calc(100% + var(--space-2))', left: 0, width: 260, zIndex: 10,
+          // スマホではボタンが画面の右寄りにあるので、右端にそろえて画面からはみ出さないようにする
+          position: 'absolute', top: 'calc(100% + var(--space-2))', ...(compact ? { right: 0 } : { left: 0 }),
+          width: 260, maxWidth: 'calc(100vw - 2 * var(--space-4))', zIndex: 10,
         }}>
           {semesters.map(s => {
             const key = semesterKey(s)
@@ -298,7 +300,7 @@ export default function AccountSheet({ onClose, onOpenMyProfile, onOpenSettings,
         </button>
         <div className="m3-menu__divider" />
         <SemesterSection onPicked={onClose} onCreate={then(onNewSemester)} />
-        {onOpenSettings && <Row icon={icon.settings} label="設定（表示モード・テーマカラー）" onClick={then(onOpenSettings)} />}
+        {onOpenSettings && <Row icon={icon.settings} label="設定" onClick={then(onOpenSettings)} />}
         <div className="m3-menu__divider" />
         <Row icon={icon.logout} label="ログアウト" danger onClick={() => { void signOut() }} />
       </div>

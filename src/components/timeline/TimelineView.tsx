@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { Fragment, useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import type { Subject, Task, TaskStatus } from '../../types'
 import { STATUS_CONFIG, isOverdue, toDateString, parseLocalDate, withAlpha } from '../../types'
 import TaskDetailPanel from '../task/TaskDetailPanel'
@@ -839,17 +839,20 @@ export default function TimelineView() {
               </>
             ) : '課題タイムライン'}
           </span>
-          <span style={{
-            fontSize: 'var(--type-label-small-size)',
-            lineHeight: 'var(--type-label-small-line)',
-            color: 'color-mix(in srgb, var(--on-brand) 70%, transparent)',
-            background: 'color-mix(in srgb, var(--on-brand) 10%, transparent)',
-            borderRadius: 'var(--shape-full)',
-            padding: '0 var(--space-2)',
-            flexShrink: 0,
-          }}>
-            v{__APP_VERSION__}
-          </span>
+          {/* バージョンはスマホでは場所を取るので出さない */}
+          {!isMobile && (
+            <span style={{
+              fontSize: 'var(--type-label-small-size)',
+              lineHeight: 'var(--type-label-small-line)',
+              color: 'color-mix(in srgb, var(--on-brand) 70%, transparent)',
+              background: 'color-mix(in srgb, var(--on-brand) 10%, transparent)',
+              borderRadius: 'var(--shape-full)',
+              padding: '0 var(--space-2)',
+              flexShrink: 0,
+            }}>
+              v{__APP_VERSION__}
+            </span>
+          )}
           {/* 学期（押すと一覧が開き、その場で切り替えられる） */}
           <SemesterSwitcher compact={isMobile} onCreate={() => setNewSemesterOpen(true)} />
         </div>
@@ -857,7 +860,7 @@ export default function TimelineView() {
       </header>
 
       {/* ---- Filter bar（チップを並べる。高さ 56px・横にスクロールできる） ---- */}
-      <div style={{
+      <div className="no-scrollbar" style={{
         height: 56,
         borderBottom: '1px solid var(--border)',
         display: 'flex',
@@ -1335,10 +1338,18 @@ export default function TimelineView() {
                             const occurrenceLabel = row.isRecurring ? `${taskIdx + 1}/${row.tasks.length}` : null
                             const timeLabel = task.due_time ? ` ${task.due_time}` : ''
                             const isDragging = dragRef.current?.taskId === task.id
+                            // バーが細くて名前が入らないときは、名前をバーの右の空いている所に出す（次のバーにはかからない幅まで）
+                            const nextLeft = row.tasks
+                              .filter(t => t.id !== task.id)
+                              .map(t => getBarProps(t)?.left ?? Infinity)
+                              .filter(l => l > left)
+                              .reduce((a, b) => Math.min(a, b), days.length * COL_WIDTH)
+                            const outsideLabelWidth = nextLeft - (left + width) - 8
+                            const labelOutside = width < COL_WIDTH * 3 && outsideLabelWidth >= 40
 
                             return (
+                              <Fragment key={task.id}>
                               <div
-                                key={task.id}
                                 onMouseDown={e => startDrag(e, task, 'move')}
                                 onClick={e => {
                                   if (wasDraggingRef.current) { wasDraggingRef.current = false; return }
@@ -1416,7 +1427,7 @@ export default function TimelineView() {
                                 </div>
 
                                 {/* 名前（バーの左端が画面の外に出たら、画面の左端についてきて見えたままになる） */}
-                                <span style={{
+                                {!labelOutside && <span style={{
                                   position: 'sticky',
                                   left: 'var(--space-2)',
                                   display: 'flex',
@@ -1447,8 +1458,33 @@ export default function TimelineView() {
                                       </span>
                                     )}
                                   </span>
-                                </span>
+                                </span>}
                               </div>
+                              {labelOutside && (
+                                <span
+                                  aria-hidden="true"
+                                  style={{
+                                    position: 'absolute', left: left + width + 4, top: '50%', transform: 'translateY(-50%)',
+                                    maxWidth: outsideLabelWidth, display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
+                                    pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 1,
+                                  }}
+                                >
+                                  {occurrenceLabel && (
+                                    <span style={{
+                                      ...typeRole('label-small'), color,
+                                      background: withAlpha(color, '22'),
+                                      borderRadius: 'var(--shape-xs)', padding: '0 var(--space-1)', flexShrink: 0,
+                                    }}>
+                                      {occurrenceLabel}
+                                    </span>
+                                  )}
+                                  <span style={{ ...typeRole('label-medium'), color, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                                    {task.title}
+                                    {task.due_time && <span style={{ opacity: 0.75, fontWeight: 400, marginLeft: 'var(--space-1)' }}>{task.due_time}</span>}
+                                  </span>
+                                </span>
+                              )}
+                              </Fragment>
                             )
                           })}
                         </div>

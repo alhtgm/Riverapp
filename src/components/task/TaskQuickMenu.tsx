@@ -120,7 +120,10 @@ export default function TaskQuickMenu({ task, position, onClose, onOpenDetail, a
     </>
   )
 
-  const dates = `${formatDate(task.start_date)} → ${formatDate(task.due_date)}`
+  // 1日だけの課題は同じ日付を2回並べず、締切だけを出す
+  const dates = task.start_date === task.due_date
+    ? `締切 ${formatDate(task.due_date)}`
+    : `${formatDate(task.start_date)} → ${formatDate(task.due_date)}`
 
   if (asSheet) {
     return (
