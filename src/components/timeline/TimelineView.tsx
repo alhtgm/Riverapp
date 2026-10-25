@@ -1054,7 +1054,9 @@ export default function TimelineView() {
               position: 'sticky', left: 0,
               width: scrollViewport?.width ?? '100%',
               height: scrollViewport ? Math.max(0, scrollViewport.height - HEADER_HEIGHT) : undefined,
+              // 真ん中だと下に寄って見えるので、下の余白を多くして少し上に置く
               boxSizing: 'border-box', padding: 'var(--space-8) var(--space-4)',
+              paddingBottom: scrollViewport ? Math.round((scrollViewport.height - HEADER_HEIGHT) * 0.25) : undefined,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <div style={{ width: '100%', maxWidth: 560 }}>

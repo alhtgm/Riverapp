@@ -26,11 +26,9 @@ export function describeNotification(
     default: return 'お知らせがあります'
   }
 }
-
-/** 通知の本文（開発者からの返事・運営からのお知らせだけ。ほかは見出しだけで足りる） */
-export function notificationBody(n: Pick<AppNotification, 'type' | 'payload'>): string | null {
-  if (n.type !== 'feedback_reply' && n.type !== 'announcement') return null
-  return typeof n.payload.body === 'string' ? n.payload.body : null
+/** 文面のあるお知らせ（運営からのお知らせ・開発者からの返事）。受信箱ではカードで出す。ほかの通知は1行で足りる */
+export function isMessageNotice(n: Pick<AppNotification, 'type'>): boolean {
+  return n.type === 'announcement' || n.type === 'feedback_reply'
 }
 
 /** 通知に出てくるユーザーID（名前の取得用） */

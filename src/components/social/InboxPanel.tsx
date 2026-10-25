@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { toMessage } from '../../lib/errors'
-import { describeNotification, notificationBody } from '../../lib/notificationText'
+import { describeNotification, isMessageNotice } from '../../lib/notificationText'
+import MessageNotice from './MessageNotice'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
@@ -54,6 +55,9 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
   const { users, incoming, invites, applyRequests, notifications } = social
   const { subjects, fetchAll } = useStore()
   const [busy, setBusy] = useState(false)
+
+  // 開くとすぐ既読になるので、開いた時点で未読だったお知らせを覚えておき「新着」と出す
+  const [unreadAtOpen] = useState(() => new Set(notifications.filter(n => !n.read_at).map(n => n.id)))
 
   useEffect(() => { void social.fetchSocial() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // 開いたらお知らせを既読にする
@@ -164,16 +168,13 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
           <EmptyState compact title="お知らせはまだありません" description="締切の変更や、申請が承認されたことなどが届きます。" />
         ) : (
           <List>
-            {notifications.map(n => (
+            {notifications.map(n => isMessageNotice(n) ? (
+              <MessageNotice key={n.id} notification={n} time={timeAgo(n.created_at)} isNew={unreadAtOpen.has(n.id)} />
+            ) : (
               <ListItem
                 key={n.id}
                 title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{describeNotification(n, users, subjects)}</span>}
-                subtitle={notificationBody(n) ? (
-                  <>
-                    <span style={{ display: 'block', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', margin: 'var(--space-1) 0' }}>{notificationBody(n)}</span>
-                    {timeAgo(n.created_at)}
-                  </>
-                ) : timeAgo(n.created_at)}
+                subtitle={timeAgo(n.created_at)}
                 onClick={openFor(n)}
                 trailing={openFor(n) && chevronRight}
               />
