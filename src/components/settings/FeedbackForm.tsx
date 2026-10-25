@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import Sheet from '../ui/Sheet'
-import { Button, Notice } from '../ui/kit'
+import { Button, Notice, Section } from '../ui/kit'
 import { SegmentedButton, TextArea } from '../ui/m3'
 import { useToast } from '../ui/Toast'
 import { FEEDBACK_CATEGORY_LABEL, FEEDBACK_MAX_LENGTH, submitFeedback, type FeedbackCategory } from '../../lib/admin'
@@ -11,8 +10,8 @@ const PLACEHOLDER: Record<FeedbackCategory, string> = {
   other: '感想や質問など、なんでもどうぞ',
 }
 
-/** 設定から開く「開発者にメッセージを送る」。返事は受信箱に届く */
-export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
+/** 設定の「開発者に連絡」タブ。送ったら欄を空にして、続けて送れるようにする。返事は受信箱に届く */
+export default function FeedbackForm() {
   const { showToast } = useToast()
   const [category, setCategory] = useState<FeedbackCategory>('bug')
   const [body, setBody] = useState('')
@@ -27,27 +26,16 @@ export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
     try {
       await submitFeedback(category, trimmed)
       showToast('開発者にメッセージを送りました。ありがとうございます')
-      onClose()
+      setBody('')
     } catch (e) {
       setError((e as Error).message)
+    } finally {
       setSending(false)
     }
   }
 
   return (
-    <Sheet
-      title="開発者にメッセージを送る"
-      subtitle="バグの報告や「ここを直してほしい」などを送れます。返事は受信箱に届きます"
-      onClose={onClose}
-      width={480}
-      zIndex={340}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-          <Button variant="ghost" onClick={onClose}>やめる</Button>
-          <Button variant="primary" loading={sending} disabled={!trimmed} onClick={() => void send()}>送る</Button>
-        </div>
-      }
-    >
+    <Section title="開発者にメッセージを送る" description="アプリのバージョンとブラウザの種類も一緒に送られます">
       <SegmentedButton
         label="メッセージの種類"
         block
@@ -61,11 +49,14 @@ export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
         value={body}
         onChange={e => setBody(e.target.value)}
         maxLength={FEEDBACK_MAX_LENGTH}
-        rows={7}
+        rows={8}
         placeholder={PLACEHOLDER[category]}
-        supportingText={`${body.length} / ${FEEDBACK_MAX_LENGTH}文字。アプリのバージョンとブラウザの種類も一緒に送られます`}
+        supportingText={`${body.length} / ${FEEDBACK_MAX_LENGTH}文字`}
       />
       {error && <Notice tone="danger">{error}</Notice>}
-    </Sheet>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button variant="primary" loading={sending} disabled={!trimmed} onClick={() => void send()}>送る</Button>
+      </div>
+    </Section>
   )
 }
