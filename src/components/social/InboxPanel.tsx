@@ -132,13 +132,16 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
       <Section
         title="返事が必要"
         count={pending.length}
-        description="承認・参加はここで1回押すだけで終わります"
+        description={pending.length > 0 ? "承認・参加はここで1回押すだけで終わります" : undefined}
         action={pending.length > 1 && (
           <Button size="sm" variant="primary" loading={busy} onClick={() => void acceptAll()}>すべて承認（{pending.length}）</Button>
         )}
       >
         {pending.length === 0 ? (
-          <EmptyState compact title="返事が必要なものはありません" description="フレンド申請・パーティーの招待・講義への参加申請が届くと、ここに並びます。" />
+          // 0件のときは大きな枠を出さず1行だけにして、お知らせを上に詰める
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--type-body-medium-size)' }}>
+            いまはありません。フレンド申請・パーティーの招待・講義への参加申請が届くと、ここに並びます
+          </p>
         ) : (
           <List>
             {pending.map(item => (

@@ -411,7 +411,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
             </Card>
 
             <Field group required label="公開範囲" help="公開範囲を変えると、メンバー全員に通知されます">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-2)' }}>
+              {/* 説明が長いので、スマホでは1列、広い画面では2列にする */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-2)' }}>
                 {VISIBILITIES.map(v => {
                   const active = visibility === v
                   return (
@@ -528,7 +529,8 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
           </form>
 
           <Section title="自分のタイムラインでの色" description="あなたの画面にだけ反映されます">
-            <div role="radiogroup" aria-label="タイムラインでの色" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            {/* 一段に並べる。幅が足りないときは丸を縮めて収める（押せる範囲は m3-target で確保） */}
+            <div role="radiogroup" aria-label="タイムラインでの色" style={{ display: 'flex', gap: 'var(--space-2)' }}>
               {LECTURE_COLORS.map(c => (
                 <button
                   key={c}
@@ -539,7 +541,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
                   className="m3-state m3-target"
                   onClick={() => run(async () => { await updateSubject(lectureId, { color: c }) })}
                   style={{
-                    width: 40, height: 40, borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
+                    flex: '1 1 0', minWidth: 0, maxWidth: 40, aspectRatio: '1', borderRadius: 'var(--shape-full)', background: c, cursor: 'pointer', padding: 0,
                     border: '3px solid var(--surface)',
                     boxShadow: lecture.color === c ? '0 0 0 2px var(--text-primary)' : '0 0 0 1px var(--border)',
                   }}

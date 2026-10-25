@@ -170,8 +170,8 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
         <TextField label="タイトル" value={title} onChange={e => setTitle(e.target.value)} placeholder="未入力の場合「課題」" />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div>
+            <div>
               <SelectField
                 label="講義"
                 value={subjectId}
@@ -180,22 +180,21 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
                 {options.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {options.length === 0 && <option value="">講義がありません（「講義」ボタンから作成）</option>}
+                {options.length === 0 && <option value="">講義がありません（下の「新しい講義を作る」から作成）</option>}
               </SelectField>
             </div>
-            <Button
-              variant={showNewSubject ? 'tonal' : 'outlined'}
-              icon={plusIcon}
-              onClick={() => setShowNewSubject(!showNewSubject)}
-              aria-expanded={showNewSubject}
-              style={{ marginTop: 'var(--space-2)' }}
-            >
-              講義
-            </Button>
           </div>
           <p style={{ ...typeBodySmall, color: 'var(--text-secondary)', margin: 'calc(-1 * var(--space-2)) 0 0', padding: '0 var(--space-4)' }}>
             課題名・開始日・締切は講義の参加者全員に共有されます。ステータス・メモはあなただけのものです。
           </p>
+          {/* 講義の欄の横に丸いボタンを並べると形がそろわないので、欄の下に控えめに置く */}
+          {!showNewSubject && (
+            <div>
+              <Button variant="text" icon={plusIcon} onClick={() => setShowNewSubject(true)} aria-expanded={false}>
+                新しい講義を作る
+              </Button>
+            </div>
+          )}
           {showNewSubject && (
             <NewLectureForm
               onReady={id => { setSubjectId(id); setShowNewSubject(false) }}
