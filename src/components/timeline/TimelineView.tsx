@@ -666,6 +666,18 @@ export default function TimelineView() {
     (sum, g) => sum + g.subjectRows.reduce((s, r) => s + r.tasks.length, 0), 0
   )
 
+  /** いま効いている絞り込みの名前（例：「未着手・今週」） */
+  const filterName = [
+    ...STATUS_PILLS.filter(p => selectedStatuses.has(p.key)).map(p => p.label),
+    ...(viewRange !== 'all' ? [viewRange === 'week' ? '今週' : '今月'] : []),
+  ].join('・')
+
+  /** 絞り込み（期間とステータス）をすべて外して「すべて」に戻す */
+  const clearFilters = () => {
+    setSelectedStatuses(new Set())
+    setViewRange('all')
+  }
+
   const toggleStatus = (key: EffectiveStatus) => {
     setSelectedStatuses(prev => {
       const next = new Set(prev)
@@ -992,17 +1004,26 @@ export default function TimelineView() {
             </>
           ) : grouped.length === 0 ? (
             <div style={{ position: 'sticky', left: 0, width: 'min(560px, 100vw)', padding: 'var(--space-8) var(--space-4)' }}>
-              <EmptyState
-                title={viewRange !== 'all'
-                  ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません`
-                  : subjects.length === 0 ? `${semesterLabel(semester)}の講義はまだありません` : '課題を追加してはじめましょう'}
-                description={viewRange !== 'all'
-                  ? '「すべて」に切り替えると全期間の課題が表示されます'
-                  : subjects.length === 0
-                    ? '右下の「＋」（課題を追加）から講義を作成できます。ほかの学期はメニューから切り替えられます'
-                    : '右下の「＋」から追加できます [N]'}
-                action={viewRange !== 'all' ? <Button variant="tonal" onClick={() => setViewRange('all')}>「すべて」に切り替える</Button> : undefined}
-              />
+              {subjects.length === 0 ? (
+                /* A. この学期に講義が 1 つもない */
+                <EmptyState
+                  title={`${semesterLabel(semester)}の講義はまだありません`}
+                  description="「課題を追加」の「＋」ボタンから講義を作成できます。ほかの学期はメニューから切り替えられます"
+                />
+              ) : tasks.length === 0 ? (
+                /* C. 講義はあるが課題が 1 件もない */
+                <EmptyState
+                  title="課題を追加してはじめましょう"
+                  description="「課題を追加」の「＋」ボタンから、最初の課題を登録できます"
+                />
+              ) : (
+                /* B. 課題はあるが、絞り込みの結果が 0 件 */
+                <EmptyState
+                  title="条件に合う課題はありません"
+                  description={`今かかっている絞り込み：「${filterName}」`}
+                  action={<Button variant="tonal" onClick={clearFilters}>絞り込みを解除</Button>}
+                />
+              )}
             </div>
           ) : (
             grouped.map(({ subject, subjectRows }, groupIdx) => {
