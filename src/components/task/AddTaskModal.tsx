@@ -30,12 +30,13 @@ const DAY_JA = ['日', '月', '火', '水', '木', '金', '土']
 
 type DuePreset = { label: string; days: number }
 // 締切日クイック設定（今日からの日数）
+// 「その他」と合わせて6つを1行に並べるので、短い名前にする
 const DUE_PRESETS: DuePreset[] = [
-  { label: '今日',    days: 0 },
-  { label: '1日後',   days: 1 },
-  { label: '3日後',   days: 3 },
-  { label: '1週間後', days: 7 },
-  { label: '2週間後', days: 14 },
+  { label: '今日',  days: 0 },
+  { label: '明日',  days: 1 },
+  { label: '3日後', days: 3 },
+  { label: '1週間', days: 7 },
+  { label: '2週間', days: 14 },
 ]
 
 // 今日からの日数オフセットを YYYY-MM-DD に変換
@@ -209,13 +210,36 @@ export default function AddTaskModal({ subjects, onClose, defaultSubjectId }: Pr
 
             <div role="group" aria-labelledby="add-task-due-label" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               <span id="add-task-due-label" style={groupLabel}>締切日</span>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                {DUE_PRESETS.map(p => (
-                  <Chip key={p.days} selected={activePresetDays === p.days} onClick={() => applyDuePreset(p.days)}>
-                    {p.label}
-                  </Chip>
-                ))}
-                <Chip selected={showCustomDue} onClick={() => setShowCustomDue(true)}>その他</Chip>
+              <div>
+                {/* 1本につながった切り替え（6つを同じ幅で1行に。狭い画面でも収まるようチェックの印は付けない） */}
+                <div role="radiogroup" aria-labelledby="add-task-due-label" className="m3-segmented m3-segmented--block">
+                  {DUE_PRESETS.map(p => {
+                    const selected = activePresetDays === p.days
+                    return (
+                      <button
+                        key={p.days}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`m3-segment m3-state${selected ? ' m3-segment--selected' : ''}`}
+                        style={{ padding: '0 var(--space-1)', minWidth: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => applyDuePreset(p.days)}
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={showCustomDue}
+                    className={`m3-segment m3-state${showCustomDue ? ' m3-segment--selected' : ''}`}
+                    style={{ padding: '0 var(--space-1)', minWidth: 0, whiteSpace: 'nowrap' }}
+                    onClick={() => setShowCustomDue(true)}
+                  >
+                    その他
+                  </button>
+                </div>
               </div>
               {showCustomDue && (
                 <MiniCalendar value={dueDate} min={startDate} onChange={d => setDueDate(d)} />
