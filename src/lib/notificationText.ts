@@ -21,8 +21,16 @@ export function describeNotification(
       return `「${lectureTitle}」の課題「${String(p.title ?? '')}」の締切が${formatDate(String(p.old_due_date))}から${formatDate(String(p.new_due_date))}に変わりました`
     case 'lecture_visibility_changed':
       return `「${lectureTitle}」の公開範囲が「${VISIBILITY_LABEL[p.old_visibility as LectureVisibility] ?? ''}」から「${VISIBILITY_LABEL[p.new_visibility as LectureVisibility] ?? ''}」に変わりました`
+    case 'feedback_reply': return `開発者に送ったメッセージ「${String(p.original ?? '')}」に返事が届きました`
+    case 'announcement': return `運営からのお知らせ: ${String(p.title ?? '')}`
     default: return 'お知らせがあります'
   }
+}
+
+/** 通知の本文（開発者からの返事・運営からのお知らせだけ。ほかは見出しだけで足りる） */
+export function notificationBody(n: Pick<AppNotification, 'type' | 'payload'>): string | null {
+  if (n.type !== 'feedback_reply' && n.type !== 'announcement') return null
+  return typeof n.payload.body === 'string' ? n.payload.body : null
 }
 
 /** 通知に出てくるユーザーID（名前の取得用） */

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sheet from '../ui/Sheet'
+import FeedbackSheet from './FeedbackSheet'
+import { fetchIsAdmin } from '../../lib/admin'
 import { Button, Section } from '../ui/kit'
 import { SegmentedButton, TextField } from '../ui/m3'
 import { STATUS_CONFIG } from '../../types'
@@ -44,6 +46,15 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [palette, setPalette] = useState<CustomPalette | null>(stored)
   const [hexDraft, setHexDraft] = useState(stored?.base ?? DEFAULT_BASE)
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  // 管理者にだけ管理者画面への入口を出す（確かめられなければ出さない）
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    let alive = true
+    fetchIsAdmin().then(v => { if (alive) setIsAdmin(v) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   const current: CustomPalette = palette ?? { base: DEFAULT_BASE, pattern: 'complementary' }
 
   const update = (next: CustomPalette | null) => {
@@ -57,9 +68,10 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const pickPattern = (pattern: PalettePattern) => update({ base: current.base, pattern })
 
   return (
+    <>
     <Sheet
       title="設定"
-      subtitle="この端末のブラウザに保存されます"
+      subtitle="表示の設定はこの端末のブラウザに保存されます"
       onClose={onClose}
       width={480}
       zIndex={320}
@@ -181,7 +193,16 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </Section>
+
+      <Section title="開発者に連絡" description="バグの報告や「ここを直してほしい」などを送れます。返事は受信箱に届きます">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+          <Button onClick={() => setFeedbackOpen(true)}>開発者にメッセージを送る</Button>
+          {isAdmin && <Button variant="ghost" onClick={() => window.open('/admin', '_blank', 'noopener')}>管理者画面を開く</Button>}
+        </div>
+      </Section>
     </Sheet>
+    {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
+    </>
   )
 }
 

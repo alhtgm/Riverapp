@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { toMessage } from '../../lib/errors'
-import { describeNotification } from '../../lib/notificationText'
+import { describeNotification, notificationBody } from '../../lib/notificationText'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
@@ -168,7 +168,12 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
               <ListItem
                 key={n.id}
                 title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{describeNotification(n, users, subjects)}</span>}
-                subtitle={timeAgo(n.created_at)}
+                subtitle={notificationBody(n) ? (
+                  <>
+                    <span style={{ display: 'block', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', margin: 'var(--space-1) 0' }}>{notificationBody(n)}</span>
+                    {timeAgo(n.created_at)}
+                  </>
+                ) : timeAgo(n.created_at)}
                 onClick={openFor(n)}
                 trailing={openFor(n) && chevronRight}
               />
