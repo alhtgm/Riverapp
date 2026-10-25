@@ -408,6 +408,18 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 }
 .m3-rail__top { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-5); }
 .m3-rail__bottom { display: flex; flex-direction: column; align-items: center; margin-top: auto; }
+/* 画面の高さに合わせる: 低い画面では余白を詰め、さらに低ければ文字を隠してアイコンだけにする。
+   それでも入りきらないときはレールの中だけ縦にスクロールできるようにして、下の「設定」が見えなくならないようにする */
+.m3-rail { min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.m3-rail::-webkit-scrollbar { display: none; }
+@media (max-height: 600px) {
+  .m3-rail { gap: var(--space-1); padding: var(--space-2) 0; }
+  .m3-rail__top { margin-bottom: var(--space-2); }
+}
+@media (max-height: 460px) {
+  .m3-rail .m3-nav-item__label { display: none; }
+  .m3-rail .m3-nav-item { min-height: 40px; }
+}
 .m3-rail .m3-nav-item { flex: 0 0 auto; width: 80px; padding: 0; }
 .m3-rail .m3-nav-item__indicator { width: 56px; }
 /* レールは幅 80px なので、日本語 6 文字が入るよう左右の余白と字間をなくす */
