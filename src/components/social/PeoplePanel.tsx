@@ -5,7 +5,7 @@ import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Badge, Button, EmptyState, List, ListItem, Notice, Section, Tabs } from '../ui/kit'
-import { inputStyle } from '../ui/styles'
+import { JoinedInput } from '../ui/m3'
 import { InviteToParties } from './PartyInvite'
 import type { UserSummary } from '../../types'
 
@@ -30,23 +30,6 @@ interface Props {
 const SUBTITLE: Record<PeopleTab, string> = {
   friends: 'ユーザーIDでつながった人です。フレンドはパーティーに招待できます',
   parties: '身内のグループです。メンバー同士で講義を見せ合い、まとめて参加できます',
-}
-
-function HandleInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div style={{ position: 'relative', flex: 1 }}>
-      <span aria-hidden="true" style={{ position: 'absolute', left: 'var(--space-4)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: 'var(--type-body-large-size)' }}>@</span>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value.replace(/^@/, ''))}
-        placeholder={placeholder}
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-        style={{ ...inputStyle, paddingLeft: 'calc(var(--space-4) + 18px)' }}
-      />
-    </div>
-  )
 }
 
 /** 仲間（フレンドとパーティー）。人とグループに関することはすべてここから */
@@ -132,14 +115,24 @@ function FriendsTab({ onOpenProfile }: { onOpenProfile: (userId: string) => void
     <>
       <Section title="フレンドを追加" description="相手のユーザーIDを入れて検索します（なりすまし防止のため完全一致のみ）">
         <form
-          style={{ display: 'flex', gap: 8 }}
           onSubmit={e => {
             e.preventDefault()
             void run(async () => setResult((await social.searchByHandle(query)) ?? 'none'))
           }}
         >
-          <HandleInput value={query} onChange={v => { setQuery(v); setResult(null) }} placeholder="相手のユーザーID" />
-          <Button type="submit" disabled={!query.trim()} loading={busy}>検索</Button>
+          <JoinedInput
+            prefix="@"
+            value={query}
+            onChange={e => { setQuery(e.target.value.replace(/^@/, '')); setResult(null) }}
+            placeholder="相手のユーザーID"
+            aria-label="相手のユーザーID"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            actionLabel="検索"
+            actionDisabled={!query.trim()}
+            loading={busy}
+          />
         </form>
         {result === 'none' && <EmptyState compact title="見つかりませんでした" description="ユーザーIDのつづりを確認してください。" />}
         {result && result !== 'none' && (
@@ -244,7 +237,6 @@ function PartiesTab({ onOpenParty }: { onOpenParty: (partyId: string) => void })
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
         <Section title="パーティーを作る" description="作ったあと、フレンドを招待できます">
           <form
-            style={{ display: 'flex', gap: 8 }}
             onSubmit={e => {
               e.preventDefault()
               void run(async () => {
@@ -255,13 +247,21 @@ function PartiesTab({ onOpenParty }: { onOpenParty: (partyId: string) => void })
               })
             }}
           >
-            <input value={partyName} onChange={e => setPartyName(e.target.value)} maxLength={40} placeholder="例：ゼミ仲間" style={inputStyle} />
-            <Button type="submit" variant="primary" disabled={!partyName.trim()} loading={busy}>作る</Button>
+            <JoinedInput
+              value={partyName}
+              onChange={e => setPartyName(e.target.value)}
+              maxLength={40}
+              placeholder="例：ゼミ仲間"
+              aria-label="パーティーの名前"
+              actionLabel="作る"
+              actionVariant="primary"
+              actionDisabled={!partyName.trim()}
+              loading={busy}
+            />
           </form>
         </Section>
         <Section title="招待コードで参加" description="メンバーからもらった8文字のコードを入れます">
           <form
-            style={{ display: 'flex', gap: 8 }}
             onSubmit={e => {
               e.preventDefault()
               void run(async () => {
@@ -272,15 +272,18 @@ function PartiesTab({ onOpenParty }: { onOpenParty: (partyId: string) => void })
               })
             }}
           >
-            <input
+            <JoinedInput
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               maxLength={8}
               placeholder="ABCD2345"
+              aria-label="招待コード"
               autoCapitalize="characters"
-              style={{ ...inputStyle, letterSpacing: '0.12em', fontWeight: 700 }}
+              style={{ letterSpacing: '0.12em', fontWeight: 700 }}
+              actionLabel="参加"
+              actionDisabled={!code.trim()}
+              loading={busy}
             />
-            <Button type="submit" disabled={!code.trim()} loading={busy}>参加</Button>
           </form>
         </Section>
       </div>

@@ -41,6 +41,8 @@ export interface Subject {
   professor: string | null
   visibility: LectureVisibility
   apply_open: boolean
+  /** 講義を作った人 */
+  created_by: string | null
   created_at: string
   /** 講義を見せているパーティー。name は自分が所属していないパーティーだと null */
   visible_parties: { id: string; name: string | null }[]

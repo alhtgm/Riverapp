@@ -139,7 +139,7 @@ const selectStyle = { ...inputStyle, minHeight: 38 }
 
 export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Props) {
   const { showToast } = useToast()
-  const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress, dataVersion } = useStore()
+  const { subjects, tasks, progress, updateLectureSettings, updateSubject, deleteSubject, restoreTask, fetchProgress, dataVersion, userId } = useStore()
   const { users, ensureUsers, parties: myParties, version: socialVersion } = useSocialStore()
   const lecture = subjects.find(s => s.id === lectureId)
   const lectureTasks = tasks.filter(t => t.subject_id === lectureId).sort((a, b) => a.due_date.localeCompare(b.due_date))
@@ -230,6 +230,9 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
 
   const name = (id: string | null | undefined) => userLabel(users, id)
   const activeCount = participants.filter(p => p.status === 'active').length
+  // 自分で作って自分しか参加していない講義は「退出」ではなく「削除」として見せる（中身は同じ処理で、講義は誰からも見えなくなる）
+  const isSoleCreator = lecture.created_by === userId && activeCount === 1
+    && participants.some(p => p.status === 'active' && p.user_id === userId)
   const totals = lectureTasks.reduce(
     (acc, t) => {
       acc.inProgress += progress[t.id]?.in_progress.length ?? 0
@@ -545,6 +548,26 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
             </div>
           </Section>
 
+          {isSoleCreator ? (
+            <Section title="この講義を削除" description="あなたが作って、あなただけが参加している講義です。削除すると、講義と課題はタイムラインから消えます">
+              {confirmLeave ? (
+                <Confirm
+                  message={`「${lecture.name}」を削除しますか？`}
+                  detail="講義とその課題・進捗は、誰からも見えなくなります。元に戻すことはできません。"
+                  confirmLabel="削除する"
+                  busy={busy}
+                  onCancel={() => setConfirmLeave(false)}
+                  onConfirm={() => run(async () => {
+                    await deleteSubject(lectureId)
+                    showToast('講義を削除しました')
+                    onClose()
+                  })}
+                />
+              ) : (
+                <div><Button variant="danger" onClick={() => setConfirmLeave(true)}>講義を削除</Button></div>
+              )}
+            </Section>
+          ) : (
           <Section title="この講義から退出" description="退出しても、あなたの進捗やメモは保存され、再参加したときに戻ります">
             {confirmLeave ? (
               <Confirm
@@ -565,6 +588,7 @@ export default function LectureScreen({ lectureId, onClose, onOpenProfile }: Pro
               <div><Button variant="danger" onClick={() => setConfirmLeave(true)}>退出する</Button></div>
             )}
           </Section>
+          )}
         </>
       )}
 

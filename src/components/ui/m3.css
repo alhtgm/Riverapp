@@ -723,3 +723,67 @@ textarea.m3-field__control { resize: vertical; min-height: 112px; }
 
 /* 開いたときにフォーカスを受け取るダイアログ・シートの外枠には、選択中の枠を出さない（中のボタンには出る） */
 .m3-dialog:focus, .m3-sheet:focus { outline: none; }
+
+/* ─── 入力欄とボタンをつなげた形（JoinedInput）──────────────────────────
+   四角い入力欄の横に丸いボタンを離して置くと形がそろわないので、1つの枠の中で
+   左に入力欄、右に区切り線つきのボタンを置く。角はほかの入力欄（.m3-field__control）とそろえる。 */
+.m3-joined {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 56px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--shape-xs);
+  background: var(--m3-field-bg, var(--surface));
+  overflow: hidden;
+}
+@media (hover: hover) {
+  .m3-joined:hover:not(:focus-within) { border-color: var(--text-primary); }
+}
+.m3-joined:focus-within { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.m3-joined__prefix {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--type-body-large-size);
+}
+.m3-joined__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-5);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--type-body-large-size);
+  line-height: var(--type-body-large-line);
+  letter-spacing: var(--type-body-large-tracking);
+}
+.m3-joined__prefix + .m3-joined__input { padding-left: var(--space-1); }
+.m3-joined__input::placeholder { color: var(--text-tertiary); }
+.m3-joined__input[readonly] { color: var(--text-secondary); }
+.m3-joined__action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-width: 88px;
+  padding: 0 var(--space-5);
+  border: none;
+  border-left: 1px solid var(--border-strong);
+  background: var(--accent-bg);
+  color: var(--accent-dark);
+  font: var(--type-label-large-weight) var(--type-label-large-size) / var(--type-label-large-line) var(--font-family-base);
+  cursor: pointer;
+}
+.m3-joined__action--primary { background: var(--accent-solid); color: var(--on-accent); border-left-color: var(--accent-solid); }
+.m3-joined__action:disabled {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 38%, transparent);
+  border-left-color: var(--border-strong);
+  cursor: not-allowed;
+}

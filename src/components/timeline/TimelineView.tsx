@@ -101,8 +101,8 @@ const statusIcon = (
 )
 
 const LECTURE_SORT_OPTIONS = [
-  { key: 'custom', label: '自分の順', description: '講義の左のつまみをドラッグして順番を入れ替えられます' },
   { key: 'due',    label: '期限が近い順', description: 'まだ終わっていない課題の締切が近い講義から並べます' },
+  { key: 'custom', label: '自分の順', description: '講義の左のつまみをドラッグして順番を入れ替えられます' },
 ] as const
 
 const VIEW_RANGE_OPTIONS = [
@@ -134,8 +134,9 @@ type LectureSort = 'custom' | 'due'
 
 const LECTURE_SORT_STORAGE_KEY = 'river:lecture-sort'
 
+/** 既定は期限が近い順（自分の順に切り替えた人だけ、その選択を覚えておく） */
 function readStoredLectureSort(): LectureSort {
-  try { return localStorage.getItem(LECTURE_SORT_STORAGE_KEY) === 'due' ? 'due' : 'custom' } catch { return 'custom' }
+  try { return localStorage.getItem(LECTURE_SORT_STORAGE_KEY) === 'custom' ? 'custom' : 'due' } catch { return 'due' }
 }
 
 function storeLectureSort(sort: LectureSort) {
@@ -876,7 +877,7 @@ export default function TimelineView() {
         {/* 講義の並べ方（どれか 1 つ） */}
         <FilterMenuChip
           label={LECTURE_SORT_OPTIONS.find(o => o.key === lectureSort)!.label}
-          active={lectureSort !== 'custom'}
+          active={lectureSort !== 'due'}
           icon={sortIcon}
           menuLabel="講義の並べ方"
           width={300}
