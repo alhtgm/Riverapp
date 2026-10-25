@@ -300,6 +300,17 @@ export default function TimelineView() {
   /** 科目カラーピッカー: subjectId */
   const [colorPickerSubjectId, setColorPickerSubjectId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  /** スクロール領域の見えている大きさ（講義・課題がないときの案内を中央に置くため） */
+  const [scrollViewport, setScrollViewport] = useState<{ width: number; height: number } | null>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => setScrollViewport({ width: el.clientWidth, height: el.clientHeight })
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // ---- 再追加カード（課題の完了/期限切れ時に右下へ表示） ----
   const [reAdd, setReAdd] = useState<{ subjectId: string; reason: 'completed' | 'overdue' } | null>(null)
@@ -1036,7 +1047,14 @@ export default function TimelineView() {
               ))}
             </>
           ) : grouped.length === 0 ? (
-            <div style={{ position: 'sticky', left: 0, width: 'min(560px, 100vw)', padding: 'var(--space-8) var(--space-4)' }}>
+            <div style={{
+              position: 'sticky', left: 0,
+              width: scrollViewport?.width ?? '100%',
+              height: scrollViewport ? Math.max(0, scrollViewport.height - HEADER_HEIGHT) : undefined,
+              boxSizing: 'border-box', padding: 'var(--space-8) var(--space-4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: '100%', maxWidth: 560 }}>
               <EmptyState
                 title={viewRange !== 'all'
                   ? `「${viewRange === 'week' ? '今週' : '今月'}」の課題がありません`
@@ -1048,6 +1066,7 @@ export default function TimelineView() {
                     : '右下の「＋」から追加できます [N]'}
                 action={viewRange !== 'all' ? <Button variant="tonal" onClick={() => setViewRange('all')}>「すべて」に切り替える</Button> : undefined}
               />
+              </div>
             </div>
           ) : (
             grouped.map(({ subject, subjectRows }, groupIdx) => {

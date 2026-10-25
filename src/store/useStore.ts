@@ -127,8 +127,8 @@ interface AppState {
   profileLoaded: boolean
   schoolName: string | null
   fetchProfile: () => Promise<void>
-  /** プロフィールを作る。ユーザーIDはデータベースが自動で決める（本人は変更できない） */
-  completeOnboarding: (displayName: string) => Promise<void>
+  /** プロフィールを作り、本人が選んだ学期を最初の学期にする。ユーザーIDはデータベースが自動で決める（本人は変更できない） */
+  completeOnboarding: (displayName: string, semester: Semester) => Promise<void>
   /** 大学を任意で登録する（null で登録を外す）。ドメインから大学を判定するだけで、ほかの機能には影響しない */
   setMySchoolEmail: (schoolEmail: string | null) => Promise<void>
   updateMyProfile: (updates: { display_name: string }) => Promise<void>
@@ -245,7 +245,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ profile: row as unknown as Profile, schoolName: sName, profileLoaded: true, userId: user.id })
   },
 
-  completeOnboarding: async (displayName) => {
+  completeOnboarding: async (displayName, semester) => {
     const userId = await requireUserId()
     const name = displayName.trim()
     if (!name) throw new Error('表示名を入力してください')
@@ -255,7 +255,10 @@ export const useStore = create<AppState>((set, get) => ({
       .select()
       .single()
     if (error) fail(error)
-    set({ profile: data, schoolName: null, profileLoaded: true, userId })
+    // setSemester は今の学期と同じだと保存しないので、ここでは必ず保存する
+    set({ profile: data, schoolName: null, profileLoaded: true, userId, semester })
+    storeSemesterLocally(semester)
+    void supabase.auth.updateUser({ data: { last_semester: semesterKey(semester) } })
   },
 
   setMySchoolEmail: async (schoolEmail) => {
