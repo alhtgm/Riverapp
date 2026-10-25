@@ -930,10 +930,12 @@ export default function TimelineView() {
             selected={changedFilterCount > 0}
             icon={statusIcon}
             aria-haspopup="dialog"
+            aria-label={changedFilterCount > 0 ? `並べ方・絞り込み（${changedFilterCount}つ変更中）` : '並べ方・絞り込み'}
             onClick={() => setMobileFilterOpen(true)}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {changedFilterCount > 0 ? `並べ方・絞り込み（${changedFilterCount}）` : '並べ方・絞り込み'}
+            {/* 変えているときは数を出す分だけ短くして、右の年月まで画面に収める */}
+            {changedFilterCount > 0 ? `絞り込み（${changedFilterCount}）` : '並べ方・絞り込み'}
           </Chip>
         )}
 
@@ -996,11 +998,13 @@ export default function TimelineView() {
             </Button>
           </>
         )}
-        {/* 今見ている年月（スマホは場所がないので出さない） */}
-        {!isMobile && viewMonthLabel && (
+        {/* 今見ている年月（右端に寄せる。スマホは幅が狭いので少し小さい文字にする） */}
+        {viewMonthLabel && (
           <span aria-live="polite" style={{
-            marginLeft: 'auto', paddingLeft: 'var(--space-4)', flexShrink: 0, whiteSpace: 'nowrap',
-            fontSize: 'var(--type-title-small-size)', lineHeight: 'var(--type-title-small-line)', fontWeight: 600, color: 'var(--text-secondary)',
+            marginLeft: 'auto', paddingLeft: isMobile ? 'var(--space-2)' : 'var(--space-4)', flexShrink: 0, whiteSpace: 'nowrap',
+            fontSize: isMobile ? 'var(--type-label-large-size)' : 'var(--type-title-small-size)',
+            lineHeight: isMobile ? 'var(--type-label-large-line)' : 'var(--type-title-small-line)',
+            fontWeight: 600, color: 'var(--text-secondary)',
           }}>
             {viewMonthLabel}
           </span>
