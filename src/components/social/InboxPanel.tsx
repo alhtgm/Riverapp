@@ -1,22 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { toMessage } from '../../lib/errors'
-import { describeNotification, isMessageNotice, isTaskNotice } from '../../lib/notificationText'
+import { isMessageNotice, isTaskNotice } from '../../lib/notificationText'
 import MessageNotice from './MessageNotice'
 import TaskNotice from './TaskNotice'
+import GeneralNotice from './GeneralNotice'
 import { useStore } from '../../store/useStore'
 import { useSocialStore, userLabel } from '../../store/useSocialStore'
 import { useToast } from '../ui/Toast'
 import Sheet from '../ui/Sheet'
 import { Avatar, Button, EmptyState, List, ListItem, Section } from '../ui/kit'
 import type { AppNotification } from '../../types'
-
-/** 押すと次の画面へ進む行の右端の矢印 */
-const chevronRight = (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ color: 'var(--text-secondary)' }}>
-    <path d="M7.5 4.5L13 10l-5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
 
 interface Props {
   onClose: () => void
@@ -121,13 +114,17 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
     showToast(`${pending.length - failed}件を承認しました${failed ? `（${failed}件はできませんでした）` : ''}`, failed ? 'error' : undefined)
   })
 
-  /** お知らせを押したときに開く画面 */
-  const openFor = (n: AppNotification): (() => void) | undefined => {
+  /** お知らせを押したときに開く画面と、カードの右下に出すその名前 */
+  const openTarget = (n: AppNotification): { label: string; open: () => void } | undefined => {
     const p = n.payload
-    if (typeof p.lecture_id === 'string' && subjects.some(s => s.id === p.lecture_id)) return () => onOpenLecture(p.lecture_id as string)
-    if (n.type === 'party_invite' && typeof p.party_id === 'string' && social.parties.some(pt => pt.id === p.party_id)) return () => onOpenParty(p.party_id as string)
+    if (typeof p.lecture_id === 'string' && subjects.some(s => s.id === p.lecture_id)) {
+      return { label: '講義を開く', open: () => onOpenLecture(p.lecture_id as string) }
+    }
+    if (n.type === 'party_invite' && typeof p.party_id === 'string' && social.parties.some(pt => pt.id === p.party_id)) {
+      return { label: 'パーティーを開く', open: () => onOpenParty(p.party_id as string) }
+    }
     const uid = [p.requester_id, p.addressee_id, p.applicant_id, p.inviter_id].find((v): v is string => typeof v === 'string')
-    return uid ? () => onOpenProfile(uid) : undefined
+    return uid ? { label: 'プロフィールを開く', open: () => onOpenProfile(uid) } : undefined
   }
 
   return (
@@ -169,27 +166,28 @@ export default function InboxPanel({ onClose, onOpenProfile, onOpenParty, onOpen
           <EmptyState compact title="お知らせはまだありません" description="締切の変更や、申請が承認されたことなどが届きます。" />
         ) : (
           <List>
-            {notifications.map(n => isMessageNotice(n) ? (
-              <MessageNotice key={n.id} notification={n} time={timeAgo(n.created_at)} isNew={unreadAtOpen.has(n.id)} />
-            ) : isTaskNotice(n) ? (
-              <TaskNotice
-                key={n.id}
-                notification={n}
-                users={users}
-                subjects={subjects}
-                time={timeAgo(n.created_at)}
-                isNew={unreadAtOpen.has(n.id)}
-                onOpen={openFor(n)}
-              />
-            ) : (
-              <ListItem
-                key={n.id}
-                title={<span style={{ whiteSpace: 'normal', fontWeight: n.read_at ? 500 : 700 }}>{describeNotification(n, users, subjects)}</span>}
-                subtitle={timeAgo(n.created_at)}
-                onClick={openFor(n)}
-                trailing={openFor(n) && chevronRight}
-              />
-            ))}
+            {/* どの種類も同じ並びのカード（上に種類と時刻、真ん中に中身、下に補足と「◯◯を開く」） */}
+            {notifications.map(n => {
+              const time = timeAgo(n.created_at)
+              const isNew = unreadAtOpen.has(n.id)
+              const target = openTarget(n)
+              if (isMessageNotice(n)) return <MessageNotice key={n.id} notification={n} time={time} isNew={isNew} />
+              if (isTaskNotice(n)) {
+                return <TaskNotice key={n.id} notification={n} users={users} subjects={subjects} time={time} isNew={isNew} onOpen={target?.open} />
+              }
+              return (
+                <GeneralNotice
+                  key={n.id}
+                  notification={n}
+                  users={users}
+                  subjects={subjects}
+                  time={time}
+                  isNew={isNew}
+                  openLabel={target?.label}
+                  onOpen={target?.open}
+                />
+              )
+            })}
           </List>
         )}
       </Section>
